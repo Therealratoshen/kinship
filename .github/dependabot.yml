@@ -1,0 +1,18 @@
+# Supply-chain upkeep. Kinship's product is governance over untrusted input, so its own
+# dependencies get watched too. Right now the only third-party dependencies in this repo are
+# the two GitHub Actions below — the runtime is deliberately zero-dependency (D21), so there is
+# no npm ecosystem to track yet. Add an `npm` entry pointing at /runtime only once real
+# dependencies land (the D14 adopt list), not before.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
