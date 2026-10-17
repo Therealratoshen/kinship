@@ -43,7 +43,7 @@ node --test scripts/validate-pack.test.mjs
 
 # Governance semantics: do the rules actually work?
 cd runtime && node --test test/*.test.ts
-# → 102 tests across 12 suites, zero dependencies
+# → 73 tests across 11 files, zero dependencies
 ```
 
 Node ≥ 23. No npm. No build step.
