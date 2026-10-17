@@ -1,0 +1,35 @@
+name: Feature Request
+description: Suggest a new action class, guardrail, or governance rule
+title: "[FR] "
+labels: [enhancement]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## What problem does this solve?
+
+        (be specific — "better governance" is not a problem)
+
+  - type: markdown
+    attributes:
+      value: |
+        ## What spec rule does this relate to?
+
+        (or `N/A — new action class`)
+
+  - type: markdown
+    attributes:
+      value: |
+        ## What would failure look like?
+
+        (the spec rule that would be violated if this shipped without this)
+
+  - type: checkboxes
+    id: tests
+    attributes:
+      label: Tests
+      description: I am willing to write the failing test first (TDD)
+      options:
+        - label: "Yes — I'll write the failing test before requesting review"
+          required: false

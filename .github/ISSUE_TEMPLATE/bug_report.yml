@@ -1,0 +1,36 @@
+name: Bug Report
+description: Report something that does not work the way the spec says it should
+title: "[Bug] "
+labels: [bug]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## What the spec says should happen
+
+        (cite the relevant section of `spec/GOVERNANCE-SPEC-OUTLINE.md`)
+
+  - type: markdown
+    attributes:
+      value: |
+        ## What actually happens
+
+        (concrete description, not a summary)
+
+  - type: markdown
+    attributes:
+      value: |
+        ## To reproduce
+
+        ```bash
+        # paste the commands that reproduce the issue
+        ```
+
+  - type: markdown
+    attributes:
+      value: |
+        ## Environment
+
+        - Node version:
+        - OS:

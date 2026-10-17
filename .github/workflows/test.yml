@@ -1,0 +1,31 @@
+name: Governance Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+
+      - name: Pack shape gate
+        run: node scripts/validate-pack.mjs packs/kopdar-ops
+
+      - name: Validator contract tests
+        run: node --test scripts/validate-pack.test.mjs
+
+      - name: Runtime semantics tests
+        run: |
+          cd runtime
+          node --test test/*.test.ts
