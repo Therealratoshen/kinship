@@ -24,11 +24,12 @@
 
 ## Invariant check
 
-Run both and paste the output. `node` only, no install step.
+Run all three gates and paste the output. `node` only, no install step.
 
 ```
 node scripts/validate-pack.mjs packs/kopdar-ops
 node --test scripts/validate-pack.test.mjs
+cd runtime && node --test test/*.test.ts
 ```
 
 - [ ] Neither tool list contains a mutating moderation action or `whatsapp | send`

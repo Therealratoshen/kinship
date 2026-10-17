@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege token: these gates only read the checkout, never write.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the run still in flight — no stale gate pile-ups.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   gates:
     runs-on: ubuntu-latest

@@ -10,5 +10,5 @@
   "engines": {
     "node": ">=23"
   },
-  "license": "SEE LICENSE IN ../DECISIONS.md Q4"
+  "license": "MIT"
 }
