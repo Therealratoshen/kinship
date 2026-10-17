@@ -17,7 +17,9 @@ concurrency:
 
 jobs:
   gates:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: latest moves to Ubuntu 26 on 2026-10-19 and would change the
+    # runner under a green commit. Reproducibility is the product; CI holds to it too.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
