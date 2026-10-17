@@ -40,3 +40,8 @@ jobs:
         run: |
           cd runtime
           node --test test/*.test.ts
+
+      - name: Tour smoke test (on-ramp self-check)
+        run: |
+          cd runtime
+          node tour.ts

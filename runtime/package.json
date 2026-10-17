@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Kinship control-plane core — the governance semantics as tested code. Produces approval cards and audit events; ships no channel transport, so nothing member-facing can send.",
   "scripts": {
-    "test": "node --test test/*.test.ts"
+    "test": "node --test test/*.test.ts",
+    "tour": "node tour.ts",
+    "onramp": "node tour.ts --json"
   },
   "engines": {
     "node": ">=23"

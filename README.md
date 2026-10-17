@@ -35,15 +35,18 @@ These rules are enforced by tested code, not by prose.
 git clone https://github.com/Therealratoshen/kinship.git
 cd kinship
 
+# Drive the real pack: it drafts, you approve, then it refuses to send (D21).
+node runtime/tour.ts
+# → the audit trail, live. Add --json for the machine-readable contribution map.
+
 # Shape gate: does the pack obey the invariants?
 node scripts/validate-pack.mjs packs/kopdar-ops
 
 # Contract tests: can the pack be tampered with?
 node --test scripts/validate-pack.test.mjs
 
-# Governance semantics: do the rules actually work?
+# Governance semantics: do the rules actually work? (73 tests, 11 files, zero deps)
 cd runtime && node --test test/*.test.ts
-# → 73 tests across 11 files, zero dependencies
 ```
 
 Node ≥ 23. No npm. No build step.

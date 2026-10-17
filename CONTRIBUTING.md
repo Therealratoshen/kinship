@@ -20,6 +20,19 @@ The `scripts/validate-pack.mjs` and its contract test (`scripts/validate-pack.te
 
 The pack at `packs/kopdar-ops/` is the seed forkable example. It is not the product.
 
+## Find what to contribute (including with an AI agent)
+
+Run the on-ramp. It computes, from the repo itself — not from prose that can go stale — which
+governance guarantees hold right now, the runtime test files and counts, the `src` modules that have
+no dedicated test yet, the intentional seam, and what is gated by design:
+
+```bash
+node runtime/tour.ts --json
+```
+
+The honest move: pick an item, **write the failing test first**, implement, open a PR. Do **not** open
+a PR for anything listed under `gatedByDesign` — those refusals are the product.
+
 ## Pull requests
 
 1. Fork the repo.
