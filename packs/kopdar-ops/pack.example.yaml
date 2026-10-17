@@ -1,0 +1,19 @@
+# SUPERSEDED — kept as a pointer, not as an example.
+#
+# This single-file example was the pack's shape on 2026-10-17 morning. It was replaced the same
+# day by the directory format, because a one-file YAML cannot carry per-agent instructions,
+# per-skill assertions, or a namespaced key — and the thing worth forking is the directory, not
+# the config. Nothing here is executable, and nothing here is read by `scripts/validate-pack.mjs`.
+#
+# Read instead:
+#   PACK.md            frontmatter (key, bundled, license, agents[], requiredSkills) + the
+#                      prose a forker needs: what the squad does, what it refuses, why
+#   .kinship.yaml      schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs
+#   agents/*/AGENTS.md per-agent instructions (named for the AGENTS.md convention, not the
+#                      donor's AGENT.md — see ../../rules/pack-format.mdc, rule 1)
+#   skills/*/SKILL.md  twelve skills, each carrying one falsifiable assertion
+#
+# The one rule from this file that is still load-bearing where it is cited
+# (`DECISIONS.md` D11, D13): `whatsapp | send` is ABSENT from the pack, not set to `draft`.
+# In the new format that rule lives in `.kinship.yaml`'s tool lists and is checked by the
+# validator, so it no longer depends on a comment anyone can delete.

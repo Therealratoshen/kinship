@@ -1,0 +1,14 @@
+{
+  "name": "kinship-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kinship control-plane core — the governance semantics as tested code. Produces approval cards and audit events; ships no channel transport, so nothing member-facing can send.",
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=23"
+  },
+  "license": "SEE LICENSE IN ../DECISIONS.md Q4"
+}

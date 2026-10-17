@@ -1,0 +1,47 @@
+---
+description: The governance invariants Kinship will not trade away
+globs: spec/**, packs/**/.kinship.yaml, packs/**/PACK.md, pilots/**
+---
+
+# Governance invariants
+
+Derive from `spec/GOVERNANCE-SPEC-OUTLINE.md` §1.1–1.9 and §2.7–2.8. If this file and the
+spec disagree, the spec wins and this file gets corrected in the same change.
+
+1. **Autonomy is per action class, never per agent.** An agent may be `draft` for
+   `commit.individual-message` and `opt-in-auto` for `observe.read`. A setting that applies one
+   level to a whole agent is a bug: it is the shape that produces "the bot sent it" after one
+   accidental approval.
+
+2. **`never` is implemented as absence, not as a denial.** A class set to `never` has no tool
+   entry. `whatsapp | send` and every moderation mutation (`delete`, `ban`, `mute`, `kick`,
+   `restrict`, `remove-message`, `unsend`) are absent from core packs — grep-verifiable, and
+   checked by the validator.
+
+3. **Defaults deny, and low trust cannot self-promote.** A class with no configured level
+   behaves as `never`. Trust resolution is the intersection of presets, narrowest wins, and a
+   `low_trust_review` source cannot raise its own trust or cause a tool call. Group text from
+   strangers is data, not instruction.
+
+4. **An "always" grant must name its scope** as `(actionClass, channel, scope, grantedAt,
+   grantedBy)`, must be enumerable, and must be revocable in one tap. "Allow all reminders" is
+   not a shippable grant.
+
+5. **Approval binds to revision.** Editing a draft voids its pending approval. A stale
+   approval is a closed record, never a silent pass.
+
+6. **Budgets are money-denominated and event-scoped**, warn-then-hard-stop, with the hard stop
+   real: enforcement wraps LiteLLM (D12/FR-1.12), it is not a dashboard. `llm_per_event_idr`
+   has no sanctioned default — a `null` value with a named owner decision (PRD §12-Q9) is
+   correct; an invented number is not.
+
+7. **Identity disclosure is a non-overridable action class.** It is not a setting, it cannot be
+   configured away by a pack, and no escalation removes it (spec §2.8).
+
+8. **Private objects return 404, not 403**, and a break-glass read is audited and audible.
+   A masked preview — any string containing a literal `...` or `[redacted]` — is not a value
+   and must fail validation.
+
+9. **The shatter path is defined before it is needed:** a member complaint freezes the lane to
+   draft and logs it (spec §2.6). Every claim of follow-up requires a persisted monitor row;
+   "I'll follow up" with no row is a ghost watcher and is rejected.

@@ -1,0 +1,22 @@
+# .gitignore — Kinship
+
+# Real deployment configs contain channel tokens, sponsor contacts, and attendee sources.
+packs/**/pack.local.yaml
+packs/**/*.local.yaml
+*.env
+*.env.local
+
+# Anything with member data in it. The pilot writes logs, never exports of member messages.
+pilots/**/raw/
+pilots/**/*.csv
+pilots/**/*.json
+!pilots/**/package.json
+
+# Audit dumps may contain member identifiers before they're scrubbed.
+audit/
+*.log
+
+# OS / editor
+.DS_Store
+node_modules/
+dist/

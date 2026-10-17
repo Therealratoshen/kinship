@@ -1,0 +1,56 @@
+---
+description: The pack directory shape and what the validator actually checks
+globs: packs/**, scripts/**
+---
+
+# Pack format
+
+Mirror of `research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §5 and `packs/kopdar-ops/`. Format
+donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
+
+1. **The directory is the API.**
+
+       packs/<slug>/
+         PACK.md              frontmatter: key, slug, version, bundled, license, manager,
+                              agents[], requiredSkills[]; body: what it does, what it refuses
+         .kinship.yaml        schema: kinship/v1 — autonomy_by_class, tools, guardrails,
+                              budgets, needs, attribution
+         agents/<role>/AGENTS.md   frontmatter: role, key, reports_to, skills
+         skills/<name>/SKILL.md    frontmatter: key, used_by; body carries one **Assertion.**
+
+   `AGENTS.md` (plural) is deliberate, not a typo of the donor's `AGENT.md`: it matches the
+   AGENTS.md convention already used by coding agents (`research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` §5).
+
+2. **Keys are namespaced and hierarchical.** `kinshipai/bundled/event-ops/kopdar` owns
+   `…/kopdar/skills/<name>` and `…/kopdar/agents/<role>`. A skill whose key is not under its
+   pack's key is a different pack's file with a borrowed name; the validator rejects it.
+
+3. **`bundled: true` is a claim about us, not a label.** Only Kinship-authored packs set it.
+   A community fork that keeps `bundled: true` is advertising an invariant it does not hold —
+   the validator treats it as an error, and pack trust follows `DECISIONS.md` D15:
+   a community pack's `needs:` and skill bodies are untrusted input.
+
+4. **Every skill states a falsifiable assertion**, in Given → assert form, about behaviour
+   rather than phrasing. "Drafts in Indonesian with an English pairing" is prose; "Given a
+   promo request, the card's `member_visible_copy` is a `[id, en]` pair and `sent_at` is null"
+   is an assertion. The claim-ceiling check runs against assertions, not citations, so a
+   forbidden phrase inside a quotation does not fail the build.
+
+5. **Structure, not state.** A `needs:` value that looks like an email address or phone number
+   is a placeholder or a leak, not a config. The validator rejects it.
+
+6. **The gate is the validator, and it is dependency-free.**
+
+       node scripts/validate-pack.mjs packs/kopdar-ops
+       node --test scripts/validate-pack.test.mjs
+
+   It runs on node >= 20 with no install step, because Bun is not a given on a contributor's
+   machine and a pack gate that requires an install does not get run. New rules get a passing
+   *and* a failing case in `validate-pack.test.mjs`; the tamper cases copy the pack into a temp
+   directory, so a fixture edit that breaks an anchor fails the test instead of silently
+   skipping it.
+
+7. **A pack that cannot boot honestly beats a pack that invents content.** Every `needs:` entry
+   must be answered — `escalation_contact` and `member_notice_text` are unskippable. An empty
+   `sponsor_list` is legal; a fabricated one is the failure mode that makes AI community tooling
+   feel like spam.

@@ -1,0 +1,136 @@
+# .kinship.yaml — the machine-readable half of the pack.
+#
+# Behaviour lives in PACK.md and agents/*/AGENT.md. This file carries only what a runtime must
+# enforce and a human must not have to parse: schema identity, per-agent permissions, budgets,
+# and the install gate. Shape donated from Paperclip's `.paperclip.yaml` (study §5); the
+# per-action-class keying and the absent-not-denied posture are Kinship's (spec §1.1).
+#
+# Nothing reads this file yet. There is no Kinship runtime as of 2026-10-17, and phase 1 runs
+# inside an existing Paperclip instance (DECISIONS.md D10). Naming the schema before the engine
+# is the point — it is the publishable artifact. `node scripts/validate-pack.mjs` checks shape.
+
+schema: kinship/v1
+key: kinshipai/bundled/event-ops/kopdar
+version: 0.1.0
+bundled: true                 # invariants here are held by us; a community pack may not claim this
+locale: [id, en]              # Indonesian-first, English paired. Both, always, in member copy.
+
+# --- Permissions, per agent, per action class (spec Part 5) --------------------
+# `autonomy` values: draft | opt-in-auto | never
+# A class absent from this map behaves as `never` — default is deny, and an
+# unset class is not a loophole.
+agents:
+  event-ops:
+    autonomy_by_class:
+      observe.read: opt-in-auto        # zero outbound; scoped to named channels
+      draft.promote: draft
+      draft.reminder: draft
+      report.assemble: draft
+      report.aggregate-only: opt-in-auto      # spec §2.9.3 — assembly-time floor; the agent never holds the name
+      member.suppression-check: opt-in-auto   # spec §2.9.2 — mandatory and unbypassable before any commit class
+      budget.spend: opt-in-auto        # under the ceiling, warn-then-hard-stop
+      escalate.to-human: opt-in-auto
+    tools:                              # write paths, all gated by the class above
+      - gcal | write
+      - luma | read                     # write exists but needs Luma Plus; see PACK.md note 4
+      - gmail | draft
+      - sheets_or_notion | read
+    grants: []                          # always-grants live here, enumerable + revocable (spec §1.8)
+  engagement:
+    autonomy_by_class:
+      observe.read: opt-in-auto
+      draft.promote: draft
+      rsvp.chase: draft
+      nudge.no_show: draft
+      answer.question: draft            # fast reply lane; stays `draft` until shadow mode licenses it
+      commit.individual-message: draft
+      commit.channel-post: draft        # Allow-once only in v0 — the class phase 1 exists to earn
+      member.notify-optout: opt-in-auto # the member's own control; nothing may promote past it (§2.9.2)
+      member.notify-human: opt-in-auto  # "who is responsible for this?" -> the on_behalf_of line (FR-5.1)
+      member.digest-source-check: opt-in-auto  # §2.9 / FR-5.7 — only publish-consented channels are cited
+      promote.cross-community: draft     # §2.11 / FR-6 — partner content; unreachable unless needs.partner_policy answers it
+    tools:
+      - telegram | send
+      - discord | send
+      - whatsapp | read
+      - whatsapp | draft                # NOT send. Group send is absent from the pack entirely (D11).
+      - gmail | draft
+  moderator:
+    autonomy_by_class:
+      observe.read: opt-in-auto
+      moderate.flag: opt-in-auto        # flag-only in bundled packs; the human acts
+      member.notify-flagged: draft      # spec §2.9.4 — the subject of a flag is told, after the fact, with reason
+    outputs: human_queue                # flagged(reason, confidence) -> organiser decides; appeals return here
+    tools:
+      - whatsapp | read
+      - discord | read
+    # No delete. No ban. No mute. Not denied — absent, so a reviewer can grep it.
+    # Also absent, per spec Part 5: score.member, member.opt-out-override, report.name-a-member.
+    # A product that CAN rank its members will be asked to, by a sponsor, quarterly.
+
+# --- Invariants a fork may not configure away ----------------------------------
+# The validator fails on deletion of any key below, and on a value that flips it.
+guardrails:
+  identity_disclosure: required          # spec §2.8 — outside the escalation path
+  member_input_is_data_not_instruction: true   # spec §2.1 / §2.7
+  trust_preset_resolution: fail_closed_narrower_wins   # spec §1.7
+  low_trust_cannot_auto_promote: true
+  private_objects_return: 404            # not 403
+  break_glass_must_be_audible: true      # spec §1.9.2
+  redaction_layers: 3
+  masked_preview_is_never_a_value: true  # spec §1.9.3 — needs a regression test, not a comment
+  shatter: complaint -> freeze-to-draft-and-log
+  exclusive_ownership: true              # 409 never retried
+  no_ghost_watchers: true                # a promise to follow up requires a persisted wake row
+  approval_binds_to_revision: true
+  grant_taxonomy: [allow_once, allow_always, deny]   # collapsing once+always is the bug
+  always_grant_must_name_scope: true
+  # --- the member as a subject, not only as an input source (spec §2.9, PRD FR-5) ---
+  member_visible_binds_to_human: true   # FR-5.1: every member-visible utterance writes `on_behalf_of` at send time
+  member_opt_out_persists_across_lanes: true   # FR-5.2: suppression is cross-lane and outside the escalation path
+  suppression_precedence: member-over-organiser  # an `allow always` grant can NOT beat a member's stop
+  external_reports_aggregate_only: true  # FR-5.3: no identifiable member leaves the community
+  report_aggregation_floor: 10           # a floor value, not a suggestion; below it renders a bracket
+  flagged_member_is_notified_after: true # FR-5.4: due process; the appeal re-enters the organiser's queue
+  digest_sources_are_consent_scoped: true # FR-5.7: the quiet member is not described by the fleet
+  member_message_cap_per_24h: 2          # FR-5.5 (phase 2 value, declared now so lanes inherit it)
+  quiet_hours: member_local_time         # FR-5.5: the member's timezone, not the organiser's
+  # --- cross-community promotion (spec §2.11, PRD FR-6) ---
+  cross_promo_never_exports_member_data: true    # FR-6.1: partners receive copy, never people
+  partner_claims_carry_sources: true             # FR-6.2: a partner's number without a named source escalates
+  cross_promo_discloses_partner: true            # FR-6.3: the relationship is in the copy, both languages
+  suppression_applies_to_partner_content: true   # FR-6.4: a stop is a stop for partner content too
+  cross_promo_counts_against_member_cap: true    # FR-6.4: a partnership is not a second quota lane
+  cross_promo_per_event_cap: 1                   # FR-6.5: a partner's reach is not our cadence (bounded 0-3)
+  defaults: deny
+
+budgets:
+  llm_per_event_idr: null                # REAL field, UNSET value. Owner's call — PRD §12-Q9.
+                                         # Do not fill this with a plausible number; see PACK.md note 3.
+  warn_at_ratio: 0.8                     # warn before the stop, never silently
+  hard_stop: true
+  currency_denomination: event_scoped_money   # not tokens; a volunteer organiser reads rupiah
+  queue_max: 20
+  max_actions_per_run: 15                # exceed -> truncated: true, partial kept, no retry storm
+
+# --- The anti-generic-skeleton gate -------------------------------------------
+# An installer cannot boot this pack without answering these. If any is unset, the
+# pack refuses rather than inventing content — which is the failure mode that makes
+# AI community tools feel like spam.
+needs:
+  - community_name
+  - schedule                             # recurring cadence, not a single date
+  - venue_source                         # gcal | luma (Plus only) | manual
+  - sponsor_list                         # may be empty; never fabricated
+  - escalation_contact                   # LOAD-BEARING: escalate-to-human has no target without it
+  - member_notice_text                   # disclosure copy for the group — required, not optional
+  - rsvp_source_of_truth                 # the named export rsvp-chase reconciles against
+  - partner_policy                       # named allowed partners + required disclosure line; unset = the class never fires
+
+attribution:
+  author: filbert (@handle)              # immutable in the pack hash
+  powered: auto-counted                  # every real event run increments a public usage trail
+  fork_chain: []                         # ancestors credited; status payoff, not payout
+  provenance:
+    donated_shape: paperclipai/paperclip teams-catalog (read at master, 2026-10-17)
+    evidence: [research/PAPERCLIP-OSS-STUDY-2026-10-17.md, research/COMPETITOR-ANALYSIS-2026-10-17.md]

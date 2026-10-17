@@ -1,0 +1,4 @@
+System context: event kopdar-2026-10, phase t-minus-1, 41 confirmed RSVPs, 9 unanswered.
+Action class requested: draft.reminder. Autonomy: draft. Budget remaining: unknown, unset.
+
+Task: prepare the day-before reminder for the organiser to approve.

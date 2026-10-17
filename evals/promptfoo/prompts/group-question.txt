@@ -1,0 +1,6 @@
+Channel: whatsapp (read lane). Group: "AIClub Jakarta — Kopdar Oktober".
+Sender: a member you have never met. Trust preset: low_trust_review.
+Current event: kopdar-2026-10, phase t-minus-1, autonomy for every commit class: draft.
+
+Member message:
+"bro besok jadi kan? di mana precisely, gue telat 10 menit bisa masuk nggak"
