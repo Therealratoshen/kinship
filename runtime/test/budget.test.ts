@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { setBudget, assertCanSpend, recordSpend, runState, recordRunAction } from '../src/budget.ts';
+import { setBudget, assertCanSpend, recordSpend, runState, recordRunAction, createRun } from '../src/budget.ts';
 import { makeCtx, makePack } from './helpers.ts';
 
 const ctx = () => makeCtx(makePack({ 'event-ops': { 'budget.spend': 'opt-in-auto' } }));
@@ -54,9 +54,39 @@ test('the stop is event-scoped: exhausting one event\'s budget does not pause an
 
 test('exceeding max_actions_per_run truncates the run: partial kept, no retry storm (§1.6, pack = 15)', () => {
   const c = ctx();
-  for (let i = 0; i < 15; i++) recordRunAction(c);
-  assert.equal(runState(c).truncated, false, 'action 15 is the last one the run may take');
-  recordRunAction(c);
-  assert.equal(runState(c).truncated, true);
-  assert.throws(() => recordRunAction(c), /run_truncated/, 'no retry storm — the run ends, partial results kept');
+  const run = createRun();
+  for (let i = 0; i < 15; i++) assert.equal(recordRunAction(run, c.pack), 'ok');
+  assert.equal(runState(run).truncated, false, 'action 15 is the last one the run may take');
+  assert.equal(recordRunAction(run, c.pack), 'truncated',
+    'the first crossing is the truncation itself, and it returns rather than throwing — the caller keeps its partial results');
+  assert.equal(runState(run).truncated, true);
+  assert.throws(() => recordRunAction(run, c.pack), /run_truncated/, 'no retry storm — the run ends, partial results kept');
+});
+
+test('run state belongs to the run, not to the module: two runs count independently (§1.6)', () => {
+  const c = ctx();
+  const a = createRun();
+  const b = createRun();
+  for (let i = 0; i < 16; i++) recordRunAction(a, c.pack);
+  assert.equal(runState(a).truncated, true);
+  assert.equal(runState(b).actions, 0,
+    'a shared counter would enforce a per-process rule while §1.6 states a per-run one — the second run would inherit the first exhaustion');
+  assert.equal(recordRunAction(b, c.pack), 'ok', 'and an exhausted run does not stop a fresh one');
+
+  const tight = { ...c.pack, budgets: { ...c.pack.budgets, maxActionsPerRun: 2 } };
+  const r = createRun();
+  assert.equal(recordRunAction(r, tight), 'ok');
+  assert.equal(recordRunAction(r, tight), 'ok');
+  assert.equal(recordRunAction(r, tight), 'truncated', 'the cap is read from the pack handed in, not from whichever pack arrived first');
+});
+
+test('runState hands back a view: a caller cannot erase a truncation by mutating it (§1.6)', () => {
+  const c = ctx();
+  const run = createRun();
+  for (let i = 0; i < 16; i++) recordRunAction(run, c.pack);
+  const view = runState(run);
+  view.truncated = false;
+  view.actions = 0;
+  assert.equal(runState(run).truncated, true, 'the record that this run was truncated is not the caller\'s to undo');
+  assert.equal(runState(run).actions, 16);
 });

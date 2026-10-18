@@ -11,7 +11,7 @@
  */
 import { refuse } from './errors.ts';
 import { createCard } from './cards.ts';
-import type { Ctx, FleetEvent, FleetState } from './types.ts';
+import type { Ctx, FleetEvent, FleetState, Packed } from './types.ts';
 
 export function setBudget(ctx: Ctx, eventId: string, ceilingIdr: number | null, warnRatio = ctx.pack.budgets.warnAtRatio): void {
   if (ceilingIdr !== null && (!Number.isFinite(ceilingIdr) || ceilingIdr <= 0)) {
@@ -63,9 +63,16 @@ export function recordSpend(ctx: Ctx, eventId: string, amountIdr: number, note: 
 
 // --- per-run action cap (§1.6: exceed → truncated, partial kept, no retry storm) ------------------
 
+/**
+ * Run-scoped, deliberately NOT replayable state: the log records what the fleet did, while a
+ * run's counter is the runner's memory of this invocation — a fact the fold must not reproduce.
+ * It is therefore a value the caller owns, never a module singleton: a singleton makes two runs
+ * impossible and leaks one run's exhaustion into the next, which enforces a per-process rule
+ * where §1.6 states a per-run one.
+ */
 export interface RunState { actions: number; truncated: boolean }
 
-const run = { actions: 0, truncated: false }; // run-scoped, deliberately NOT replayable state
+export const createRun = (): RunState => ({ actions: 0, truncated: false });
 
 export type RunAction = 'ok' | 'truncated';
 
@@ -75,19 +82,20 @@ export type RunAction = 'ok' | 'truncated';
  * keeps its partial results. A caller that ignores the signal and asks again is the retry storm
  * the cap exists to prevent — that one is refused with `run_truncated`.
  */
-export function recordRunAction(ctx: Ctx): RunAction {
+export function recordRunAction(run: RunState, pack: Packed): RunAction {
   if (run.truncated) {
-    refuse('run_truncated', 'spec §1.6', `run already truncated at ${ctx.pack.budgets.maxActionsPerRun} actions — partial results kept, no retry storm`);
+    refuse('run_truncated', 'spec §1.6', `run already truncated at ${pack.budgets.maxActionsPerRun} actions — partial results kept, no retry storm`);
   }
   run.actions += 1;
-  if (run.actions > ctx.pack.budgets.maxActionsPerRun) {
+  if (run.actions > pack.budgets.maxActionsPerRun) {
     run.truncated = true;
     return 'truncated';
   }
   return 'ok';
 }
 
-export function runState(_ctx: Ctx): RunState {
+/** A view, not the handle: reading the run's state cannot erase a truncation. */
+export function runState(run: RunState): RunState {
   return { ...run };
 }
 
