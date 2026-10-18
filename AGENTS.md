@@ -41,6 +41,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 | `rules/governance-invariants.mdc` | The autonomy ladder, grants, budgets, disclosure — read before touching `spec/` or a pack's `autonomy_by_class` |
 | `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — read before touching `packs/` or `scripts/` |
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
+| `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
 | `SECURITY.md` | How to report a vulnerability. Not a public issue. |
 
@@ -49,7 +50,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 ## Running what exists
 
 ```bash
-node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate, node >= 20, no install step
+node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate (54 PKG-* rules), no install step
 node --test scripts/validate-pack.test.mjs        # 29 cases, incl. tamper cases
 cd runtime && node --test test/*.test.ts          # 73 cases — the governance semantics as tests
 node runtime/tour.ts                              # drive the real pack; self-checks every guarantee, exits non-zero if one breaks

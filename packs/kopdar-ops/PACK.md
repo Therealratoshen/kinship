@@ -159,8 +159,11 @@ events / we send your reminders" is banned copy for the same reason: an incumben
 
 ## Open, and honest about being open
 
-- The `once`/`always` grant store is specified in the governance spec (§1.8) and implemented nowhere; this
-  pack asserts it in `.kinship.yaml` and the validator checks its shape, not its enforcement.
+- The `once`/`always` grant store is specified in the governance spec (§1.8) and **now implemented in
+  `runtime/src/grants.ts`** — corrected 2026-10-18; this bullet read "implemented nowhere" when it was written,
+  before the runtime landed under `DECISIONS.md` **D21**. Shape is checked by the validator, semantics by
+  `runtime/test/grants.test.ts`. **What is still true:** neither proves a *deployed* system honours it — that
+  proof needs a transport, and none ships (see the section above).
 - `identity-disclosure` and `commit.channel-post` at any posture above `draft` are **unproven**. Promotion
   thresholds are a shadow-mode output (PRD §9), not a pack setting to decide here.
 - No primary user research backs any lane in this pack. It is a faithful model of one organiser's workflow —

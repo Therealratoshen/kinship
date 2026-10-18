@@ -18,7 +18,9 @@ The `runtime/` is built test-first (TDD). See `runtime/test/` for the test suite
 
 The `scripts/validate-pack.mjs` and its contract test (`scripts/validate-pack.test.mjs`) gate the pack format. A validator rule needs both a failing case and a passing case.
 
-The pack at `packs/kopdar-ops/` is the seed forkable example. It is not the product.
+The pack at `packs/kopdar-ops/` is the seed forkable example. It is not the product. Start with
+[`packs/kopdar-ops/README.md`](packs/kopdar-ops/README.md) — it lists the four things a fork may not change and
+the three tamper cases already testing that.
 
 ## Find what to contribute (including with an AI agent)
 
