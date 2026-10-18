@@ -24,7 +24,7 @@ Kinship is a **control plane**, not a runtime. It owns:
 - **Member protections** — suppression beats any grant, quiet hours are the member's clock, 2/24h cap
 - **Identity disclosure** — bilingual canonical line, mandatory, not a setting
 - **Stranger-input containment** — member text never enters the audit log
-- **Replayerable audit trail** — replay reproduces state exactly
+- **Replayable audit trail** — replay reproduces state exactly
 
 These rules are enforced by tested code, not by prose.
 
