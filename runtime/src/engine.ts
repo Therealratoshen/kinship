@@ -30,6 +30,7 @@ import {
 } from './lifecycle.ts';
 import { releaseShatter, tripShatter } from './shatter.ts';
 import { setBudget, recordSpend } from './budget.ts';
+import { deriveHealth, type HealthReport } from './health.ts';
 import type {
   Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, WakeRow,
 } from './types.ts';
@@ -361,6 +362,17 @@ export class Fleet {
 
   auditTimeline(): string[] {
     return this.st.events.map((e) => `#${e.seq} ${timelineLine(e)}`);
+  }
+
+  /**
+   * The fleet-condition snapshot (§1.2 read side): a pure function over the log, so it dates itself,
+   * appends nothing, and replays identically. It answers "what is the condition of this right now?"
+   * — freezes, queue age, budget state, overdue wakes, refusal counts, idle agents (FR-1.11) — and
+   * `unmeasured` answers the part of that question this runtime is not allowed to claim: how the
+   * community *feels* is not in the log, and PRD §5 keeps it out of v0.
+   */
+  health(): HealthReport {
+    return deriveHealth(this.st, this.pack, this.t);
   }
 }
 

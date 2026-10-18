@@ -25,6 +25,7 @@ import { loadPack } from './src/pack.ts';
 import { Fleet } from './src/engine.ts';
 import { runActions } from './src/runner.ts';
 import { UNIMPLEMENTED_REFUSAL_CODES } from './src/errors.ts';
+import { HEALTH_WITHHELD_MEMBER_REF } from './src/health.ts';
 import type { CommitArgs } from './src/engine.ts';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -137,8 +138,24 @@ function runStory() {
     recipients: ['wa:62811'], onBehalfOf: 'organiser', textId: leakyId, textEn: leakyEn,
   }));
 
+  // 8) The fleet-condition snapshot (§1.2's read side): what the logged rows say about right now.
+  //    Its member-ref field is filled the way a real one would be — a wake whose purpose names a
+  //    person — so the privacy property below has something true to catch, not an empty state.
+  const healthFleet = Fleet.boot(pack, ANSWERS, DAY);
+  healthFleet.registerMember('wa:62811', 'Asia/Jakarta');
+  healthFleet.beginEvent('kopdar-12');
+  healthFleet.attempt({
+    actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
+    phase: 't-minus-1', textId: REMINDER_ID, textEn: REMINDER_EN,
+  });
+  healthFleet.tripShatter('telegram', 'wa:62811');
+  healthFleet.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-12' });
+  healthFleet.advance(3_600_000); // an hour later: a frozen lane, a card nobody has decided, a wake past due
+  const health = healthFleet.health();
+
   return {
-    pack, bootGate, draft, commit, cross, tamper, runner, leak,
+    pack, bootGate, draft, commit, cross, tamper, runner, leak, health,
+    mainFleetHealth: fleet.health(),
     timeline: fleet.auditTimeline(),
     authorizationLeftIntact: draft.card !== null && fleet.authorizationOf(draft.card.id) !== undefined && fleet.authorizationOf(draft.card.id) !== null,
   };
@@ -178,6 +195,15 @@ function guarantees(s: ReturnType<typeof runStory>) {
       && s.runner.outcomes.every((o) => o.result !== 'refused'),
     partner_copy_cannot_carry_a_member_ref: s.leak.threw && /partner_data_leak/.test(s.leak.code),
     authorization_survives_refusal: s.authorizationLeftIntact,
+    // The snapshot must be non-empty for the privacy check to mean anything: a report over an empty
+    // fleet carries no member ref because it carries nothing at all.
+    health_snapshot_reports_what_was_logged: s.health.freezes.length === 1
+      && s.health.wakes.overdue.length === 1
+      && s.health.queue.pending === 1 && s.health.queue.oldestPendingAgeMs === 3_600_000,
+    health_snapshot_carries_no_member_identifier: s.health.freezes.length === 1
+      && !JSON.stringify(s.health).includes('wa:62811')
+      && JSON.stringify(s.health).includes(HEALTH_WITHHELD_MEMBER_REF),
+    health_counts_the_sends_a_human_did: (s.mainFleetHealth.refusals.find((r) => r.code === 'no_transport')?.count ?? 0) === 1,
   };
 }
 
@@ -221,8 +247,15 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  partner promo carrying a member ref → refused: ${s.leak.code || '(IT PASSED — a member number reached a partner!)'}`);
   console.log('  the refusal names the member, not the sentence: the audit timeline is readable by members too (§2.3)');
 
-  hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');
-  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
+  hr('7. The fleet-condition snapshot (spec §1.2, read side) — what the log says about right now');
+  console.log(`  frozen lanes: ${s.health.freezes.map((f2) => `${f2.channel} (${f2.ageMs / 3_600_000}h)`).join(', ') || 'none'}`);
+  console.log(`  approval queue: ${s.health.queue.pending} pending of ${s.health.queue.cap}, oldest ${s.health.queue.oldestPendingAgeMs}ms · ${s.health.wakes.overdue.length} wake(s) past due`);
+  console.log(`  hand deliveries so far (no_transport refusals on the tour fleet): ${s.mainFleetHealth.refusals.find((r) => r.code === 'no_transport')?.count ?? 0} — D21, as a number`);
+  console.log(`  idle agents (FR-1.11): ${s.mainFleetHealth.idleAgents.map((a) => `${a.agent}:${a.recommendation}`).join(' ')}`);
+  console.log(`  a member identifier in a wake purpose was substituted, not forwarded: ${JSON.stringify(s.health).includes('wa:62811') ? 'NO — LEAK' : 'yes'}`);
+  console.log(`  what this report will not say: ${s.health.unmeasured.length} named items, incl. sentiment and churn (PRD §5 keeps them out of v0)`);
+
+  hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
 
   hr('The audit trail — every outcome above is a replayable log line');
   for (const line of s.timeline) console.log(`  ${line}`);
@@ -253,6 +286,12 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       autonomyByClass: actionClasses(s.pack),
     },
     guarantees: g,
+    fleetCondition: {
+      whatItIs: 'runtime/src/health.ts (`Fleet.health()`) — a read-only snapshot derived from rows already in the log: live lane freezes and their age, queue depth plus the age of the oldest pending card and escalation, budget state per event, overdue wakes, refusals counted by code, idle agents (FR-1.11), and `unmeasured`.',
+      note: 'It reports the fleet\'s condition, not the community\'s feelings: PRD §5 puts member-intelligence / churn scoring out of v0, and phase 1 ships no transport (D21/D9), so there is no member traffic to read. The `unmeasured` array is part of the artefact, not a disclaimer bolted on. No member identifier rides in it (§2.9/FR-5.3): a free-text field naming a registered member is substituted with a fixed sentence.',
+      snapshot: s.health,
+      tourFleet: s.mainFleetHealth,
+    },
     contributionMap: {
       runtimeTests: cm.tests,
       srcModules: cm.src,
