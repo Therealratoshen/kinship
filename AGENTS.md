@@ -50,12 +50,17 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 ## Running what exists
 
 ```bash
-node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate (54 PKG-* rules), no install step
-node --test scripts/validate-pack.test.mjs        # 29 cases, incl. tamper cases
-cd runtime && node --test test/*.test.ts          # the governance semantics as tests (count: tour --json)
-node runtime/tour.ts                              # drive the real pack; self-checks every guarantee, exits non-zero if one breaks
-node runtime/tour.ts --json                       # machine-readable contribution map (for agents / first PRs)
+node scripts/gates.mjs                              # all four gates below, in order; CI runs exactly this line
+
+node scripts/validate-pack.mjs packs/kopdar-ops     # shape gate (54 PKG-* rules), no install step
+node --test scripts/*.test.mjs                      # validator contracts (29 cases incl. tamper) + the gate-list drift check
+node --test runtime/test/*.test.ts                  # the governance semantics as tests (count: tour --json)
+node runtime/tour.ts                                # drive the real pack; self-checks every guarantee, exits non-zero if one breaks
+node runtime/tour.ts --json                         # machine-readable contribution map (for agents / first PRs)
 ```
+
+`scripts/gates.mjs` is the list; `scripts/gates.test.mjs` fails if a doc drifts from it — so if you
+add a gate, add it there and the test tells you which files then have to say so.
 
 The validator proves **structure**: it can show a moderator declares no mutating tool and
 that `whatsapp | send` is absent. The `runtime/` proves **semantics**: suppression beats a live

@@ -531,7 +531,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 4,571 as of 2026-10-18, split 2,129 domain code / 2,121 tests / 321 tour). This map is the walk a reviewer
+prints 4,577 as of 2026-10-18, split 2,134 domain code / 2,121 tests / 322 tour). This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport

@@ -15,6 +15,11 @@
  *  - **A length floor on the bare form.** `wa:62811` is unambiguous; `62811` collides with times,
  *    prices, and dates. A scan that refuses ordinary copy on a false positive is a scan the first
  *    annoyed organiser disables, so short bare ids are matched only in their prefixed form.
+ *  - **Refs, because refs are all the fleet holds.** A `Member` is `{ ref, tz, registeredAt }` — no
+ *    name, no RSVP row, no handle (`types.ts`). So this file cannot scan for a member's *name*, and
+ *    that is not an oversight to close here: a name reaching partner copy is a disclosure and
+ *    aggregation question (§2.8, the recap floor in §2.9), owned elsewhere. If the fleet ever holds
+ *    names, this scan has to grow with it, and the test that proves the bound must be edited with it.
  *
  * What the refusal says matters as much as when it fires: the audit timeline is member-readable
  * (§2.3), so it names the matched identifiers — the token the organiser must delete — and never the

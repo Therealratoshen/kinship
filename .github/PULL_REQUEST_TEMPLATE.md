@@ -24,16 +24,23 @@
 
 ## Invariant check
 
-Run all four gates and paste the output. `node` only, no install step.
+Run all four gates and paste the output. `node` only, no install step. One command does the list:
+
+```
+node scripts/gates.mjs
+```
+
+Or gate by gate — the list is defined in `scripts/gates.mjs`, and a test in gate 2 fails if this file
+stops matching it:
 
 ```
 node scripts/validate-pack.mjs packs/kopdar-ops
-node --test scripts/validate-pack.test.mjs
-cd runtime && node --test test/*.test.ts
-cd runtime && node tour.ts
+node --test scripts/*.test.mjs
+node --test runtime/test/*.test.ts
+node runtime/tour.ts
 ```
 
-The fourth is not a demo. CI runs the tour and fails on its exit code, because the tour self-checks
+The last is not a demo. CI runs the tour and fails on its exit code, because the tour self-checks
 every governance guarantee the README claims. Passing the tests while breaking the tour is a broken
 promise, not a green build.
 

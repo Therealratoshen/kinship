@@ -39,25 +39,37 @@ a PR for anything listed under `gatedByDesign` — those refusals are the produc
 
 1. Fork the repo.
 2. Make your change.
-3. Run the gates:
+3. Run the gates — all four, or one at a time:
 
 ```bash
+node scripts/gates.mjs
+
 # shape gate
 node scripts/validate-pack.mjs packs/kopdar-ops
 
-# validator contract tests
-node --test scripts/validate-pack.test.mjs
+# validator contract tests + the check that these instructions match CI
+node --test scripts/*.test.mjs
 
 # runtime semantics tests
-cd runtime && node --test test/*.test.ts
+node --test runtime/test/*.test.ts
 
 # the tour — CI runs it, so it is a gate, not a demo
-cd runtime && node tour.ts
+node runtime/tour.ts
 ```
 
-Four gates, not three. The tour drives the real `kopdar-ops` pack and self-checks every governance
+Four gates, not a smaller number. The list lives in `scripts/gates.mjs`; `scripts/gates.test.mjs`
+(which gate 2 runs) fails if a contributor-facing doc stops printing it, so a new gate is added in
+one place and the test tells you which files then have to change.
+
+The tour drives the real `kopdar-ops` pack and self-checks every governance
 guarantee it demonstrates; it exits non-zero if one stops holding, and CI fails on that exit code. A
 change that passes the tests and breaks the tour is a change that broke a promise the README makes.
+
+Two `scripts/` files do the same job one level up — over the repo's claims about itself rather than
+over the runtime's behaviour: `validate-pack.test.mjs` proves the validator can actually reject a
+tampered pack (29 cases, the newest four of them tamper cases), and `gates.test.mjs` proves the four
+commands above are the commands CI runs *and* the commands these docs, `README.md`, `AGENTS.md`, and
+the tour's own `--json` map print.
 
 Inside the runtime suite, three files are gates over the repo's own claims rather than over
 behaviour: `imports.test.ts` (every `src` module imports the `types.ts` names it actually uses — the

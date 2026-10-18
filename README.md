@@ -35,18 +35,16 @@ These rules are enforced by tested code, not by prose.
 git clone https://github.com/Therealratoshen/kinship.git
 cd kinship
 
-# Drive the real pack: it drafts, you approve, then it refuses to send (D21).
-node runtime/tour.ts
+# All four gates, in one command. CI runs exactly this line.
+node scripts/gates.mjs
+
+# Or one at a time, from the repo root — the list lives in scripts/gates.mjs, and
+# scripts/gates.test.mjs fails the build if a doc below drifts from it:
+node scripts/validate-pack.mjs packs/kopdar-ops   # shape: does the pack obey the invariants?
+node --test scripts/*.test.mjs                    # contracts: can the pack — or these docs — drift silently?
+node --test runtime/test/*.test.ts                # semantics: do the rules actually work? (recount: runtime/tour.ts --json)
+node runtime/tour.ts                              # the pack, driven live: drafts, approves, then refuses to send (D21)
 # → the audit trail, live. Add --json for the machine-readable contribution map.
-
-# Shape gate: does the pack obey the invariants?
-node scripts/validate-pack.mjs packs/kopdar-ops
-
-# Contract tests: can the pack be tampered with?
-node --test scripts/validate-pack.test.mjs
-
-# Governance semantics: do the rules actually work? (zero deps; recount with `node runtime/tour.ts --json`)
-cd runtime && node --test test/*.test.ts
 ```
 
 Node ≥ 23. No npm. No build step.
@@ -56,7 +54,8 @@ Node ≥ 23. No npm. No build step.
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 29-case tamper-resistant contract test
+- The validator and its 29-case tamper-resistant contract test, plus `scripts/gates.mjs` — one
+  command for the four CI gates, and a test that fails if the documented list drifts from what CI runs
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
 
 **Gated behind shadow-mode measurement:**

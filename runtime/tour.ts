@@ -275,10 +275,11 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         'DECISIONS.md — who decided what, when, and how reversible it is',
       ],
       howToVerify: [
+        'node scripts/gates.mjs',
         'node scripts/validate-pack.mjs packs/kopdar-ops',
-        'node --test scripts/validate-pack.test.mjs',
-        'cd runtime && node --test test/*.test.ts',
-        'cd runtime && node tour.ts',
+        'node --test scripts/*.test.mjs',
+        'node --test runtime/test/*.test.ts',
+        'node runtime/tour.ts',
       ],
       // Derived from the list `test/errors.test.ts` polices, so this cannot drift from it:
       // these are the spec promises that are still prose. Read `blockedOn` before opening a PR.

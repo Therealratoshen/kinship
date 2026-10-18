@@ -37,18 +37,9 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: Pack shape gate
-        run: node scripts/validate-pack.mjs packs/kopdar-ops
-
-      - name: Validator contract tests
-        run: node --test scripts/validate-pack.test.mjs
-
-      - name: Runtime semantics tests
-        run: |
-          cd runtime
-          node --test test/*.test.ts
-
-      - name: Tour smoke test (on-ramp self-check)
-        run: |
-          cd runtime
-          node tour.ts
+      # One step, because the gate list is a claim the repo makes in six places. `scripts/gates.mjs`
+      # holds it, and gate 2 of that list runs `scripts/gates.test.mjs`, which fails if README,
+      # AGENTS, CONTRIBUTING, the PR template, or the tour's own --json map stops printing the same
+      # four commands. CI re-typing the list would be the copy nobody checks.
+      - name: Governance gates (shape, contracts, semantics, tour)
+        run: node scripts/gates.mjs
