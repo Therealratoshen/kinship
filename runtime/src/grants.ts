@@ -58,11 +58,17 @@ export function issueGrant(ctx: Ctx, args: IssueGrantArgs): Grant {
   return grant;
 }
 
-/** Instant, no reason required, works on once-grants too (nothing to consume after revoke). */
+/**
+ * Instant, no reason required, works on once-grants too (nothing to consume after revoke) — and
+ * only ever by the human who holds the grant. §1.8 makes revocation the organiser's act; gating it
+ * at the caller would leave this file's own tests able to un-gate it, so the rule lives here.
+ */
 export function revokeGrant(ctx: Ctx, grantId: string, by: string): void {
+  if (by !== 'organiser') {
+    refuse('not_the_human', 'spec §1.8/§2.7', `grants are revoked by the human who holds them; \`${by}\` cannot revoke one`);
+  }
   const g = ctx.state.grants.get(grantId);
   if (!g || g.revokedAt !== undefined || g.consumedAt !== undefined) return;
-  void by; // revocation is an organiser act; the engine gates who calls this
   ctx.commit({ type: 'GrantRevoked', grantId, by, at: ctx.now() });
 }
 

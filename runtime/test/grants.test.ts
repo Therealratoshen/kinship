@@ -49,6 +49,18 @@ test('a member cannot issue a grant — "yes, go ahead" in chat is input to a pr
   assert.equal(listGrants(c).length, 0, 'and nothing was stored');
 });
 
+test('revocation is the organiser\'s act at the primitive, not only at the engine (§1.8 / §2.7)', () => {
+  // The comment here used to read "the engine gates who calls this". It did not: `engine.ts`
+  // forwards `revokeGrant` straight through, and the tests call this file directly — so the rule
+  // lived only in a sentence. A primitive that is safe only when reached by one caller is not safe.
+  const c = ctx();
+  const g = issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram', scope: 'event series: kopdar-bulanan', by: 'organiser' });
+  assert.throws(() => revokeGrant(c, g.id, 'member:m1'), /not_the_human/);
+  assert.throws(() => revokeGrant(c, g.id, 'agent:engagement'), /not_the_human/);
+  assert.notEqual(findLiveGrant(c, { actionClass: 'draft.reminder', channel: 'telegram' }), null,
+    'a refused revocation changes nothing — the grant is still live and still enumerable');
+});
+
 test('a cross-promotion always-grant must name partner + lane + window, and only fires inside the window (§2.11)', () => {
   const c = ctx();
   assert.throws(
