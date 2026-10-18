@@ -369,8 +369,10 @@ function timelineLine(e: LoggedEvent): string {
     case 'MemberRegistered': return `member ${e.member.ref} registered (${e.member.tz})`;
     case 'MemberInputReceived': return `input from ${e.memberRef} received (sha ${e.textHash.slice(0, 8)})`;
     case 'SuppressionRecorded': return `member ${e.row.memberRef} stopped — source: ${e.row.source}`;
-    case 'GrantIssued': return `grant ${e.grant.id} ${e.grant.kind} for ${e.grant.actionClass}${e.grant.channel ? ` in ${e.grant.channel}` : ''} by organiser`;
-    case 'GrantRevoked': return `grant ${e.grantId} revoked`;
+    // The actor is read from the stored event, never restated here: a timeline that prints a
+    // literal "organiser" is asserting a fact the log does not carry.
+    case 'GrantIssued': return `grant ${e.grant.id} ${e.grant.kind} for ${e.grant.actionClass}${e.grant.channel ? ` in ${e.grant.channel}` : ''} by ${e.grant.grantedBy}`;
+    case 'GrantRevoked': return `grant ${e.grantId} revoked by ${e.by}`;
     case 'GrantConsumed': return `grant ${e.grantId} consumed`;
     case 'GrantSuperseded': return `grant ${e.grantId} superseded: ${e.reason}`;
     case 'CardCreated': return `card ${e.card.id} created — ${e.card.actionClass} by ${e.card.agent} (${e.card.origin.kind}:${e.card.origin.id})`;

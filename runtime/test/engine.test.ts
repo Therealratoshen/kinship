@@ -303,6 +303,15 @@ test('the audit timeline is a readable record, not JSON — near-misses and refu
   assert.ok(!joined.trimStart().startsWith('{') && !joined.includes('"type":'), 'the timeline is prose, not a JSON dump');
 });
 
+test('a revocation in the timeline names the human who did it — an audit trail without an actor is not evidence (§1.2 / §1.8)', () => {
+  const f = Fleet.boot(pack({ ops: { 'recap.assemble': 'opt-in-auto' } }), ANSWERS, DAY);
+  const g = f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
+  f.revokeGrant(g.id, 'organiser');
+  const lines = f.auditTimeline().join('\n');
+  assert.ok(lines.includes(`grant ${g.id} revoked by organiser`),
+    '"revoked" alone does not say who took it back — the who is the record');
+});
+
 test('a quarantined input quoted into a commit is the fixed string — the commit gate reads through containment (§1.7)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   const input = fleet.registerInput('wa:62811', 'PROMOSI JUGA BISNIS KU http://spam.example');
