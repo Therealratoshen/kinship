@@ -113,8 +113,11 @@ export interface HealthReport {
  * timestamp containing `62811` gets substituted too. That trade is deliberately cheaper here than in
  * partner copy, where over-matching *refuses* an organiser's own draft: here it only blurs one word in
  * a diagnostic an organiser can still read against the audit log.
+ *
+ * Exported because `inbox.ts` makes the same forwardable artefact from the same log and must not
+ * invent a second, weaker privacy rule for it.
  */
-function withhold(text: string, state: FleetState): string {
+export function withholdMemberIdentifiers(text: string, state: FleetState): string {
   let out = text;
   // Longest token first: `wa:62811` before `62811`, so one person substitutes once, not twice.
   for (const token of memberIdentifierTokens(state).flatMap((m) => m.tokens).sort((a, b) => b.length - a.length)) {
@@ -123,8 +126,8 @@ function withhold(text: string, state: FleetState): string {
   return out;
 }
 
-/** Pending cards, oldest first — the queue's real risk is age, not depth. */
-function pending(state: FleetState) {
+/** Pending cards, oldest first — the queue's real risk is age, not depth. Exported for `inbox.ts`. */
+export function pendingCards(state: FleetState) {
   return [...state.cards.values()].filter((c) => c.status === 'pending').sort((a, b) => a.createdAt - b.createdAt);
 }
 
@@ -148,7 +151,7 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
     .sort((a, b) => a.trippedAt - b.trippedAt)
     .map((s) => ({ channel: s.channel, trippedAt: s.trippedAt, ageMs: now - s.trippedAt }));
 
-  const waiting = pending(state);
+  const waiting = pendingCards(state);
   const escalations = waiting.filter((c) => c.forcedBy === 'escalation');
   const queue: QueueRow = {
     pending: waiting.length,
@@ -172,7 +175,7 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
   const overdue: OverdueWakeRow[] = [...state.wakes.values()]
     .filter((w) => w.attempts === 0 && w.nextCheckAt <= now)
     .sort((a, b) => a.nextCheckAt - b.nextCheckAt)
-    .map((w) => ({ id: w.id, purpose: withhold(w.purpose, state), dueAgeMs: now - w.nextCheckAt }));
+    .map((w) => ({ id: w.id, purpose: withholdMemberIdentifiers(w.purpose, state), dueAgeMs: now - w.nextCheckAt }));
 
   const byCode = new Map<string, number>();
   for (const e of state.events as readonly { type: string; code?: string }[]) {
