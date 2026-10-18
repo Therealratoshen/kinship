@@ -37,7 +37,14 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
    forbidden phrase inside a quotation does not fail the build.
 
 5. **Structure, not state.** A `needs:` value that looks like an email address or phone number
-   is a placeholder or a leak, not a config. The validator rejects it.
+   is a placeholder or a leak, not a config. The validator rejects it. So does it reject a
+   credential: a published provider prefix (`sk-…`, `gh[pousr]_…`, `xox…-…`, `AKIA…`, `AIza…`,
+   `glpat-…`, `npm_…`) or a PEM private-key header on any line of any pack file — comments and
+   markdown included — fails `PKG-57` (**D34**), reporting file, line, and shape name and never the
+   value. The rule is prefix-shaped, not entropy-shaped, on purpose: a detector that fires on
+   revision hashes gets disabled inside a week, and a decorative rule is worse than none. The key
+   belongs to the host that runs the model (`spec/HOST-CONTRACT.md` seam 1), and a pack is a folder
+   strangers fork.
 
 6. **The gate is the validator, and it is dependency-free.**
 

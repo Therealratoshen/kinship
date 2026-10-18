@@ -11,7 +11,7 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(165 tests across 20 files as of 2026-10-18 — recount with `node runtime/tour.ts --json`; zero
+(182 tests across 22 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 
@@ -41,6 +41,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 | `rules/governance-invariants.mdc` | The autonomy ladder, grants, budgets, disclosure — read before touching `spec/` or a pack's `autonomy_by_class` |
 | `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — read before touching `packs/` or `scripts/` |
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
+| `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
 | `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
 | `SECURITY.md` | How to report a vulnerability. Not a public issue. |
@@ -52,21 +53,28 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 ```bash
 node scripts/gates.mjs                              # all four gates below, in order; CI runs exactly this line
 
-node scripts/validate-pack.mjs packs/kopdar-ops     # shape gate (54 PKG-* rules), no install step
-node --test scripts/*.test.mjs                      # validator contracts (29 cases incl. tamper) + the gate-list drift check
+node scripts/validate-pack.mjs packs/kopdar-ops     # shape gate (PKG-* rules: recount, don't restate — see below)
+node --test scripts/*.test.mjs                      # validator contracts (incl. tamper) + the gate-list drift check
 node --test runtime/test/*.test.ts                  # the governance semantics as tests (count: tour --json)
 node runtime/tour.ts                                # drive the real pack; self-checks every guarantee, exits non-zero if one breaks
 node runtime/tour.ts --json                         # machine-readable contribution map (for agents / first PRs)
 ```
 
 `scripts/gates.mjs` is the list; `scripts/gates.test.mjs` fails if a doc drifts from it — so if you
-add a gate, add it there and the test tells you which files then have to say so.
+add a gate, add it there and the test tells you which files then have to say so. Counts are deliberately
+not printed here, because D28 single-sourced the gate list and left the rule count drifting anyway:
+`grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l` is the shape gate's size, and
+`node runtime/tour.ts --json` is the suite's.
 
 The validator proves **structure**: it can show a moderator declares no mutating tool and
 that `whatsapp | send` is absent. The `runtime/` proves **semantics**: suppression beats a live
 grant, an edited approval goes stale, a tampered fork-pack refuses to boot, replay reproduces
-state exactly. Neither proves a *deployed* system honours any of it — no transport ships (D21),
-so that proof waits for phase 2, behind the shadow-mode gate.
+state exactly. A third claim is now proven **as code shape**: `runtime/test/boundary.test.ts` fails the
+build if anything under `runtime/src` imports a package, a network builtin or global, or a dynamic
+`import()` — so "phase 1 sends nothing" (D21) is a property of the folder, not only a refusal line, and
+an adapter belongs in a sibling package per `spec/HOST-CONTRACT.md`. None of the three proves a
+*deployed* system honours any of it — no transport ships (D21), so that proof waits for phase 2, behind
+the shadow-mode gate.
 
 ## Changing something
 

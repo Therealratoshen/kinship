@@ -151,6 +151,17 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    log now exists — `src/health.ts`, exposed as `Fleet.health()`, fifteen tests, three tour guarantees — and the
    half that would need sentiment is recorded as a limit inside the artefact (`unmeasured`) and as **Q13**, not
    built. See `DECISIONS.md` **D30**. Recount with `node runtime/tour.ts --json`.)*
+   *(2026-10-19 fifth addendum, still not a rewrite: **182 tests across 22 files** on the owner's build directive
+   "just do your best to be like paperclip but focusing in community", taken as instruction and executed as the
+   safe, reversible subset. Four increments, all on the human side of the queue: `src/inbox.ts` — a second pure
+   read that lists what a person is owed, and the reason it earned its keep is the `handoff` kind, the
+   approved-but-undelivered queue D21 created on day one and no artefact had ever listed; `runtime/test/boundary.test.ts`
+   — D21's "sends nothing" as a property of `runtime/src` rather than one refusal line; `spec/HOST-CONTRACT.md` —
+   the four seams (credential, clock, store, transport) written once, with an adapter fixed as a sibling package;
+   and `PKG-57` — the BYOD key as a build failure. Guarantees **11 → 15**, scripts **38 → 41**, validator ids
+   **53 → 54**. Paperclip's exclusive card checkout was **declined, not forgotten**: `by` is still a bare string and
+   **Q12** is unratified, so the lock has no identity to key on. Nothing here starts phase 1 — **D9** is still the only
+   signal, and the runtime still sends nothing. Recount with `node runtime/tour.ts --json`.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

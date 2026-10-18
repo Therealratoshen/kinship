@@ -11,7 +11,7 @@ Everything below was run against this directory on 2026-10-18.
 From the **repo root**:
 
 ```bash
-node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate: 54 PKG-* rules
+node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate: every PKG-* rule (recount: grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l)
 node runtime/tour.ts                              # drives THIS pack: drafts, you approve, it refuses to send
 node runtime/tour.ts --json                       # same, as a machine-readable contribution map
 cd runtime && node --test test/*.test.ts          # the semantics suite, incl. three tamper cases against this pack (count: `node runtime/tour.ts --json`)
@@ -71,6 +71,14 @@ assertions, or a namespaced key, which is why the flat example was retired the s
 Real names, channels, and any member data go in `packs/kopdar-ops/pack.local.yaml`, which is gitignored
 (`.gitignore:4`). A pack that carries state is a pack that leaks someone's attendee list into the next deploy
 (**PACK.md** note 3).
+
+**Provider keys go nowhere in this folder — not even in `pack.local.yaml`.** The model key is yours, held by
+the host that runs the model (`spec/HOST-CONTRACT.md` seam 1, **D33**); Kinship meters cost through
+`recordSpend` and never sees the credential. `PKG-57` makes that a build failure rather than advice: any
+`sk-…`, `ghp_…`, `xox…-…`, `AKIA…`, `AIza…`, `glpat-…`, `npm_…`, or PEM private-key line in a pack file — in a
+comment or a markdown instruction too — fails the shape gate, and the message names the file, the line, and the
+*shape*, never the value, because a scanner that prints what it found is how a key reaches a public build log
+(**D34**).
 
 ## What this pack does *not* prove
 
