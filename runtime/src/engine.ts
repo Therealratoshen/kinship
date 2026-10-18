@@ -15,8 +15,7 @@
  *   gate stays load-bearing the day a transport exists.
  */
 import { commitEvent, replay as foldEvents } from './apply.ts';
-import { freshState } from './store.ts';
-import { hashText } from './store.ts';
+import { freshState, hashText } from './store.ts';
 import { KinshipError, refuse } from './errors.ts';
 import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';

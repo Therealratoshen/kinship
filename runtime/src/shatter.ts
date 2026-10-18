@@ -11,7 +11,7 @@
  * disclosure (§2.8): the freeze demotes a lane, it does not anonymise one.
  */
 import { refuse } from './errors.ts';
-import type { FleetEvent, FleetState, ShatterRow } from './types.ts';
+import type { Ctx, FleetEvent, FleetState, ShatterRow } from './types.ts';
 
 export function tripShatter(ctx: Ctx, channel: string, ref: string): void {
   const existing = ctx.state.shatter.get(channel);

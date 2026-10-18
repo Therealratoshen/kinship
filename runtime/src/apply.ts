@@ -16,7 +16,6 @@ import { applyLifecycle } from './lifecycle.ts';
 import { applyCards } from './cards.ts';
 import { applyBudget } from './budget.ts';
 import { applyContainment } from './containment.ts';
-import type { FleetEvent } from './types.ts';
 
 export function applyEvent(state: FleetState, event: LoggedEvent): void {
   switch (event.type) {
