@@ -201,6 +201,93 @@ test('an expired partner window refuses with its own code — the organiser is t
   assert.ok(f.state.events.some((e) => e.type === 'CommitRefused' && e.code === 'grant_window_expired'), 'the right code reaches the audit log');
 });
 
+// --- §2.11 / FR-6.1: copy travels, people do not ------------------------------------------------------
+
+const LEAKY = {
+  textId: 'Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi 62811',
+  textEn: "AIClub's meetup Saturday — if you have not registered yet, contact 62811",
+};
+
+const partnerFleet = (promoLevel: 'draft' | 'opt-in-auto' = 'opt-in-auto') => {
+  const f = Fleet.boot(
+    pack({ growth: { 'promote.cross-community': promoLevel }, engagement: { 'recap.assemble': 'opt-in-auto' } }, ['partner_policy']),
+    { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' }, DAY,
+  );
+  f.registerMember('wa:62811', 'Asia/Jakarta');
+  f.issueGrant({ actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'kopdar-12', partner: 'Kopdar Sebelah', window: { from: 0, to: 99_999_999 }, by: 'organiser' });
+  f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
+  return f;
+};
+
+test('partner copy carrying a member identifier refuses with partner_data_leak, ahead of the transport gate (§2.11 / FR-6.1)', () => {
+  const f = partnerFleet();
+  assert.throws(() => f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', ...LEAKY,
+  }), /partner_data_leak/,
+    'no_transport is phase 1\'s temporary lock and the member-data rule is permanent — the organiser must learn the permanent one first');
+  assert.ok(f.state.events.some((e) => e.type === 'CommitRefused' && e.code === 'partner_data_leak'), 'the refusal is in the audit log');
+  assert.ok(f.auditTimeline().join('\n').includes('partner_data_leak'), 'and readable in the timeline');
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), undefined, 'a refused partner send spends none of the event\'s allowance');
+});
+
+test('the member-data rule outranks the cadence rule: a full cap does not hide a leak (§2.11)', () => {
+  const f = partnerFleet();
+  f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+  });
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), 1, 'the event\'s one partner send is spent');
+  assert.throws(() => f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...LEAKY,
+  }), /partner_data_leak/,
+    'the cap would also refuse this, but "wait for the next event" is the wrong advice for copy that must be rewritten');
+});
+
+test('a partner promo to a member who said stop reports the stop, not the cap — §2.11: the member\'s rights survive the partnership', () => {
+  const f = partnerFleet();
+  f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+  });
+  f.suppressMember('wa:62811', 'member');
+  assert.throws(() => f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', ...draftBundle(),
+  }), /member_suppressed/,
+    'the cap is also spent here, but "wait for the next event" would be a lie: this member is unreachable in every lane, partner included');
+});
+
+test('the scan is bound to partner-facing copy — our own recap may name our own members (§2.11 scope)', () => {
+  const f = partnerFleet();
+  f.commit({
+    actionClass: 'recap.assemble', agent: 'engagement',
+    origin: { kind: 'event', id: 'kopdar-12' }, recipients: [], onBehalfOf: 'organiser', ...LEAKY,
+  });
+  const exec = f.state.events.filter((e) => e.type === 'CommitExecuted');
+  assert.equal(exec.length, 1, 'the same tokens pass when no partner is on the receiving end — the rule is about the direction, not the digits');
+});
+
+test('an organiser-approved cross-promo card is still §2.11 copy — the token path runs the partner rules too (§2.11 / FR-6.1, D27)', () => {
+  const f = partnerFleet('draft');
+  const card = f.attempt({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, ...LEAKY,
+  }).card!;
+  assert.ok(card, 'the class is reachable once partner_policy is answered — so the leaky copy is what the organiser is being asked to approve');
+  f.decideCard(card.id, { verdict: 'approve', by: 'organiser', why: 'partner sudah kenal, copy-nya oke' });
+  assert.throws(() => f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card.id}`, ...LEAKY,
+  }), /partner_data_leak/,
+    'a one-send approval authorises the lane; it does not vouch for the member number inside the copy — the §2.11 rules are content rules, not authorization rules');
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), undefined, 'and the refused token send spends none of the event allowance either');
+});
+
 test('the audit timeline is a readable record, not JSON — near-misses and refusals are visible (§1.2)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
@@ -227,4 +314,65 @@ test('a quarantined input quoted into a commit is the fixed string — the commi
   });
   assert.ok(r.card, 'the proposal exists, quoting only the fixed string');
   assert.ok(!r.card.revision.textId.includes('spam.example'), 'the member text never entered the revision');
+});
+
+// --- the engine surface: behaviours only `Fleet` can show ------------------------------------------
+// cards.ts / lifecycle.ts test their own functions. These four test what the engine adds around
+// them: the refusal is logged, the card count stays honest, and a promise is only real while it is
+// still in the future — none of which is visible from a unit test of the module alone.
+
+test('a full approval queue refuses the attempt and logs the refusal like any other (§1.6)', () => {
+  const p = pack({ engagement: { 'draft.promote': 'draft' } });
+  const f = Fleet.boot({ ...p, budgets: { ...p.budgets, queueMax: 2 } }, ANSWERS, DAY);
+  const promo = (i: number) => ({
+    actionClass: 'draft.promote', agent: 'engagement',
+    origin: { kind: 'event', id: `kopdar-${i}` }, ...draftBundle(),
+  });
+  f.attempt(promo(1));
+  f.attempt(promo(2));
+  assert.equal([...f.state.cards.values()].filter((c) => c.status === 'pending').length, 2, 'the queue is at its bound');
+  assert.throws(() => f.attempt(promo(3)), /queue_full/, 'depth is bounded — a queue nobody drains is not a backlog, it is a pile');
+  const refused = f.state.events.filter((e) => e.type === 'CommitRefused');
+  assert.deepEqual(refused.map((e) => (e as { code: string }).code), ['queue_full'],
+    'the engine logs the attempt-path refusal, so a bounded queue shows up in the audit trail instead of as a silent no');
+  assert.equal(f.state.cards.size, 2, 'and a refused attempt creates no card');
+});
+
+test('the same idempotencyKey through the engine returns the same card — one question, one approval (§1.5)', () => {
+  const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
+  const promo = { actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, ...draftBundle() };
+  const a = f.attempt({ ...promo, idempotencyKey: 'promo-kopdar-12' });
+  const b = f.attempt({ ...promo, idempotencyKey: 'promo-kopdar-12' });
+  assert.equal(b.card!.id, a.card!.id, 'a retry of the same proposal is the same card, not a second one');
+  assert.equal(f.state.events.filter((e) => e.type === 'CardCreated').length, 1,
+    'the log says one card — replay cannot hand the organiser the same question twice');
+  assert.equal(f.state.events.filter((e) => e.type === 'CommitRefused').length, 0,
+    'and a same-key reuse is a return value, not a refusal (errors.ts declares `idempotent_hit` as exactly that)');
+  const c = f.attempt({ ...promo, idempotencyKey: 'chase-kopdar-12' });
+  assert.notEqual(c.card!.id, a.card!.id, 'a different key is a different question and gets its own card');
+  assert.equal(f.state.cards.size, 2);
+});
+
+test('an escalation is a card for a named human, an event, and a timeline line — a member cannot answer it (§2.7 / FR-5.1)', () => {
+  const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
+  const card = f.raiseEscalation('sponsor tier disagreement: the partner wants their logo on every poster', 'organiser');
+  assert.equal(card.actionClass, 'engine.escalation');
+  assert.equal(card.forcedBy, 'escalation', 'the card exists because a rule asked for it, not because an agent chose to draft');
+  assert.ok(f.state.events.some((e) => e.type === 'EscalationRaised'), 'the escalation is an event, not only a card');
+  assert.ok(f.auditTimeline().join('\n').includes('escalation raised to organiser'), 'and it reads as an escalation in the timeline (§1.2)');
+  assert.throws(() => f.decideCard(card.id, { verdict: 'approve', by: 'member:m1', why: 'ya udah' }), /not_the_human/,
+    'the escalation asks a named human — a member answering it is the astroturf §2.7 forbids');
+});
+
+test('a wake is only a waiting path while it is in the future — the engine refuses its own expired promise (§1.3)', () => {
+  const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
+  assert.throws(() => f.assertWakeBacked('chase rsvp non-responders'), /ghost_watcher/, 'no row, no promise');
+  const wake = f.scheduleWake({ purpose: 'chase rsvp non-responders', nextCheckAt: DAY + 1_000, eventId: 'kopdar-12' });
+  assert.equal(f.assertWakeBacked('chase rsvp non-responders', 'kopdar-12').id, wake.id,
+    'a persisted future wake is the only thing that makes "I will follow up" true');
+  assert.throws(() => f.assertWakeBacked('chase rsvp non-responders', 'kopdar-13'), /ghost_watcher/,
+    'a wake bound to one event does not back the same promise on another');
+  f.advance(2_000); // past nextCheckAt, and it never fired
+  assert.throws(() => f.assertWakeBacked('chase rsvp non-responders', 'kopdar-12'), /ghost_watcher/,
+    'a wake that went due unfired is a broken promise, not a waiting path — the organiser must be told, not reassured');
 });
