@@ -23,6 +23,8 @@
  */
 import { loadPack } from './src/pack.ts';
 import { Fleet } from './src/engine.ts';
+import { runActions } from './src/runner.ts';
+import type { CommitArgs } from './src/engine.ts';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -113,8 +115,19 @@ function runStory() {
     rmSync(tmp, { recursive: true, force: true });
   }
 
+  // 6) The runner (§1.6): a run owns its own meter, stops at the pack's cap, keeps its partial results.
+  //    The cap is tightened to 3 for the demo — the real pack says 15; the rule being shown is the same.
+  const tight = { ...pack, budgets: { ...pack.budgets, maxActionsPerRun: 3 } };
+  const runnerFleet = Fleet.boot(tight, ANSWERS, DAY);
+  runnerFleet.issueGrant({ actionClass: 'draft.reminder', kind: 'allow_always', scope: 'the tour demo', by: 'organiser' });
+  const action = (id: string): CommitArgs => ({
+    actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id },
+    recipients: [], onBehalfOf: 'organiser', textId: REMINDER_ID, textEn: REMINDER_EN,
+  });
+  const runner = runActions(runnerFleet, [action('kopdar-1'), action('kopdar-2'), action('kopdar-3'), action('kopdar-4'), action('kopdar-5')]);
+
   return {
-    pack, bootGate, draft, commit, cross, tamper,
+    pack, bootGate, draft, commit, cross, tamper, runner,
     timeline: fleet.auditTimeline(),
     authorizationLeftIntact: draft.card !== null && fleet.authorizationOf(draft.card.id) !== undefined && fleet.authorizationOf(draft.card.id) !== null,
   };
@@ -150,6 +163,8 @@ function guarantees(s: ReturnType<typeof runStory>) {
     commit_refuses_no_transport: s.commit.threw && /no_transport/.test(s.commit.code),
     cross_promo_needs_partner_policy: s.cross.threw && /class_unavailable/.test(s.cross.code),
     fork_cannot_add_whatsapp_send: s.tamper.threw && /pack_invalid/.test(s.tamper.code),
+    run_cap_truncates_and_keeps_partial: s.runner.truncated === true && s.runner.executed === 3 && s.runner.dropped === 2
+      && s.runner.outcomes.every((o) => o.result !== 'refused'),
     authorization_survives_refusal: s.authorizationLeftIntact,
   };
 }
@@ -185,6 +200,10 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   hr('4. Governance refuses bad lanes and bad forks');
   console.log(`  cross-promo without partner_policy → ${s.cross.code || '(reachable!)'} — absent, not denied (spec §2.11)`);
   console.log(`  fork adds 'whatsapp | send' → boot ${s.tamper.threw ? `refused: ${s.tamper.code}` : 'ACCEPTED (invariant broken!)'}`);
+
+  hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
+  console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
+  console.log(`  metered attempts: ${s.runner.actions} · actions never attempted: ${s.runner.notAttempted.length} — partial results kept, no retry storm`);
 
   hr('The audit trail — every outcome above is a replayable log line');
   for (const line of s.timeline) console.log(`  ${line}`);
@@ -223,8 +242,8 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         {
           id: 'per-run-action-cap',
           spec: '§1.6 / budgets.max_actions_per_run',
-          where: 'runtime/src/engine.ts (header)',
-          status: 'Not wired in the engine on purpose — a run belongs to a runner, which does not ship yet. A runner that enforces the cap, with tests, is an open contribution.',
+          where: 'runtime/src/runner.ts (`runActions`) · runtime/src/engine.ts (header)',
+          status: 'The engine is still not a scheduler on purpose (D10 — phase 1 schedules inside the organiser\'s own instance), and the cap is not wired into `Fleet.commit`. The run side does now ship: `runActions()` owns one run\'s meter, stops at the first crossing with partial results kept, drops the tail without attempting it, and returns a report. Wiring it into a real scheduler is the open contribution, not writing the meter.',
         },
       ],
       gatedByDesign: [

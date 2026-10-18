@@ -7,7 +7,7 @@
  *
  * The per-run action cap (§1.6) is deliberately NOT wired here — a run belongs to a runner,
  * which calls `recordRunAction` between actions. The engine is the library the runner is
- * written against.
+ * written against, and `src/runner.ts` is that runner: one call, one `Run`, one report.
  *
  * Commit order is the promise the pack makes to members, encoded as evaluation order:
  *   class availability → authorization/grant → per-member protections → disclosure +
