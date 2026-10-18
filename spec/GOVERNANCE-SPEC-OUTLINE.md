@@ -529,8 +529,8 @@ grant (§1.8).
 ## Part 6 — Implementation map (added 2026-10-17, `DECISIONS.md` D21)
 
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
-library (node ≥ 23, erasable syntax, no install step; counted 2026-10-18: 2,036 lines of domain code
-in `src/`, 1,858 of tests, 292 of tour — 4,186 total, zero dependencies). This map is the walk a reviewer
+library (node ≥ 23, erasable syntax, no install step; counted 2026-10-18: 2,129 lines of domain code
+in `src/`, 2,121 of tests, 307 of tour — 4,557 total, zero dependencies). This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport
@@ -550,7 +550,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §2.5 / §2.8 disclosure as a class: canonical bilingual line inside the approved revision; `on_behalf_of` | `src/disclosure.ts`, `src/engine.ts` (commit order) | `test/disclosure.test.ts`, `test/engine.test.ts` |
 | §2.6 shatter-guard: complaint freezes the lane to draft; only the organiser releases | `src/shatter.ts`, `src/ladder.ts` | `test/ladder.test.ts`, `test/replay.test.ts` |
 | §2.9 member as subject: suppression beats any grant, absent row fails closed, no un-suppress, cap counts the member, quiet hours are the member's clock, aggregation floor refuses below 10 | `src/members.ts`, `src/engine.ts` (commit order) | `test/members.test.ts`, `test/engine.test.ts` (order proof) |
-| §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: cap checked ahead of the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/engine.test.ts`, `test/pack.test.ts` |
+| §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap, no member identifier in partner-facing copy | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/partner.ts` (the identifier scan: registry-bounded, both languages, names the member and never the copy), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: the content rule runs ahead of authorization so the approved-card path is covered too; the cap sits after the per-member protections and before the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/partner.test.ts`, `test/engine.test.ts` (order proofs), `test/pack.test.ts` |
 | Pack boot gate: a fork cannot weaken an invariant (FR-1.14) — the validator's own `validatePack` runs before parsing | `src/pack.ts` | `test/pack.test.ts` (tamper cases on the real `packs/kopdar-ops`) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end
@@ -561,7 +561,11 @@ schedule anything; wiring `runActions` to a real queue is the open contribution.
 
 The map is also honest about its vocabulary. `src/errors.ts` carries the closed set of refusal codes,
 and `test/errors.test.ts` fails if a code is neither raised in `src/` nor listed in
-`UNIMPLEMENTED_REFUSAL_CODES` with the reason it is still debt. Three codes are declared and not yet
-enforced — `idempotent_hit` (a return value, not a refusal), `unsourced_number`, and `partner_data_leak`
-(both need content inspection the runtime does not do). `cross_promo_cap` and `grant_window_expired`
-were in that list and are now enforced (2026-10-18, D24).
+`UNIMPLEMENTED_REFUSAL_CODES` with the reason it is still debt — and fails a third way, if the list
+is written with a duplicated key, because an object literal keeps the last one and every other gate
+then passes over prose a reviewer reads as two rules (`D27` found that by shipping one). Two codes
+are declared and not yet enforced — `idempotent_hit` (a return value, not a refusal) and
+`unsourced_number` (§2.11 needs both a content check and a place in the pack to name a source, and
+the pack has no such key yet). `cross_promo_cap` and `grant_window_expired` were in that list and are
+now enforced (2026-10-18, D24); `partner_data_leak` left it the same day (2026-10-18, **D27** —
+`src/partner.ts`, enforced ahead of authorization for both the grant and the approved-card path).

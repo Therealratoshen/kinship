@@ -50,7 +50,24 @@ node --test scripts/validate-pack.test.mjs
 
 # runtime semantics tests
 cd runtime && node --test test/*.test.ts
+
+# the tour — CI runs it, so it is a gate, not a demo
+cd runtime && node tour.ts
 ```
+
+Four gates, not three. The tour drives the real `kopdar-ops` pack and self-checks every governance
+guarantee it demonstrates; it exits non-zero if one stops holding, and CI fails on that exit code. A
+change that passes the tests and breaks the tour is a change that broke a promise the README makes.
+
+Inside the runtime suite, three files are gates over the repo's own claims rather than over
+behaviour: `imports.test.ts` (every `src` module imports the `types.ts` names it actually uses — the
+hole that let `shatter.ts` ship an unimported `Ctx` past 73 tests), `types.test.ts` (the phase
+sequence, the erasable-syntax rule that lets the runtime run without a compiler, and the import
+specifier gate — node's type stripping never *checks* types, so this is the stand-in for `tsc`), and
+`errors.test.ts` (every refusal code is either raised in `src/` or declared as debt in
+`UNIMPLEMENTED_REFUSAL_CODES`, nothing listed is silently enforced, and that list cannot contain a
+duplicated key). If you add a refusal code or a `types.ts` name, one of those three will make you say
+what it is. Each carries a positive control — a scanner that cannot fail is decoration.
 
 4. Open a PR. The PR template asks for:
    - What rule this changes and why

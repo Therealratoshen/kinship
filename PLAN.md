@@ -136,6 +136,10 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    `apply`/`store`/`shatter`/`errors`/`types`, the audit-integrity
    fix in `append`, `cross_promo_cap` and `grant_window_expired` enforcement, and `src/runner.ts` owning the
    per-run action cap. See `DECISIONS.md` D24.)*
+   *(2026-10-18 second addendum, still not a rewrite: **147 tests across 19 files** after §2.11's
+   member-data rule became enforced code (`src/partner.ts`, closing the `partner_data_leak` debt) and
+   the engine-only behaviours got their tests — queue-full logging, idempotent card reuse,
+   escalation, an expired wake. See `DECISIONS.md` **D27**. Recount with `node runtime/tour.ts --json`.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

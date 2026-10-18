@@ -24,13 +24,18 @@
 
 ## Invariant check
 
-Run all three gates and paste the output. `node` only, no install step.
+Run all four gates and paste the output. `node` only, no install step.
 
 ```
 node scripts/validate-pack.mjs packs/kopdar-ops
 node --test scripts/validate-pack.test.mjs
 cd runtime && node --test test/*.test.ts
+cd runtime && node tour.ts
 ```
+
+The fourth is not a demo. CI runs the tour and fails on its exit code, because the tour self-checks
+every governance guarantee the README claims. Passing the tests while breaking the tour is a broken
+promise, not a green build.
 
 - [ ] Neither tool list contains a mutating moderation action or `whatsapp | send`
 - [ ] No new member-facing claim outruns the evidence ledger (no hours-saved, TAM, size, price
