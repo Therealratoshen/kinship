@@ -75,6 +75,21 @@ test('no code is both raised and declared debt: the list cannot rot into a grave
   }
 });
 
+test('the debt list cannot carry a duplicated key — an object literal keeps the last one and hides the first', () => {
+  // Found the hard way: an edit that was meant to delete a debt entry rewrote it under an existing
+  // key name. `Partial<Record<…>>` does not complain, `Object.keys` silently dedupes, and every
+  // gate below then passes over prose a reviewer still reads as two separate declarations.
+  const src = readFileSync(join(SRC, 'errors.ts'), 'utf8');
+  const start = src.indexOf('UNIMPLEMENTED_REFUSAL_CODES');
+  const block = src.slice(start, src.indexOf('\n};', start));
+  const written = [...block.matchAll(/^\s\s([a-z][a-z0-9_]*):/gm)].map((m) => m[1]);
+  assert.equal(written.length, Object.keys(UNIMPLEMENTED_REFUSAL_CODES).length,
+    `the literal writes ${written.length} entries and JS exposes ${Object.keys(UNIMPLEMENTED_REFUSAL_CODES).length} — a repeated key is a dead sentence that reads like a rule: ${written.join(', ')}`);
+  for (const key of written) {
+    assert.ok(REFUSAL_CODES.includes(key as (typeof REFUSAL_CODES)[number]), `${key} is declared debt but is not a real code`);
+  }
+});
+
 test('every refusal the engine logs uses a code from the closed set — the audit vocabulary cannot drift', () => {
   const f = Fleet.boot(makePack({ engagement: { 'remind.member': 'opt-in-auto' } }), ANSWERS, 1_000);
   // Two real refusals, through the public surface.

@@ -49,8 +49,6 @@ export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> =
   idempotent_hit:
     'same-key reuse IS correct (§1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
   unsourced_number:
-    '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word.',
-  unsourced_number:
     '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word — and needs the pack to have a place to name a source, which it does not yet have.',
 };
 
