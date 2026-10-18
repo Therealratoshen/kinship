@@ -338,9 +338,11 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       gatedByDesign: [
         { id: 'channel-transport', where: 'DECISIONS.md D21', note: 'Behind the shadow-mode gate (D9). Do NOT open a PR adding a transport — "phase 1 sends nothing" is the point.' },
         { id: 'whatsapp-send', where: 'DECISIONS.md D11/D13/D17', note: 'The validator refuses `whatsapp | send` at pack boot. Never add it.' },
+        { id: 'host-adapter-inside-runtime', where: 'spec/HOST-CONTRACT.md (D33) · runtime/test/boundary.test.ts (D32)', note: 'An adapter — a provider SDK, a channel socket, a scheduler, a key — belongs in a sibling package (`adapters/<host>/`), never under `runtime/src`: the boundary gate fails the build on it there, on purpose. Do NOT open a PR adding one inside runtime/ before D9.' },
       ],
       readFirst: [
         'spec/GOVERNANCE-SPEC-OUTLINE.md — Part 6 maps every rule to its runtime file and holding test',
+        'spec/HOST-CONTRACT.md — the four seams (credential, clock, store, transport): what the host owns, what Kinship checks afterwards, and where an adapter\'s code belongs',
         'CONTRIBUTING.md — decisions are append-only DECISIONS.md rows; new spec rule needs a failing test first',
         'DECISIONS.md — who decided what, when, and how reversible it is',
       ],
