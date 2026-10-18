@@ -145,6 +145,12 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    recorded a revocation with no actor, and `engine.commit` wrote `'organiser'` into `on_behalf_of` for commits
    that named no human. The repairs are **D29**; the role design he asked for is recorded as **Q12** and left
    undecided, because spec §2.3 is `[OPEN]` on purpose.)*
+   *(2026-10-18 fourth addendum, still not a rewrite: **165 tests across 20 files** after the owner asked whether
+   anything checked the condition of the community and the survey found the only health artefact was pack prose
+   (`skills/fleet-health/SKILL.md`) with no action class and no code behind it. The half that is derivable from the
+   log now exists — `src/health.ts`, exposed as `Fleet.health()`, fifteen tests, three tour guarantees — and the
+   half that would need sentiment is recorded as a limit inside the artefact (`unmeasured`) and as **Q13**, not
+   built. See `DECISIONS.md` **D30**. Recount with `node runtime/tour.ts --json`.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

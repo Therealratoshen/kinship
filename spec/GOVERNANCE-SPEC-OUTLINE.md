@@ -92,6 +92,19 @@ outcome, and the human verdict (approve / edit / reject) with the edit diff.
   *trust = caught-near-miss visibility*; the spec must make near-misses easy to surface, and
   the pilot must measure whether that claim holds.
 
+**(Additive, 2026-10-18 — D30, PRD FR-1.15: the log now has a read side, and it is a derived artefact,
+not a new promise.** `Fleet.health()` returns a dated, positioned snapshot of *the fleet's* condition —
+live freezes, queue depth against the pack's cap, budget ratios, overdue wakes, refusals by code, idle
+agents, two member integers — computed from events already in the log. It appends nothing, mutates
+nothing, and replays identically from the log, so the snapshot is a property of the log rather than of
+the process that read it, and `derivedFromSeq` says which log it describes. It will not score a person:
+it carries no per-member row and no rate, it substitutes a member identifier out of a free-text field
+instead of forwarding it, and it lists in `unmeasured` what it cannot see — sentiment, dormancy, delivery,
+reach — because nothing has sent (D21) and no dated event has started phase 1 (D9). **What this section
+does not settle:** the snapshot is held to the stricter privacy rule while `auditTimeline()` still prints
+member refs (§2.3). Which artefact is allowed to name a person is unanswered and recorded as an open
+decision, not a standard this spec already has.)
+
 ### 1.3 No ghost watchers
 
 An agent may claim "I'm monitoring this" or "I'll follow up on Thursday" only if a persisted
@@ -265,6 +278,15 @@ is a single name, and §2.3's "two organisers disagree" has no code path because
 seat. **The ceiling is not open, and does not depend on the answer:** no agent and no member may
 hold an approval role, and escalation stays scoped per action class rather than per agent
 (invariant #1).
+
+**(Additive, 2026-10-18 — D30 made the per-audience rule concrete enough to show a contradiction, and did
+not resolve it.** This section calls the timeline something the organiser can "show a member or a sponsor"
+(§1.2), and the fleet-condition snapshot is built to be forwardable: it names no member, even in a
+free-text wake purpose, and substitutes the identifier out. The timeline is not built that way — it prints
+`member wa:62811 registered` and names the `ref` a shatter froze. So two artefacts of one log currently
+follow two standards, and the stricter one was chosen for the artefact that is easy to forward. Someone
+must rule which artefact is allowed to name a person; until that ruling exists, this is a `[OPEN]`
+question with an implementation on one side of it, not a completed rule.)
 
 ### 2.4 Two-speed latency
 
@@ -546,7 +568,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 4,632 as of 2026-10-18, split 2,154 domain code / 2,156 tests / 322 tour). This map is the walk a reviewer
+prints 5,148 as of 2026-10-18, split 2,388 domain code / 2,399 tests / 361 tour). This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport
@@ -556,6 +578,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 |---|---|---|
 | §1.1 ladder: default deny, absent ≠ denied, unknown role, `never` as floor | `src/ladder.ts`, `src/types.ts` (`Autonomy`) | `test/ladder.test.ts` |
 | §1.2 audit replay: append-only log, `replay` deep-equality, readable `#seq` timeline, refusals as records | `src/store.ts` (`append` stores a **structured clone**, so a caller mutating its payload afterwards cannot rewrite history), `src/apply.ts`, `src/engine.ts` (`auditTimeline`, `logRefusal`) | `test/store.test.ts`, `test/apply.test.ts`, `test/replay.test.ts`, `test/engine.test.ts` |
+| §1.2 read side (PRD **FR-1.15**, and the first enforcement of **FR-1.11**): the fleet's condition is one dated, positioned snapshot derived only from rows already logged — freezes, queue depth *and card age*, budget state with `null` for an unset ceiling, overdue wakes, refusals counted by code, idle agents — carrying no member identifier and naming what it refuses to measure | `src/health.ts` (`deriveHealth`, exposed as `Fleet.health()`; `withhold()` reuses `partner.ts`'s registry scan), `src/engine.ts` (the method appends nothing) | `test/health.test.ts` (15 cases: purity across two calls, replay deep-equality of the *read*, `retire` at 3 cycles vs `watch` at 1, prefixed/bare/clean substitution controls, the two-integer member block and the `unmeasured` field), `runtime/tour.ts` (3 of its 11 guarantees) |
 | §1.3 no ghost watchers: a promise to follow up requires a persisted wake row | `src/lifecycle.ts` (`scheduleWake`, `assertWakeBacked`) | `test/lifecycle.test.ts` |
 | §1.4 exclusive ownership; the 409 that is never retried | `src/lifecycle.ts` (`claimPhaseOrigin`, `checkoutEvent`) | `test/lifecycle.test.ts` |
 | §1.5 revision-bound approvals; edit consumes the live authorization, v2 re-queues, `stale_target` | `src/cards.ts` (revision hash over both languages) | `test/cards.test.ts`, `test/engine.test.ts` |

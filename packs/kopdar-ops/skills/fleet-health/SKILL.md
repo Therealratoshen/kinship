@@ -26,3 +26,14 @@ autonomy grant` and `assert a suggestion and a complaint never both fire for the
 
 Why it belongs in a community pack at all: "the reminder lane is a mess" arriving on Thursday is a fixable
 problem; arriving via an annoyed member on the Monday after the event is a reputation event.
+
+**(Additive, 2026-10-18 — `DECISIONS.md` D30, recorded here so a reader does not assume this file is implemented.)**
+The *aggregate* half of fleet health now exists in the runtime: `Fleet.health()` (`runtime/src/health.ts`) derives
+live freezes, queue depth against the pack's cap, budget ratios, overdue wakes, refusals by code, idle agents, and
+two member integers from the audit log — and it will not score a person, so it carries no sentiment and no dormancy
+signal. **These two channels are still prose.** `complain` and `suggestion_box` are not action classes in
+`.kinship.yaml`, so no runtime path can log one; the pack's only complaint-shaped rule is the `shatter:
+complaint -> freeze-to-draft-and-log` mapping, which freezes a lane and does not record the complaint. Whether the
+two become logged events is a spec Part 5 taxonomy decision, recorded as PRD **Q13** and left open. Until someone
+makes it, a fleet running this pack has a symptom report and no complaint channel — which is the opposite of the
+paragraph above, and worth knowing before the Monday-after-the-event version arrives.
