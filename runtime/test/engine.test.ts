@@ -136,6 +136,49 @@ test('cross-promotion commits only against a grant that names the partner (§2.1
   }), /no_transport/, 'the partner-matched grant authorizes the lane; delivery still refuses — phase 1 sends nothing');
 });
 
+test('the per-event cross-promotion cap is enforced, not merely counted (§2.11 / FR-6.5)', () => {
+  const answers = { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' };
+  const f = Fleet.boot(pack({ growth: { 'promote.cross-community': 'opt-in-auto' }, engagement: { 'recap.assemble': 'opt-in-auto' } }, ['partner_policy']), answers, DAY);
+  f.issueGrant({ actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'kopdar-12', partner: 'Kopdar Sebelah', window: { from: 0, to: 99_999_999 }, by: 'organiser' });
+  f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
+
+  // Recipient-less so the commit executes instead of stopping at the transport gate (D21).
+  const promo = (id: string) => ({
+    actionClass: 'promote.cross-community' as const, agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+  });
+  const recap = (id: string) => ({
+    actionClass: 'recap.assemble' as const, agent: 'engagement',
+    origin: { kind: 'event', id }, recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+  });
+
+  f.commit(promo('kopdar-12'));
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), 1, 'the counter the cap reads is real');
+  assert.throws(() => f.commit(promo('kopdar-12')), /cross_promo_cap/,
+    "the pack declares cross_promo_per_event_cap: 1 — a partner's reach is not our cadence, and the limit is only a limit if something reads it");
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), 1, 'a refused promo spends nothing');
+  assert.ok(f.state.events.some((e) => e.type === 'CommitRefused' && e.code === 'cross_promo_cap'), 'and the refusal is on the record');
+
+  f.commit(promo('kopdar-13'));
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-13'), 1, 'a different event has its own allowance — the cap is per event lifecycle');
+  f.commit(recap('kopdar-12'));
+  f.commit({ ...recap('kopdar-12') });
+  assert.equal(f.state.crossPromoByEvent.has('kopdar-12'), true, 'ordinary commits do not touch the partner counter');
+  assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), 1);
+});
+
+test('a cap of zero means no partner promotion in this event, not an unbounded lane (FR-6.5, PKG-48 range 0–3)', () => {
+  const answers = { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' };
+  const p = pack({ growth: { 'promote.cross-community': 'opt-in-auto' } }, ['partner_policy']);
+  const zero = { ...p, budgets: { ...p.budgets, crossPromoPerEventCap: 0 } };
+  const f = Fleet.boot(zero, answers, DAY);
+  f.issueGrant({ actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'kopdar-12', partner: 'Kopdar Sebelah', window: { from: 0, to: 99_999_999 }, by: 'organiser' });
+  assert.throws(() => f.commit({
+    actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+  }), /cross_promo_cap/, '0 is a decision an organiser can make, so it has to hold');
+});
+
 test('the audit timeline is a readable record, not JSON — near-misses and refusals are visible (§1.2)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');

@@ -54,8 +54,6 @@ export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> =
     '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word.',
   partner_data_leak:
     '§2.11 forbids a member identifier travelling toward a partner. Partially held: the grant must name the partner and the queue is bounded. Missing: a scan of the revision for member refs before a partner-facing commit.',
-  cross_promo_cap:
-    'packs declare budgets.cross_promo_per_event_cap and apply.ts counts sends per origin — but no gate reads the count yet, so a second promo in one event drafts instead of refusing. Enforced by: engine.commit, against state.crossPromoByEvent.',
 };
 
 export class KinshipError extends Error {

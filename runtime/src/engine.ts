@@ -208,6 +208,18 @@ export class Fleet {
         assertWithinCap(this.pack, ref, this.t, this.st.commitsByMember.get(ref) ?? []);
       }
 
+      // --- the partner-reach bound (§2.11 / FR-6.5) ---------------------------------------------------
+      // Read before the transport gate on purpose: `no_transport` is phase 1's temporary lock,
+      // the cap is a permanent rule, and the organiser should learn the permanent one first.
+      if (args.partner !== undefined) {
+        const cap = this.pack.budgets.crossPromoPerEventCap;
+        const used = this.st.crossPromoByEvent.get(args.origin.id) ?? 0;
+        if (cap !== null && used >= cap) {
+          refuse('cross_promo_cap', 'spec §2.11 / FR-6.5',
+            `event \`${args.origin.id}\` already carries ${used} cross-promotion send(s) against a cap of ${cap} — a partner's reach is not our cadence, and the bound is the pack's, not the agent's`);
+        }
+      }
+
       // --- disclosure + answerability ----------------------------------------------------------------
       if (args.recipients.length > 0) {
         assertDisclosed(args.textId, args.textEn, this.answers['community_name'] ?? '');
