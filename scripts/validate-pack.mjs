@@ -84,6 +84,31 @@ const BANNED_PHRASES = [
   'we run your events', 'we send your reminders', 'members will feel more valued',
 ];
 
+// The BYOD credential line (spec/HOST-CONTRACT.md seam 1, PRD FR-1.17): the owner brings the model key
+// and it never enters Kinship — so it must never enter a pack folder either, because a pack is the one
+// artefact in this repo designed to be forked by strangers.
+//
+// PREFIX-SHAPED ON PURPOSE. An entropy-based detector fires on revision hashes, git SHAs, and long
+// IDs, so the first fork that gets a false positive turns the rule off; a decorative rule is worse
+// than no rule because it claims a boundary it does not hold. A real provider key has a published
+// prefix, so the shape is cheap and it does not blush at a hash.
+//
+// The shapes are built by concatenation, not written literally: this file is scanned by the same
+// category of tool that scans a fork, and a validator whose own source contains a credential-shaped
+// string is a false positive waiting to train someone to ignore the scanner. `PEM` is the fence that
+// opens a private-key block, assembled for exactly that reason.
+const PEM = `${'-'.repeat(5)}BEGIN `;
+const CREDENTIAL_SHAPES = [
+  { name: 'an OpenAI/Anthropic-style API key', re: new RegExp('\\b' + 'sk-' + '[A-Za-z0-9_-]{16,}') },
+  { name: 'a GitHub token', re: new RegExp('\\bgh' + '[pousr]_' + '[A-Za-z0-9]{16,}\\b') },
+  { name: 'a Slack token', re: new RegExp('\\b' + 'xox' + '[baprs]-' + '[A-Za-z0-9-]{10,}') },
+  { name: 'an AWS access key id', re: new RegExp('\\b' + 'AKIA' + '[0-9A-Z]{12,}\\b') },
+  { name: 'a Google API key', re: new RegExp('\\b' + 'AIza' + '[0-9A-Za-z_-]{30,}\\b') },
+  { name: 'a GitLab personal access token', re: new RegExp('\\b' + 'glpat-' + '[A-Za-z0-9_-]{16,}') },
+  { name: 'an npm token', re: new RegExp('\\b' + 'npm_' + '[A-Za-z0-9]{30,}') },
+  { name: 'a private key block', re: new RegExp(PEM + '[A-Z ]*PRIVATE KEY') },
+];
+
 const stripComment = (line) => line.replace(/\s+#.*$/, '');
 const frontmatter = (text) => {
   const m = /^---\n([\s\S]*?)\n---/.exec(text);
@@ -309,6 +334,15 @@ export function validatePack(dir) {
     if (emails.length) add('PKG-44', `${rel} contains what looks like a real address (${emails[0]}) — packs carry structure, never member or sponsor state (study §5 lesson 5)`);
     const phones = t.match(/(?:\+62|08\d{2})[-\s]?\d[\d\s-]{6,}\d/g);
     if (phones) add('PKG-45', `${rel} contains what looks like an Indonesian phone number — attendee contacts do not ship in a pack`);
+    // PKG-57: the credential line, swept over every line of every file in the folder — including
+    // commented lines, because a commented-out key is still a key in a folder people fork, and
+    // including markdown, because the onboarding doc is where a "just set OPENAI_API_KEY=…"
+    // instruction arrives. Report the shape and the line; never echo the match into the build log.
+    const lines = t.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const shape = CREDENTIAL_SHAPES.find((s) => s.re.test(lines[i]));
+      if (shape) add('PKG-57', `${rel}:${i + 1} carries the shape of ${shape.name} — a credential never enters a pack: the host holds it (BYOD, spec/HOST-CONTRACT.md seam 1) and a pack is a folder strangers fork`);
+    }
     if (isBundled) {
       // The claim ceiling is checked against *assertions*, not citations: quoted and code-spanned
       // occurrences are the repo naming a banned phrase in order to forbid it. Strip both before scanning.

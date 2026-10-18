@@ -255,3 +255,36 @@ test('an agent that can post as a member is rejected — astroturfing is absent,
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-53'), 'spec §2.8 + Part 5: the fleet never pretends to be a person, and a `never` entry is still a surface');
   }));
+
+// --- the BYOD credential line (spec/HOST-CONTRACT.md seam 1, PRD FR-1.17) ------------------------------
+// The owner brings the model key; it never enters Kinship. Until now that was a sentence in a document.
+// These three tests are the rule: a pack that carries a key-shaped string cannot boot, and a pack that
+// carries a *hash* can — because an entropy-based rule fires on revision hashes and gets switched off
+// within a week, which is how a credential rule becomes a decorative rule.
+
+test('a pack that carries a provider key fails the build, not the code review', () =>
+  inCopy((dir) => {
+    // Built by concatenation on purpose: a real-looking key in a test file is how the next scan gets
+    // trained to ignore keys. This is a shape, not a credential.
+    const fake = ['sk-', 'q'.repeat(24)].join('');
+    const f = join(dir, 'skills', 'recap', 'SKILL.md');
+    writeFileSync(f, `${readFileSync(f, 'utf8')}\nSet OPENAI_API_KEY=${fake} to run the recap lane.\n`);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-57'), 'the key belongs to the host that runs the model, never to a forkable folder');
+  }));
+
+test('a revision hash or a placeholder is not a credential — the rule is prefix-shaped, not entropy-shaped', () =>
+  inCopy((dir) => {
+    const f = join(dir, 'PACK.md');
+    writeFileSync(f, `${readFileSync(f, 'utf8')}\nRevision binds to ${'f83ecaf16f55dfee'.repeat(3)} and the host holds \`Bearer $KINSHIP_HOST_TOKEN\` — neither is a key.\n`);
+    const r = validatePack(dir);
+    assert.ok(!codes(r).includes('PKG-57'), `false positive on a hash: ${codes(r).join(', ')}`);
+  }));
+
+test('a private key block is caught by the same rule (the shape a webhook signing secret arrives in)', () =>
+  inCopy((dir) => {
+    const f = join(dir, '.kinship.yaml');
+    writeFileSync(f, `${readFileSync(f, 'utf8')}\n# -----BEGIN RSA PRIVATE KEY-----\n# MIIEowIBAAKCAQEA\n# -----END RSA PRIVATE KEY-----\n`);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-57'), 'a commented-out key is still a key in a folder people fork');
+  }));
