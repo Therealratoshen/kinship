@@ -101,6 +101,27 @@ export function findLiveGrant(ctx: Ctx, q: LiveGrantQuery): Grant | null {
   return null;
 }
 
+/**
+ * A diagnostic, never an authorization path: the row that `findLiveGrant` skipped because its
+ * named window closed. §1.2 says "why not" is part of the product, and "no live grant —
+ * escalation is earned" is the wrong sentence for a grant the organiser did issue and that simply
+ * ran out. Only an *expired* window is reported; a window that has not opened yet is truthfully
+ * "no live grant". Revoked and consumed rows are excluded — for those, the existing message is
+ * already the right one.
+ */
+export function grantWithClosedWindow(ctx: Ctx, q: LiveGrantQuery): Grant | null {
+  const now = ctx.now();
+  for (const g of ctx.state.grants.values()) {
+    if (g.actionClass !== q.actionClass) continue;
+    if (g.revokedAt !== undefined || g.consumedAt !== undefined) continue;
+    if (q.templateHash !== undefined && g.templateHash !== q.templateHash) continue;
+    if (g.channel !== undefined && g.channel !== q.channel) continue;
+    if (g.partner !== undefined && g.partner !== q.partner) continue;
+    if (g.window && now > g.window.to) return g;
+  }
+  return null;
+}
+
 /** §1.8 — "every always-grant is enumerable… if it cannot be listed, it cannot be governed." */
 export function listGrants(ctx: Ctx): Grant[] {
   return [...ctx.state.grants.values()];

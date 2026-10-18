@@ -21,7 +21,7 @@ import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
 import { assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
-import { findLiveGrant, issueGrant, revokeGrant, type IssueGrantArgs } from './grants.ts';
+import { findLiveGrant, grantWithClosedWindow, issueGrant, revokeGrant, type IssueGrantArgs } from './grants.ts';
 import { consumeAuthorization, createCard, decideCard, getAuthorization, type CreateCardArgs, type DecideArgs } from './cards.ts';
 import {
   beginEvent, checkoutEvent, claimPhaseOrigin, completePhase, fireWake, scheduleWake,
@@ -192,6 +192,12 @@ export class Fleet {
         const c = this.ctx();
         const grant = findLiveGrant(c, { actionClass: args.actionClass, channel: args.channel, partner: args.partner });
         if (!grant) {
+          // Name the real reason when the organiser did grant this and the window simply ran out.
+          const expired = grantWithClosedWindow(c, { actionClass: args.actionClass, channel: args.channel, partner: args.partner });
+          if (expired?.window) {
+            refuse('grant_window_expired', 'spec §2.11',
+              `the always-grant \`${expired.id}\` for \`${args.actionClass}\` named the window \`${expired.window.from}\u2013${expired.window.to}\` and it has closed — a time-bounded grant does not revive itself; the organiser renews it`);
+          }
           refuse('grant_not_found', 'spec §1.8', `no live grant authorizes \`${args.actionClass}\`${args.channel ? ` in \`${args.channel}\`` : ''} — escalation is earned, and every always-grant is revocable`);
         }
         if (grant && args.channel !== undefined && grant.channel !== args.channel) {

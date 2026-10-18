@@ -46,8 +46,6 @@ export type RefusalCode = (typeof REFUSAL_CODES)[number];
  * misled by the existence of the word.
  */
 export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> = {
-  grant_window_expired:
-    'the window IS enforced — grants.ts skips an out-of-window always-grant, so the send surfaces as grant_not_found. Missing: naming the real reason, which is what §1.2 asks for.',
   idempotent_hit:
     'same-key reuse IS correct (§1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
   unsourced_number:

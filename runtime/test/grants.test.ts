@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { issueGrant, revokeGrant, findLiveGrant, consumeGrant, supersedeGrant, listGrants } from '../src/grants.ts';
+import { issueGrant, revokeGrant, findLiveGrant, consumeGrant, supersedeGrant, listGrants, grantWithClosedWindow } from '../src/grants.ts';
 import { makeCtx, makePack } from './helpers.ts';
 
 const ctx = () => makeCtx(makePack({ engagement: { 'draft.reminder': 'draft' } }));
@@ -69,6 +69,40 @@ test('a cross-promotion always-grant must name partner + lane + window, and only
   assert.equal(findLiveGrant(c, { actionClass: 'promote.cross-community', channel: 'telegram', partner: 'AIClub.id' }), null,
     'the window closed; "forever" was never granted');
   assert.equal(g.kind, 'allow_always');
+});
+
+test('an expired window is named as the reason, never hidden behind grant_not_found (§1.2 / §2.11)', () => {
+  const c = ctx();
+  issueGrant(c, {
+    actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram',
+    scope: 'partner promo', partner: 'AIClub.id', window: { from: 2_000, to: 3_000 }, by: 'organiser',
+  });
+  const q = { actionClass: 'promote.cross-community', channel: 'telegram', partner: 'AIClub.id' };
+
+  // Before the window opens there is nothing expired — the honest answer is still "no live grant".
+  assert.equal(findLiveGrant(c, q), null);
+  assert.equal(grantWithClosedWindow(c, q), null, 'a window that has not opened has not expired either');
+
+  c.advance && c.advance(1_500); // inside [2000, 3000]
+  assert.equal(grantWithClosedWindow(c, q), null, 'a live grant is not an expired one');
+
+  c.advance && c.advance(600); // t = 3100
+  assert.equal(findLiveGrant(c, q), null, 'the window closed; "forever" was never granted');
+  const dead = grantWithClosedWindow(c, q);
+  assert.ok(dead, 'and the row still exists, because the audit trail does not delete history');
+  assert.equal(dead?.window?.to, 3_000, 'the diagnostic hands back the window so the refusal can name it');
+});
+
+test('a revoked grant is not reported as expired: the organiser took it back, that is a different fact (§2.11)', () => {
+  const c = ctx();
+  const g = issueGrant(c, {
+    actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram',
+    scope: 'partner promo', partner: 'AIClub.id', window: { from: 2_000, to: 9_000 }, by: 'organiser',
+  });
+  c.advance && c.advance(8_000); // t = 9000 — still inside the window
+  revokeGrant(c, g.id, 'organiser');
+  assert.equal(grantWithClosedWindow(c, { actionClass: 'promote.cross-community', channel: 'telegram', partner: 'AIClub.id' }), null,
+    'revocation is the reason, and it is already the message grant_not_found tells');
 });
 
 test('a material change to the class template supersedes the grant — it reverts to draft and asks again (§1.8)', () => {

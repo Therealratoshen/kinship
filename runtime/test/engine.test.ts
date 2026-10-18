@@ -4,6 +4,7 @@ import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
 import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
 import { LOW_TRUST_REPLACEMENT } from '../src/containment.ts';
+import { KinshipError } from '../src/errors.ts';
 
 const ANSWERS = {
   community_name: 'AI Builders ID',
@@ -177,6 +178,27 @@ test('a cap of zero means no partner promotion in this event, not an unbounded l
     actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
     origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
   }), /cross_promo_cap/, '0 is a decision an organiser can make, so it has to hold');
+});
+
+test('an expired partner window refuses with its own code — the organiser is told the truth (§2.11 / §1.2)', () => {
+  const answers = { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' };
+  const f = Fleet.boot(pack({ growth: { 'promote.cross-community': 'opt-in-auto' } }, ['partner_policy']), answers, DAY);
+  f.issueGrant({
+    actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'kopdar-12',
+    partner: 'Kopdar Sebelah', window: { from: DAY - 4_000, to: DAY - 1_000 }, by: 'organiser',
+  });
+  let caught: unknown;
+  try {
+    f.commit({
+      actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
+      origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah', recipients: [], onBehalfOf: 'organiser', ...draftBundle(),
+    });
+  } catch (e) { caught = e; }
+  assert.ok(caught instanceof KinshipError, 'the refusal is the typed one');
+  assert.equal((caught as KinshipError).code, 'grant_window_expired',
+    '"no live grant — escalation is earned" is the wrong sentence for a grant the organiser did issue and that simply ran out');
+  assert.match((caught as Error).message, /window/, 'and the message names the window that closed');
+  assert.ok(f.state.events.some((e) => e.type === 'CommitRefused' && e.code === 'grant_window_expired'), 'the right code reaches the audit log');
 });
 
 test('the audit timeline is a readable record, not JSON — near-misses and refusals are visible (§1.2)', () => {
