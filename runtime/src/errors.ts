@@ -38,6 +38,26 @@ export const REFUSAL_CODES = [
 
 export type RefusalCode = (typeof REFUSAL_CODES)[number];
 
+/**
+ * Declared-but-not-yet-raised codes. A code is part of the audit vocabulary, so it is legal to
+ * ship the word before the rule — illegal to ship it *silently*. `test/errors.test.ts` fails if a
+ * code is neither raised in `src/` nor listed here, and if a listed code starts being raised
+ * without leaving the list. Each entry says what is actually enforced today, so a reader is not
+ * misled by the existence of the word.
+ */
+export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> = {
+  grant_window_expired:
+    'the window IS enforced — grants.ts skips an out-of-window always-grant, so the send surfaces as grant_not_found. Missing: naming the real reason, which is what §1.2 asks for.',
+  idempotent_hit:
+    'same-key reuse IS correct (§1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
+  unsourced_number:
+    '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word.',
+  partner_data_leak:
+    '§2.11 forbids a member identifier travelling toward a partner. Partially held: the grant must name the partner and the queue is bounded. Missing: a scan of the revision for member refs before a partner-facing commit.',
+  cross_promo_cap:
+    'packs declare budgets.cross_promo_per_event_cap and apply.ts counts sends per origin — but no gate reads the count yet, so a second promo in one event drafts instead of refusing. Enforced by: engine.commit, against state.crossPromoByEvent.',
+};
+
 export class KinshipError extends Error {
   code: RefusalCode;
   rule: string | undefined;
