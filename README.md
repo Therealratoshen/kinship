@@ -45,7 +45,7 @@ node scripts/validate-pack.mjs packs/kopdar-ops
 # Contract tests: can the pack be tampered with?
 node --test scripts/validate-pack.test.mjs
 
-# Governance semantics: do the rules actually work? (73 tests, 11 files, zero deps)
+# Governance semantics: do the rules actually work? (zero deps; recount with `node runtime/tour.ts --json`)
 cd runtime && node --test test/*.test.ts
 ```
 
@@ -57,7 +57,7 @@ Node ≥ 23. No npm. No build step.
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
 - The validator and its 29-case tamper-resistant contract test
-- The runtime library (`runtime/`) — refusing, logging, replaying, no sending
+- The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
 
 **Gated behind shadow-mode measurement:**
 - Any channel transport (WhatsApp, Telegram, email, Discord)

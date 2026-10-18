@@ -14,7 +14,7 @@ From the **repo root**:
 node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate: 54 PKG-* rules
 node runtime/tour.ts                              # drives THIS pack: drafts, you approve, it refuses to send
 node runtime/tour.ts --json                       # same, as a machine-readable contribution map
-cd runtime && node --test test/*.test.ts          # 73 semantics tests, incl. three tamper cases against this pack
+cd runtime && node --test test/*.test.ts          # the semantics suite, incl. three tamper cases against this pack (count: `node runtime/tour.ts --json`)
 ```
 
 The tour is the fastest way to see what the pack *is*: it boots this directory, produces a real approval card,

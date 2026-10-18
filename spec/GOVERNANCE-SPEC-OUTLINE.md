@@ -529,7 +529,8 @@ grant (§1.8).
 ## Part 6 — Implementation map (added 2026-10-17, `DECISIONS.md` D21)
 
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
-library (node ≥ 23, erasable syntax, no install step, ~2,900 lines). This map is the walk a reviewer
+library (node ≥ 23, erasable syntax, no install step; counted 2026-10-18: 2,036 lines of domain code
+in `src/`, 1,858 of tests, 292 of tour — 4,186 total, zero dependencies). This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport
@@ -538,21 +539,29 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | Spec rule | Code | Held by |
 |---|---|---|
 | §1.1 ladder: default deny, absent ≠ denied, unknown role, `never` as floor | `src/ladder.ts`, `src/types.ts` (`Autonomy`) | `test/ladder.test.ts` |
-| §1.2 audit replay: append-only log, `replay` deep-equality, readable `#seq` timeline, refusals as records | `src/store.ts`, `src/apply.ts`, `src/engine.ts` (`auditTimeline`, `logRefusal`) | `test/replay.test.ts`, `test/engine.test.ts` |
+| §1.2 audit replay: append-only log, `replay` deep-equality, readable `#seq` timeline, refusals as records | `src/store.ts` (`append` stores a **structured clone**, so a caller mutating its payload afterwards cannot rewrite history), `src/apply.ts`, `src/engine.ts` (`auditTimeline`, `logRefusal`) | `test/store.test.ts`, `test/apply.test.ts`, `test/replay.test.ts`, `test/engine.test.ts` |
 | §1.3 no ghost watchers: a promise to follow up requires a persisted wake row | `src/lifecycle.ts` (`scheduleWake`, `assertWakeBacked`) | `test/lifecycle.test.ts` |
 | §1.4 exclusive ownership; the 409 that is never retried | `src/lifecycle.ts` (`claimPhaseOrigin`, `checkoutEvent`) | `test/lifecycle.test.ts` |
 | §1.5 revision-bound approvals; edit consumes the live authorization, v2 re-queues, `stale_target` | `src/cards.ts` (revision hash over both languages) | `test/cards.test.ts`, `test/engine.test.ts` |
-| §1.6 bounded work: unset ceiling refuses, warn-then-hard-stop raises a card, event-scoped, run cap truncates | `src/budget.ts` | `test/budget.test.ts` |
+| §1.6 bounded work: unset ceiling refuses, warn-then-hard-stop raises a card, event-scoped, run cap truncates | `src/budget.ts`, `src/runner.ts` (`runActions` owns one `Run` per call: meters every attempted action, stops at the first crossing with partial results kept, drops the tail without attempting it) | `test/budget.test.ts`, `test/runner.test.ts` |
 | §1.7 fail-closed trust resolution; narrower always wins | `src/ladder.ts` (`narrowest`), `src/containment.ts` (`narrowForMemberTrigger`) | `test/ladder.test.ts` |
-| §1.8 grant taxonomy: once / always-named-scope / revocation / supersession; only the organiser issues | `src/grants.ts` | `test/grants.test.ts` |
+| §1.8 grant taxonomy: once / always-named-scope / revocation / supersession; only the organiser issues | `src/grants.ts` (`findLiveGrant` is the authorization path; `grantWithClosedWindow` is a read-only diagnostic that lets §2.11's expiry name itself) | `test/grants.test.ts`, `test/engine.test.ts` |
 | §1.9 / §2.7 stranger-input containment: member text out of the log, upward read substitutes a fixed sentence, no masked preview | `src/containment.ts` | `test/containment.test.ts`, `test/engine.test.ts` |
 | §2.5 / §2.8 disclosure as a class: canonical bilingual line inside the approved revision; `on_behalf_of` | `src/disclosure.ts`, `src/engine.ts` (commit order) | `test/disclosure.test.ts`, `test/engine.test.ts` |
 | §2.6 shatter-guard: complaint freezes the lane to draft; only the organiser releases | `src/shatter.ts`, `src/ladder.ts` | `test/ladder.test.ts`, `test/replay.test.ts` |
 | §2.9 member as subject: suppression beats any grant, absent row fails closed, no un-suppress, cap counts the member, quiet hours are the member's clock, aggregation floor refuses below 10 | `src/members.ts`, `src/engine.ts` (commit order) | `test/members.test.ts`, `test/engine.test.ts` (order proof) |
-| §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap | `src/ladder.ts`, `src/grants.ts`, `src/apply.ts` (cap counter) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/pack.test.ts` |
+| §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: cap checked ahead of the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/engine.test.ts`, `test/pack.test.ts` |
 | Pack boot gate: a fork cannot weaken an invariant (FR-1.14) — the validator's own `validatePack` runs before parsing | `src/pack.ts` | `test/pack.test.ts` (tamper cases on the real `packs/kopdar-ops`) |
 
-Two things this map deliberately does not claim: that a deployed deployment honours any of it end to
-end (no transport exists to prove that with), and that the per-run action cap is wired into the engine
-(it is a runner concern by design — `recordRunAction` is the documented seam; `test/budget.test.ts`
-holds its contract).
+Two things this map deliberately does not claim. First, that a deployed system honours any of it end
+to end — no transport exists to prove that with. Second, that the run cap makes the engine a
+scheduler: it does not, and should not (D10 — phase 1 schedules inside the organiser's own instance).
+`src/runner.ts` is the run's owner, `recordRunAction` its meter, and the engine still refuses to
+schedule anything; wiring `runActions` to a real queue is the open contribution.
+
+The map is also honest about its vocabulary. `src/errors.ts` carries the closed set of refusal codes,
+and `test/errors.test.ts` fails if a code is neither raised in `src/` nor listed in
+`UNIMPLEMENTED_REFUSAL_CODES` with the reason it is still debt. Three codes are declared and not yet
+enforced — `idempotent_hit` (a return value, not a refusal), `unsourced_number`, and `partner_data_leak`
+(both need content inspection the runtime does not do). `cross_promo_cap` and `grant_window_expired`
+were in that list and are now enforced (2026-10-18, D24).

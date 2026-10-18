@@ -11,8 +11,8 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(73 tests, zero dependencies, **no channel transport**: every member-facing commit refuses
-`no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
+(127 tests across 18 files as of 2026-10-18 — recount with `node runtime/tour.ts --json`; zero
+dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 
 ## The three invariants
@@ -52,7 +52,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 ```bash
 node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate (54 PKG-* rules), no install step
 node --test scripts/validate-pack.test.mjs        # 29 cases, incl. tamper cases
-cd runtime && node --test test/*.test.ts          # 73 cases — the governance semantics as tests
+cd runtime && node --test test/*.test.ts          # the governance semantics as tests (count: tour --json)
 node runtime/tour.ts                              # drive the real pack; self-checks every guarantee, exits non-zero if one breaks
 node runtime/tour.ts --json                       # machine-readable contribution map (for agents / first PRs)
 ```
