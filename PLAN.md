@@ -131,7 +131,9 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
 5. **The control-plane core was pulled forward out of phase 2 (2026-10-17, D21 — owner instruction,
    delegated).** `runtime/` exists: 73 tests across 11 suites, zero dependencies, node-native TypeScript
    *(2026-10-18 addendum, not a rewrite: the suite is now 127 tests across 18 files after the repo's own
-   issues #2 and #3 closed — dedicated tests for `apply`/`store`/`shatter`/`errors`/`types`, the audit-integrity
+   issues #2 (module tests) and #1 (the run-cap runner) closed — the numbers were first written the other
+   way round, which is corrected as `DECISIONS.md` **D25** — dedicated tests for
+   `apply`/`store`/`shatter`/`errors`/`types`, the audit-integrity
    fix in `append`, `cross_promo_cap` and `grant_window_expired` enforcement, and `src/runner.ts` owning the
    per-run action cap. See `DECISIONS.md` D24.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
