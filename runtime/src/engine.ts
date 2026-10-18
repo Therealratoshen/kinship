@@ -31,6 +31,7 @@ import {
 import { releaseShatter, tripShatter } from './shatter.ts';
 import { setBudget, recordSpend } from './budget.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
+import { deriveInbox, type InboxReport } from './inbox.ts';
 import type {
   Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, WakeRow,
 } from './types.ts';
@@ -373,6 +374,16 @@ export class Fleet {
    */
   health(): HealthReport {
     return deriveHealth(this.st, this.pack, this.t);
+  }
+
+  /**
+   * The organiser's worklist (§1.2 read side, sibling of `health()`): everything waiting on a human,
+   * oldest first — undecided drafts, approved-but-never-delivered handoffs (D21), lanes frozen pending
+   * a release, and wakes whose time passed with nothing re-arming them. A pure read like the snapshot:
+   * it appends nothing, replays identically, and carries no member identifier (§2.9).
+   */
+  inbox(): InboxReport {
+    return deriveInbox(this.st, this.t);
   }
 }
 

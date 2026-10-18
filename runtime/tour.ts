@@ -152,12 +152,17 @@ function runStory() {
   healthFleet.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-12' });
   healthFleet.advance(3_600_000); // an hour later: a frozen lane, a card nobody has decided, a wake past due
   const health = healthFleet.health();
+  // 9) The organiser's inbox over the same log: not counts, the list — and the fifth thing a count
+  //    cannot show is the approved card whose send is still sitting with a human (D21).
+  const inbox = healthFleet.inbox();
 
   return {
-    pack, bootGate, draft, commit, cross, tamper, runner, leak, health,
+    pack, bootGate, draft, commit, cross, tamper, runner, leak, health, inbox,
     mainFleetHealth: fleet.health(),
+    mainFleetInbox: fleet.inbox(),
     timeline: fleet.auditTimeline(),
     authorizationLeftIntact: draft.card !== null && fleet.authorizationOf(draft.card.id) !== undefined && fleet.authorizationOf(draft.card.id) !== null,
+    approvedCardId: draft.card ? draft.card.id : '',
   };
 }
 
@@ -204,6 +209,16 @@ function guarantees(s: ReturnType<typeof runStory>) {
       && !JSON.stringify(s.health).includes('wa:62811')
       && JSON.stringify(s.health).includes(HEALTH_WITHHELD_MEMBER_REF),
     health_counts_the_sends_a_human_did: (s.mainFleetHealth.refusals.find((r) => r.code === 'no_transport')?.count ?? 0) === 1,
+    // The inbox is the same log read as a list instead of counts: a card, a frozen lane, and an
+    // overdue wake all show, oldest-waiting first, and nothing about a person rides in it.
+    inbox_lists_everything_awaiting_a_human: s.inbox.counts.verdict === 1 && s.inbox.counts.release === 1
+      && s.inbox.counts.overdue === 1 && s.inbox.counts.handoff === 0 && s.inbox.items.length === 3
+      && s.inbox.items.every((i, n) => n === 0 || s.inbox.items[n - 1]!.ageMs >= i.ageMs),
+    inbox_names_the_send_a_human_still_owes: s.mainFleetInbox.items.some((i) => i.kind === 'handoff' && i.ref === s.approvedCardId),
+    inbox_carries_no_member_identifier: !JSON.stringify([s.inbox, s.mainFleetInbox]).includes('wa:62811')
+      && JSON.stringify(s.inbox).includes(HEALTH_WITHHELD_MEMBER_REF),
+    inbox_counts_inputs_without_naming_a_person: s.inbox.memberInputs.received === 0
+      && s.inbox.memberInputs.linkable === false && /cannot be joined/.test(s.inbox.memberInputs.note),
   };
 }
 
@@ -255,6 +270,16 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  a member identifier in a wake purpose was substituted, not forwarded: ${JSON.stringify(s.health).includes('wa:62811') ? 'NO — LEAK' : 'yes'}`);
   console.log(`  what this report will not say: ${s.health.unmeasured.length} named items, incl. sentiment and churn (PRD §5 keeps them out of v0)`);
 
+  hr('8. The organiser inbox (spec §1.2, read side) — not the condition, the list');
+  console.log(`  counts: ${Object.entries(s.inbox.counts).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  for (const item of s.inbox.items) {
+    console.log(`  · ${item.kind.padEnd(7)} ${item.ageMs / 60_000}min  ${item.detail.slice(0, 72)}${item.detail.length > 72 ? '…' : ''}`);
+    console.log(`    action: ${item.action}`);
+  }
+  console.log(`  the shadow-mode queue a count cannot show: ${s.mainFleetInbox.items.filter((i) => i.kind === 'handoff').length} approved card(s) with a live authorization and no delivery — the send is a human's hand (D21)`);
+  console.log(`  member inputs: ${s.inbox.memberInputs.received} received, ${s.inbox.memberInputs.awaitingVerdict} awaiting a verdict, joinable: ${s.inbox.memberInputs.linkable} — ${s.inbox.memberInputs.note.slice(0, 58)}…`);
+  console.log(`  ordering means waiting, not importance: ${s.inbox.limits.length} stated limits`);
+
   hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
 
   hr('The audit trail — every outcome above is a replayable log line');
@@ -291,6 +316,12 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       note: 'It reports the fleet\'s condition, not the community\'s feelings: PRD §5 puts member-intelligence / churn scoring out of v0, and phase 1 ships no transport (D21/D9), so there is no member traffic to read. The `unmeasured` array is part of the artefact, not a disclaimer bolted on. No member identifier rides in it (§2.9/FR-5.3): a free-text field naming a registered member is substituted with a fixed sentence.',
       snapshot: s.health,
       tourFleet: s.mainFleetHealth,
+    },
+    organiserInbox: {
+      whatItIs: 'runtime/src/inbox.ts (`Fleet.inbox()`) — the same log read as a list instead of counts: undecided drafts (verdict), approved-but-undelivered cards whose one-send authorization is still live (handoff, D21), lanes frozen pending a human release (release), and wakes past due with nothing re-arming them (overdue). Ordered by waiting time, oldest first.',
+      note: 'It is a read: it appends nothing and replays identically (§1.2). It borrows health.ts\'s privacy sweep rather than re-implementing it, so no member identifier rides in it (§2.9), and it counts member inputs without itemising them because the log carries no input→card link. Age is the ordering, not importance — `limits` says so, because PRD §5 keeps ranking judgement out of the runtime.',
+      items: s.inbox.items,
+      tourFleet: s.mainFleetInbox,
     },
     contributionMap: {
       runtimeTests: cm.tests,
