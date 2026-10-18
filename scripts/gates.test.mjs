@@ -62,6 +62,37 @@ test('CI runs this list rather than keeping a private copy of it', () => {
   assert.match(wf, /runs-on:\s*ubuntu-24\.04/, 'CI drifted to a floating runner image — reproducibility is the product');
 });
 
+test('the Node range package.json claims is the Node range CI actually tests', () => {
+  // `engines.node: ">=23"` is a support claim. A claim CI does not test is a claim that rots —
+  // and a matrix with a hole in it (23, 25) silently stops testing 24 while still looking wide.
+  const claimed = JSON.parse(read('runtime/package.json')).engines.node;
+  const matrix = (read('.github/workflows/test.yml').match(/node:\s*\[([^\]]*)\]/) ?? [])[1] ?? '';
+  const majors = [...matrix.matchAll(/'(\d+)'/g)].map((m) => Number(m[1])).sort((a, b) => a - b);
+  assert.deepEqual(gaps(majors), [], 'CI matrix has a hole: every major between its ends must run');
+  assert.equal(majors[0], minMajor(claimed), `CI starts at ${majors[0]} but ${claimed} promises lower support`);
+});
+
+/** The lowest major a semver range like ">=23" or ">=22.11.0" admits. */
+function minMajor(range) {
+  const m = range.match(/(\d+)/);
+  assert.ok(m, `cannot read a major version out of "${range}"`);
+  return Number(m[1]);
+}
+
+/** Majors a contiguous list is missing, e.g. [23, 25] → [24]. */
+function gaps(sorted) {
+  const missing = [];
+  for (let i = sorted[0]; i <= sorted.at(-1); i++) if (!sorted.includes(i)) missing.push(i);
+  return missing;
+}
+
+test('POSITIVE CONTROL: the Node-range checker fires on a gap and on a lower floor', () => {
+  assert.deepEqual(gaps([23, 24]), []);
+  assert.deepEqual(gaps([23, 25]), [24], 'a hole in the matrix must be reported, not averaged away');
+  assert.equal(minMajor('>=22.11.0'), 22);
+  assert.throws(() => minMajor('lts'), /cannot read a major version/);
+});
+
 test('the gate docs this checks are the ones contributors actually read', () => {
   // If a file is renamed, a doc can drop off the list and the gate goes quiet. Pin the set.
   assert.deepEqual(GATE_DOCS, ['README.md', 'AGENTS.md', 'CONTRIBUTING.md', '.github/PULL_REQUEST_TEMPLATE.md', 'runtime/tour.ts']);
