@@ -10,9 +10,9 @@
  * written against, and `src/runner.ts` is that runner: one call, one `Run`, one report.
  *
  * Commit order is the promise the pack makes to members, encoded as evaluation order:
- *   class availability → authorization/grant → per-member protections → disclosure +
- *   answerability → transport gate → execute. A protection that fires ahead of the transport
- *   gate stays load-bearing the day a transport exists.
+ *   class availability → §2.11 member-data rule (content) → authorization/grant → per-member
+ *   protections → §2.11 partner cap → disclosure + answerability → transport gate → execute. A
+ *   protection that fires ahead of the transport gate stays load-bearing the day a transport exists.
  */
 import { commitEvent, replay as foldEvents } from './apply.ts';
 import { freshState, hashText } from './store.ts';
@@ -21,6 +21,7 @@ import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
 import { assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
+import { assertNoMemberDataInPartnerCopy } from './partner.ts';
 import { findLiveGrant, grantWithClosedWindow, issueGrant, revokeGrant, type IssueGrantArgs } from './grants.ts';
 import { consumeAuthorization, createCard, decideCard, getAuthorization, type CreateCardArgs, type DecideArgs } from './cards.ts';
 import {
@@ -171,6 +172,14 @@ export class Fleet {
         refuse('class_unavailable', 'spec §1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — a grant cannot resurrect it`);
       }
 
+      // --- the partner-facing content rule (§2.11 / FR-6.1) -------------------------------------------
+      // A CONTENT rule, not an authorization rule, so it runs ahead of the authorization branch and
+      // covers the approved-card (one-send token) path as well as the grant path: an organiser who
+      // approves a partner promo vouches for the copy's intent, not for a member's number travelling
+      // toward a third party. It also runs ahead of the transport gate — `no_transport` is phase 1's
+      // temporary lock and this rule is permanent, so the organiser learns the permanent one first.
+      if (args.partner !== undefined) assertNoMemberDataInPartnerCopy(this.st, args.textId, args.textEn);
+
       // --- authorization or grant ------------------------------------------------------------------
       let grantId: string | undefined;
       let authToken: string | undefined;
@@ -215,8 +224,10 @@ export class Fleet {
       }
 
       // --- the partner-reach bound (§2.11 / FR-6.5) ---------------------------------------------------
-      // Read before the transport gate on purpose: `no_transport` is phase 1's temporary lock,
-      // the cap is a permanent rule, and the organiser should learn the permanent one first.
+      // Where it sits is a decision: after the per-member protections, because §2.11's third bullet
+      // says the member's rights survive the partnership — a send to a member who said stop is
+      // reported as `member_suppressed`, never as a cadence problem; and before the transport gate,
+      // because the cap is permanent while `no_transport` is phase 1's temporary lock.
       if (args.partner !== undefined) {
         const cap = this.pack.budgets.crossPromoPerEventCap;
         const used = this.st.crossPromoByEvent.get(args.origin.id) ?? 0;

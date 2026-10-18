@@ -50,8 +50,8 @@ export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> =
     'same-key reuse IS correct (§1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
   unsourced_number:
     '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word.',
-  partner_data_leak:
-    '§2.11 forbids a member identifier travelling toward a partner. Partially held: the grant must name the partner and the queue is bounded. Missing: a scan of the revision for member refs before a partner-facing commit.',
+  unsourced_number:
+    '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word — and needs the pack to have a place to name a source, which it does not yet have.',
 };
 
 export class KinshipError extends Error {

@@ -126,8 +126,18 @@ function runStory() {
   });
   const runner = runActions(runnerFleet, [action('kopdar-1'), action('kopdar-2'), action('kopdar-3'), action('kopdar-4'), action('kopdar-5')]);
 
+  // 7) §2.11: copy travelling toward a partner may not carry a member identifier — the refusal names
+  //    the member, never the sentence around it, because the timeline is member-readable (§2.3).
+  const leakyId = `Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi wa:62811.\n\n${DISCLOSURE_ID}`;
+  const leakyEn = `Kopdar Sebelah is hosting a meetup Saturday — if you have not registered, contact wa:62811.\n\n${DISCLOSURE_EN}`;
+  const leak = observe(() => fleet.commit({
+    actionClass: 'promote.cross-community', agent: 'engagement', channel: 'telegram',
+    origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', textId: leakyId, textEn: leakyEn,
+  }));
+
   return {
-    pack, bootGate, draft, commit, cross, tamper, runner,
+    pack, bootGate, draft, commit, cross, tamper, runner, leak,
     timeline: fleet.auditTimeline(),
     authorizationLeftIntact: draft.card !== null && fleet.authorizationOf(draft.card.id) !== undefined && fleet.authorizationOf(draft.card.id) !== null,
   };
@@ -165,6 +175,7 @@ function guarantees(s: ReturnType<typeof runStory>) {
     fork_cannot_add_whatsapp_send: s.tamper.threw && /pack_invalid/.test(s.tamper.code),
     run_cap_truncates_and_keeps_partial: s.runner.truncated === true && s.runner.executed === 3 && s.runner.dropped === 2
       && s.runner.outcomes.every((o) => o.result !== 'refused'),
+    partner_copy_cannot_carry_a_member_ref: s.leak.threw && /partner_data_leak/.test(s.leak.code),
     authorization_survives_refusal: s.authorizationLeftIntact,
   };
 }
@@ -204,6 +215,10 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
   console.log(`  metered attempts: ${s.runner.actions} · actions never attempted: ${s.runner.notAttempted.length} — partial results kept, no retry storm`);
+
+  hr('6. Cross-promotion (spec §2.11) — copy travels, people do not');
+  console.log(`  partner promo carrying a member ref → refused: ${s.leak.code || '(IT PASSED — a member number reached a partner!)'}`);
+  console.log('  the refusal names the member, not the sentence: the audit timeline is readable by members too (§2.3)');
 
   hr('The audit trail — every outcome above is a replayable log line');
   for (const line of s.timeline) console.log(`  ${line}`);
