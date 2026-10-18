@@ -28,6 +28,18 @@ export function assertDisclosed(textId: string, textEn: string, community: strin
 }
 
 /**
+ * FR-5.1 answerability, the internal half. `assertAnswerability` below refuses a *member-facing*
+ * commit that names no human; an internal commit may legitimately have none — but it may not
+ * borrow one. The field has no backfill path (FR-5.1), so a log line that quietly defaults to the
+ * organiser is an attribution no later review can correct, fabricated at the moment of writing.
+ */
+export const UNATTRIBUTABLE = 'unattributable';
+
+export function answerableBy(onBehalfOf: string | undefined): string {
+  return onBehalfOf !== undefined && onBehalfOf.trim() !== '' ? onBehalfOf : UNATTRIBUTABLE;
+}
+
+/**
  * FR-5.1 answerability: a member-facing commit names the human it answers to. A fleet that
  * cannot name its human is an unattended bot with better manners (pack needs.escalation_contact).
  */

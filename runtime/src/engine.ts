@@ -19,7 +19,7 @@ import { freshState, hashText } from './store.ts';
 import { KinshipError, refuse } from './errors.ts';
 import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
-import { assertAnswerability, assertDisclosed } from './disclosure.ts';
+import { answerableBy, assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
 import { assertNoMemberDataInPartnerCopy } from './partner.ts';
 import { findLiveGrant, grantWithClosedWindow, issueGrant, revokeGrant, type IssueGrantArgs } from './grants.ts';
@@ -252,7 +252,7 @@ export class Fleet {
       c.commit({
         type: 'CommitExecuted', actionClass: args.actionClass, agent: args.agent, origin: args.origin,
         phase: args.phase ?? null, revisionHash: hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`),
-        onBehalfOf: args.onBehalfOf ?? 'organiser', recipients: args.recipients, transport: 'none',
+        onBehalfOf: answerableBy(args.onBehalfOf), recipients: args.recipients, transport: 'none',
         ...(args.channel !== undefined ? { channel: args.channel } : {}),
         ...(args.partner !== undefined ? { partner: args.partner } : {}),
         ...(grantId !== undefined ? { grantId } : {}),

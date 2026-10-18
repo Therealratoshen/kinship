@@ -312,6 +312,20 @@ test('a revocation in the timeline names the human who did it — an audit trail
     '"revoked" alone does not say who took it back — the who is the record');
 });
 
+test('a commit with no named human renders unattributable — the engine does not lend the organiser\'s name (§1.2 / FR-5.1)', () => {
+  const f = Fleet.boot(pack({ ops: { 'recap.assemble': 'opt-in-auto' } }), ANSWERS, DAY);
+  f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
+  // Recipient-less, so it executes instead of stopping at the transport gate (D21) — and `by`
+  // is absent, which is the case FR-5.1 names: "a row with on_behalf_of null renders
+  // unattributable and refuses to render it as approved".
+  f.commit({ actionClass: 'recap.assemble', agent: 'ops', origin: { kind: 'event', id: 'kopdar-12' }, recipients: [], ...draftBundle() });
+  const exec = f.state.events.find((e) => e.type === 'CommitExecuted');
+  assert.ok(exec && exec.type === 'CommitExecuted');
+  assert.equal(exec.onBehalfOf, 'unattributable',
+    'the default used to be "organiser": a log line crediting a human who was never named, on a field FR-5.1 says has no backfill path');
+  assert.ok(f.auditTimeline().join('\n').includes('on behalf of unattributable'), 'and the readable timeline says the same thing');
+});
+
 test('a quarantined input quoted into a commit is the fixed string — the commit gate reads through containment (§1.7)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   const input = fleet.registerInput('wa:62811', 'PROMOSI JUGA BISNIS KU http://spam.example');
