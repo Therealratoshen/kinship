@@ -140,6 +140,11 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    member-data rule became enforced code (`src/partner.ts`, closing the `partner_data_leak` debt) and
    the engine-only behaviours got their tests — queue-full logging, idempotent card reuse,
    escalation, an expired wake. See `DECISIONS.md` **D27**. Recount with `node runtime/tour.ts --json`.)*
+   *(2026-10-18 third addendum, still not a rewrite: **150 tests across 19 files** after the owner asked for a
+   role setting and the survey for it found three authority defects — `revokeGrant` gated nothing, the timeline
+   recorded a revocation with no actor, and `engine.commit` wrote `'organiser'` into `on_behalf_of` for commits
+   that named no human. The repairs are **D29**; the role design he asked for is recorded as **Q12** and left
+   undecided, because spec §2.3 is `[OPEN]` on purpose.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

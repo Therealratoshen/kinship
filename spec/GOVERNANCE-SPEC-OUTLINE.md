@@ -251,6 +251,21 @@ organisers disagree? v0.1 of this spec should state the *requirement* (authority
 per-audience and revocable) and leave the schema open rather than inventing an RBAC no one
 asked for.
 
+**(Additive, 2026-10-18 — the owner asked for exactly this schema ("i think there should be role
+setting for agent and human role too"), and this section stays `[OPEN]` because answering it is a
+decision, not an implementation.** It is recorded as PRD **Q12** and `DECISIONS.md` **D29**. What is
+true in code today, so a reader does not mistake the openness for a gap: the *acts* are gated —
+only `'organiser'` may decide a card, issue or revoke a grant, or release a shatter freeze, and a
+member's "yes, go ahead" is input to a proposal rather than a grant (§1.8, §2.7). What is **not**
+true: there is no registry of humans. Authority is a string compared to one literal in three files,
+`FleetState` holds members and no humans, a pack's `PackedAgent.role` is shape-checked and confers
+nothing, and the organiser appears in a pack only as free-text `needs.escalation_contact`. Choosing
+the schema also chooses what `not_the_human` means when a *second* human exists — today that phrase
+is a single name, and §2.3's "two organisers disagree" has no code path because there is only one
+seat. **The ceiling is not open, and does not depend on the answer:** no agent and no member may
+hold an approval role, and escalation stays scoped per action class rather than per agent
+(invariant #1).
+
 ### 2.4 Two-speed latency
 
 Community patience and engineering patience differ by orders of magnitude. A member asking
@@ -531,7 +546,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 4,577 as of 2026-10-18, split 2,134 domain code / 2,121 tests / 322 tour). This map is the walk a reviewer
+prints 4,632 as of 2026-10-18, split 2,154 domain code / 2,156 tests / 322 tour). This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport
@@ -546,9 +561,9 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §1.5 revision-bound approvals; edit consumes the live authorization, v2 re-queues, `stale_target` | `src/cards.ts` (revision hash over both languages) | `test/cards.test.ts`, `test/engine.test.ts` |
 | §1.6 bounded work: unset ceiling refuses, warn-then-hard-stop raises a card, event-scoped, run cap truncates | `src/budget.ts`, `src/runner.ts` (`runActions` owns one `Run` per call: meters every attempted action, stops at the first crossing with partial results kept, drops the tail without attempting it) | `test/budget.test.ts`, `test/runner.test.ts` |
 | §1.7 fail-closed trust resolution; narrower always wins | `src/ladder.ts` (`narrowest`), `src/containment.ts` (`narrowForMemberTrigger`) | `test/ladder.test.ts` |
-| §1.8 grant taxonomy: once / always-named-scope / revocation / supersession; only the organiser issues | `src/grants.ts` (`findLiveGrant` is the authorization path; `grantWithClosedWindow` is a read-only diagnostic that lets §2.11's expiry name itself) | `test/grants.test.ts`, `test/engine.test.ts` |
+| §1.8 grant taxonomy: once / always-named-scope / revocation / supersession; only the organiser issues **or revokes** | `src/grants.ts` (`findLiveGrant` is the authorization path; `grantWithClosedWindow` is a read-only diagnostic that lets §2.11's expiry name itself; `revokeGrant` gates its own actor rather than trusting a caller — `test/grants.test.ts` proves a member ref revoking directly used to succeed) | `test/grants.test.ts`, `test/engine.test.ts` |
 | §1.9 / §2.7 stranger-input containment: member text out of the log, upward read substitutes a fixed sentence, no masked preview | `src/containment.ts` | `test/containment.test.ts`, `test/engine.test.ts` |
-| §2.5 / §2.8 disclosure as a class: canonical bilingual line inside the approved revision; `on_behalf_of` | `src/disclosure.ts`, `src/engine.ts` (commit order) | `test/disclosure.test.ts`, `test/engine.test.ts` |
+| §2.5 / §2.8 disclosure as a class: canonical bilingual line inside the approved revision; `on_behalf_of` | `src/disclosure.ts` (`answerableBy` records FR-5.1's `unattributable` for a commit that names no human — an internal commit may have no human, it may not borrow one), `src/engine.ts` (commit order, and a timeline that reads the actor off the event instead of restating it) | `test/disclosure.test.ts`, `test/engine.test.ts` |
 | §2.6 shatter-guard: complaint freezes the lane to draft; only the organiser releases | `src/shatter.ts`, `src/ladder.ts` | `test/ladder.test.ts`, `test/replay.test.ts` |
 | §2.9 member as subject: suppression beats any grant, absent row fails closed, no un-suppress, cap counts the member, quiet hours are the member's clock, aggregation floor refuses below 10 | `src/members.ts`, `src/engine.ts` (commit order) | `test/members.test.ts`, `test/engine.test.ts` (order proof) |
 | §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap, no member identifier in partner-facing copy | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/partner.ts` (the identifier scan: registry-bounded, both languages, names the member and never the copy), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: the content rule runs ahead of authorization so the approved-card path is covered too; the cap sits after the per-member protections and before the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/partner.test.ts`, `test/engine.test.ts` (order proofs), `test/pack.test.ts` |
