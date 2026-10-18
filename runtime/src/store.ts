@@ -35,10 +35,16 @@ export function freshState(): FleetState {
   };
 }
 
-/** Append to the log. Monotonic seq; events are frozen as structured clones of the payload. */
+/**
+ * Append to the log. Monotonic seq; events are stored as structured clones of the payload.
+ * The deep copy is the audit guarantee, not a nicety: `CommitExecuted` carries `recipients`,
+ * an array the caller keeps holding. With a shallow spread a later `push` to that array
+ * rewrites what the log says happened (§1.2 — the record must show the state *at commit
+ * time*, and replay must fold exactly what was appended).
+ */
 export function append(state: FleetState, event: Omit<LoggedEvent, 'seq'>): LoggedEvent {
   state.seq += 1;
-  const logged = { ...event, seq: state.seq } as LoggedEvent;
+  const logged = structuredClone({ ...event, seq: state.seq }) as LoggedEvent;
   state.events.push(logged);
   return logged;
 }
