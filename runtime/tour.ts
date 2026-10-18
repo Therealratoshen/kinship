@@ -24,6 +24,7 @@
 import { loadPack } from './src/pack.ts';
 import { Fleet } from './src/engine.ts';
 import { runActions } from './src/runner.ts';
+import { UNIMPLEMENTED_REFUSAL_CODES } from './src/errors.ts';
 import type { CommitArgs } from './src/engine.ts';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -220,6 +221,9 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  partner promo carrying a member ref → refused: ${s.leak.code || '(IT PASSED — a member number reached a partner!)'}`);
   console.log('  the refusal names the member, not the sentence: the audit timeline is readable by members too (§2.3)');
 
+  hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');
+  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
+
   hr('The audit trail — every outcome above is a replayable log line');
   for (const line of s.timeline) console.log(`  ${line}`);
 
@@ -274,7 +278,17 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         'node scripts/validate-pack.mjs packs/kopdar-ops',
         'node --test scripts/validate-pack.test.mjs',
         'cd runtime && node --test test/*.test.ts',
+        'cd runtime && node tour.ts',
       ],
+      // Derived from the list `test/errors.test.ts` polices, so this cannot drift from it:
+      // these are the spec promises that are still prose. Read `blockedOn` before opening a PR.
+      declaredDebt: Object.entries(UNIMPLEMENTED_REFUSAL_CODES).map(([code, why]) => ({
+        code,
+        why,
+        blockedOn: code === 'unsourced_number'
+          ? 'an owner decision: the pack has no key that names a source for a figure, so the check has nothing to measure against. Spec/PRD work, not code.'
+          : 'not debt to pay off — a return value, not a refusal. Do not "implement" it.',
+      })),
     },
   };
   console.log(JSON.stringify(payload, null, 2));
