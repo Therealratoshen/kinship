@@ -62,7 +62,12 @@ inside an organiser's existing agent instance, which already has a scheduler, an
 member-facing behind the shadow-mode gate.
 
 **What the host does.** Decides when a run happens. It calls `attempt` / `commit` / `runActions`, and
-it re-arms promises by calling `fireWake` for the rows in `health().wakes.overdue`.
+it re-arms promises by calling `fireWake` for the rows in `health().wakes.overdue`. Because the host owns
+the tick, it also owns **what "a run" is** (D38): `runActions(fleet, actions)` mints its own counter, so a
+host that calls it once per agent per tick bounds each agent separately and attempts `agents × max_actions_per_run`
+across the tick. To make the pack's number mean the tick instead, hold one `createRun()` from
+`runtime/src/budget.ts` and hand it to every call in that tick — the report's `capScope` then reads
+`shared_run`, and the first crossing truncates the tick rather than one agent's batch.
 
 **What the runtime guarantees.** Time is an injected value: `Fleet.boot(pack, answers, startAt)` takes
 a number, every event carries the `at` it was committed at, and no module reads a wall clock —

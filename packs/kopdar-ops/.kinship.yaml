@@ -117,6 +117,9 @@ budgets:
   currency_denomination: event_scoped_money   # not tokens; a volunteer organiser reads rupiah
   queue_max: 20
   max_actions_per_run: 15                # exceed -> truncated: true, partial kept, no retry storm
+                                         # "per run" = per handle the host hands `runActions` (D38):
+                                         # a call with no handle bounds itself, so a per-agent tick is 15 x agents,
+                                         # not 15. This is NOT a fleet ceiling.
 
 # --- The anti-generic-skeleton gate -------------------------------------------
 # An installer cannot boot this pack without answering these. If any is unset, the

@@ -200,6 +200,27 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    `moderation.outcome` and §5(c) a ninth `needs:` arrival question are **still the owner's calls and remain
    unbuilt**; so does **D9**, which is still the only phase-1 signal. Recount with
    `node runtime/tour.ts --json` and `node --test scripts/*.test.mjs`.)*
+
+*(2026-10-19 eighth addendum, still not a rewrite: **239 tests across 25 files**, and the reason this one
+   exists is a number in this plan that meant less than it read like. The owner asked how many AI agents the
+   fleet allows; the answer was "the pack bounds work per **run**, not per agent" — and `runActions` made a
+   fresh counter on every call, so a host ticking once per agent per tick attempted `agents × 15` while the
+   pack read like a fleet ceiling. That is legitimate under spec §1.6's "per-agent, per-run" wording, and the
+   fix that would have been wrong is silently sharing one counter: it leaks one run's exhaustion into the
+   next, which is precisely why the counter is a value the caller owns (`DECISIONS.md` **D38**). So the run
+   became **the handle the caller hands in**: `runActions(fleet, actions, run?)` takes one `createRun()`
+   across calls to bound a tick, and `report.capScope` says `this_call` or `shared_run` — observed reuse,
+   because nothing in the runtime can see a host's intent. Two new tests (the cross-call bound as its own
+   positive control, and the label), guarantees **21 → 22**, PRD **v0.18** amending **FR-1.4**'s acceptance
+   criterion, spec §1.6 amended, **rules invariant 13**. Two of my own sentences from the previous turn are
+   corrected in D38 rather than edited away: the counter was caller-owned only as a *primitive* (the runner
+   never accepted one), and the `health()` attempts-vs-cap figure I recommended is **not buildable honestly** —
+   a run's counter is deliberately outside replayable state, so an attempts figure inside a pure read over
+   logged rows would be invention. That left one of the owner's standing questions ("how do I measure this?")
+   answered with a limit instead of a feature, and it is recorded as a limit.
+   **And the D37b class fired on this pass itself:** 237 → 239 tests, 21 → 22 guarantees, 7,361 → 7,435 lines,
+   each recomputed by hand for the second pass running. Whether a check should recompute prose is still the
+   owner's call. **D9** is still unset, §5(a)/§5(c) are still unbuilt, and nothing member-facing sends.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

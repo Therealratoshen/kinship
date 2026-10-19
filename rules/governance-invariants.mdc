@@ -71,3 +71,14 @@ spec disagree, the spec wins and this file gets corrected in the same change.
     is legal while nobody declares it). Do not make reading strictness a CI rule either: unknown keys and
     unreadable lines belong to `runtime/src/pack.ts` alone, because `loadPack` runs the validator first and
     a duplicated refusal makes the parser's door unreachable — the D24 class.
+
+13. **A cap means one run, and a run is the handle the caller holds** (spec §1.6 / PRD **FR-1.4**,
+    D38). `budgets.max_actions_per_run` is not a fleet ceiling and must never be quoted as one: a host
+    that calls `runActions` once per agent per tick gets `agents × cap` attempted actions with nothing
+    refusing it. That shape is legitimate — §1.6 says *per-agent, per-run* — so the rule is that the
+    scope is **stated, never assumed**: omit the handle and the report says `capScope: 'this_call'`;
+    hand one `createRun()` across calls and it says `'shared_run'` and the bound spans them. Do not
+    "fix" the multiplication by silently sharing a counter (that leaks one run's exhaustion into the
+    next, which is why the handle is a value and not a module singleton), and do not move the meter into
+    the event log — a run's counter is deliberately outside replayable state (`Fleet.replay` must still
+    deep-equal), which is also why `health()` reports no attempts-per-window figure and never will.

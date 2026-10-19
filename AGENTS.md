@@ -12,9 +12,15 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(237 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
+(239 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
+
+One number here is easy to misread, so it says which scope it bounds: `budgets.max_actions_per_run`
+is **per run**, and a run is the handle the caller holds (D38). `runActions(fleet, actions)` makes its
+own handle, so a host ticking once per agent gets `agents × cap` attempted actions — legitimate under
+spec §1.6's "per-agent, per-run", but never a fleet ceiling to quote. Hand one `createRun()` across
+calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either way.
 
 ## The three invariants
 
