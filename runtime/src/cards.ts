@@ -7,6 +7,7 @@
  * reason — the near-miss is the highest-value entry in the audit log (§1.2).
  */
 import { refuse } from './errors.ts';
+import { assertSeat } from './roles.ts';
 import { hashText } from './store.ts';
 import type { Ctx, Card, FleetEvent, FleetState, Origin, Phase, Revision, Verdict } from './types.ts';
 
@@ -61,9 +62,9 @@ export interface DecideArgs {
 }
 
 export function decideCard(ctx: Ctx, cardId: string, args: DecideArgs): Card {
-  if (args.by !== 'organiser') {
-    refuse('not_the_human', 'spec §1.5/§2.7', `only the organiser decides a card; \`${args.by}\` is input to a proposal, not a verdict`);
-  }
+  // §1.5/§2.7 — the actor must hold a human seat. Which names hold one is the organisation's
+  // declaration (D36), not a string this file owns.
+  assertSeat(ctx, args.by, 'spec §1.5/§2.7');
   const card = ctx.state.cards.get(cardId);
   if (!card) refuse('card_not_pending', 'spec §1.5', `no card \`${cardId}\``);
   // §1.5: "approve v1, edit to v2 → the pending approval resolves stale_target". An edit on an

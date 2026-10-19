@@ -5,6 +5,7 @@
  * only — §2.7 makes a member's "yes, go ahead" an input to a proposal, never a grant.
  */
 import { refuse } from './errors.ts';
+import { assertSeat } from './roles.ts';
 import { hashText } from './store.ts';
 import type { Ctx, FleetEvent, FleetState, Grant } from './types.ts';
 
@@ -29,9 +30,7 @@ export function currentTemplateHash(actionClass: string): string {
 }
 
 export function issueGrant(ctx: Ctx, args: IssueGrantArgs): Grant {
-  if (args.by !== 'organiser') {
-    refuse('not_the_human', 'spec §1.8/§2.7', `grants are held by humans; \`${args.by}\` cannot issue one`);
-  }
+  assertSeat(ctx, args.by, 'spec §1.8/§2.7');
   const isCross = args.actionClass.startsWith('promote.cross');
   if (args.kind === 'allow_always') {
     if (!args.scope || args.scope.trim() === '') {
@@ -64,9 +63,7 @@ export function issueGrant(ctx: Ctx, args: IssueGrantArgs): Grant {
  * at the caller would leave this file's own tests able to un-gate it, so the rule lives here.
  */
 export function revokeGrant(ctx: Ctx, grantId: string, by: string): void {
-  if (by !== 'organiser') {
-    refuse('not_the_human', 'spec §1.8/§2.7', `grants are revoked by the human who holds them; \`${by}\` cannot revoke one`);
-  }
+  assertSeat(ctx, by, 'spec §1.8/§2.7');
   const g = ctx.state.grants.get(grantId);
   if (!g || g.revokedAt !== undefined || g.consumedAt !== undefined) return;
   ctx.commit({ type: 'GrantRevoked', grantId, by, at: ctx.now() });
