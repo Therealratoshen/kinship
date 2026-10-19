@@ -146,6 +146,44 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
       `pack \`${pack.key}\` declares agent(s) ${squatters.map((r) => `\`${r}\``).join(', ')} whose name is a human seat held by ${org ? `org \`${org.key}\`` : 'the runtime'} — decideCard, issueGrant, revokeGrant and releaseShatter accept a seat, so an agent with that name would hold the veto over its own output`);
   }
 
+  // The sanction ladder (D37) — a community's own rungs, read once here. Two properties of it are not
+  // the community's to author: WHO performs a rung, and whether the bottom of the ladder has a way
+  // back. A rung an agent performs puts a sanction on the same side of §2.7 as a send (the fleet flags,
+  // the human acts); a last rung with no appeal is the dead end every declining forum is remembered by,
+  // and a pack that writes "removal" without writing "and here is how you come back" has not finished
+  // the thought it started.
+  const ladder = pack.sanctionLadder ?? [];
+  if (ladder.length === 1) {
+    refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37)',
+      `pack \`${pack.key}\` declares a sanction ladder of one rung (\`${ladder[0]!.rung}\`) — one step is a binary, not a graduated response, and the ladder exists because a commons that escalates in visible stages is the thing that survives its own disputes (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §1). Two rungs, or none`);
+  }
+  // The capabilities the fleet actually holds, normalised so `telegram|send` and `telegram | send` are
+  // one string. A rung that matches one has stopped describing a human act.
+  const norm = (t: string): string => t.replace(/\s+/g, ' ').trim().toLowerCase();
+  const toolHolders = new Map<string, string>();
+  for (const [role, agent] of Object.entries(pack.agents)) {
+    for (const tool of agent.tools) if (!toolHolders.has(norm(tool))) toolHolders.set(norm(tool), role);
+  }
+  ladder.forEach((rung, i) => {
+    if (!rung.memberTold) {
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.9.4)',
+        `pack \`${pack.key}\` sanctions at rung \`${rung.rung}\` without saying what the member is told — §2.9.4 already promises a flagged member is told, after the fact, with a reason, so a rung with no \`member_told\` is a sanction delivered in the dark`);
+    }
+    if (!humanSeats.includes(rung.by)) {
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.7)',
+        `pack \`${pack.key}\` gives sanction rung \`${rung.rung}\` to \`${rung.by || '(empty)'}\`, which is not a human seat (${humanSeats.join(', ')}) — the fleet flags and a person sanctions, so a rung that names an agent is refused rather than quietly re-pointed at the organiser`);
+    }
+    const holder = toolHolders.get(norm(rung.via));
+    if (holder !== undefined) {
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / invariant #1)',
+        `pack \`${pack.key}\` sanctions at rung \`${rung.rung}\` by \`${rung.via}\`, which agent \`${holder}\` declares as a tool — a rung the fleet can execute is not a ladder, it is a moderation lane wearing a document, and invariant #1 says the capability is removed from the tool list rather than denied at runtime`);
+    }
+    if (i === ladder.length - 1 && !rung.appeal) {
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.9.4)',
+        `pack \`${pack.key}\` ends its sanction ladder at \`${rung.rung}\` and names no appeal — the last rung is exactly the one a member needs a route back from, and the pack's own §2.9.4 says a flag re-enters the organiser queue rather than closing the door`);
+    }
+  });
+
   const autonomyCeiling: Record<string, Autonomy> = { ...(org?.autonomyCeiling ?? {}) };
   for (const [cls, level] of Object.entries(autonomyCeiling)) {
     provenance.push({

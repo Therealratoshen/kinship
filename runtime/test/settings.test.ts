@@ -255,3 +255,95 @@ test('settings replay identically — the artefact is a fold of the log plus the
   const replayed = Fleet.replay(fleet.events, {}, fleet.pack);
   assert.deepEqual(replayed.settings(), fleet.settings());
 });
+
+// --- the sanction ladder (DECISIONS.md D37) ---------------------------------------------------
+// A pack may write down the rungs its community climbs before a member is gone. The runtime reads
+// that list once, at resolution, for two properties: a rung is an act a **human seat** performs, and no
+// rung may name a tool the fleet holds. Both are refusals rather than warnings because the alternative
+// is the same in each direction — a fleet that sanctions, or a norms document that lies about who does.
+
+const RUNG_NUDGE = { rung: 'nudge', by: 'organiser', memberTold: 'a reminder of the rule in the thread', via: 'organiser-in-channel' };
+const RUNG_REMOVAL = { rung: 'removal', by: 'organiser', memberTold: 'that you were removed, and how to appeal', via: 'host-ui', appeal: 'the flag re-enters the organiser queue' };
+const LADDER = [RUNG_NUDGE, RUNG_REMOVAL];
+
+test('a ladder rung whose `by` is an agent role refuses to resolve — the fleet may not sanction (D37)', () => {
+  const pack = { ...packWith({}), sanctionLadder: [RUNG_NUDGE, { ...RUNG_REMOVAL, by: 'moderator' }] };
+  assert.throws(() => resolve({ pack }), (e: unknown) => {
+    const msg = String(e);
+    assert.match(msg, /pack_invalid/);
+    assert.match(msg, /removal/, 'names the rung, so the fix is not a hunt through the file');
+    assert.match(msg, /moderator/, 'names the actor it rejected');
+    assert.match(msg, /organiser/, 'names the seat that is allowed');
+    assert.match(msg, /seat/, 'and the rule it broke (§2.7)');
+    return true;
+  });
+});
+
+test('a ladder that clears the seat rule resolves untouched — the gate is a gate, not a preference', () => {
+  const pack = { ...packWith({}), sanctionLadder: LADDER };
+  const r = resolve({ pack });
+  assert.equal(r.orgKey, null, 'a well-formed ladder changes nothing about the rest of resolution');
+});
+
+test('the last rung of a ladder names the way back in, or the ladder refuses to resolve (D37)', () => {
+  const pack = { ...packWith({}), sanctionLadder: [RUNG_NUDGE, { ...RUNG_REMOVAL, appeal: '' }] };
+  assert.throws(() => resolve({ pack }), (e: unknown) => {
+    const msg = String(e);
+    assert.match(msg, /pack_invalid/);
+    assert.match(msg, /removal/, 'names the rung at the end of the ladder');
+    assert.match(msg, /appeal/, 'and the thing it is missing');
+    return true;
+  }, 'a sanction with no stated way back is the failure mode every dying community forum has, and this pack exists to not be that');
+});
+
+test('a rung whose `via` is a tool the fleet declares refuses to resolve — the ladder is not a lane (D37)', () => {
+  // The reachability half, and the one a reader of a YAML file cannot see: `via: telegram | send` looks
+  // like prose in a block nobody executes, and it is the same string the engagement agent holds as a
+  // write path. Two doors check it because the failure is invisible in the file itself.
+  const pack = {
+    ...packWith({}),
+    agents: { engagement: { role: 'engagement', tools: ['telegram | send'], autonomyByClass: { 'commit.channel-post': 'draft' as const } } },
+    sanctionLadder: [RUNG_NUDGE, { ...RUNG_REMOVAL, via: 'telegram | send' }],
+  };
+  assert.throws(() => resolve({ pack }), (e: unknown) => {
+    const msg = String(e);
+    assert.match(msg, /pack_invalid/);
+    assert.match(msg, /removal/, 'names the rung');
+    assert.match(msg, /engagement/, 'names the agent that holds the tool');
+    assert.match(msg, /telegram\s*\|\s*send/, 'and the tool, so the fix is obvious from the message alone');
+    return true;
+  });
+});
+
+test('a ladder with one rung refuses to resolve — one step is a binary, not a graduated response (D37)', () => {
+  // Ostrom's fourth design principle for long-surviving commons is a *graduated* response, and the
+  // research file that led here (§2 of COMMUNITY-GOVERNANCE-PATTERNS) found this pack deliberately
+  // had none. A one-rung ladder is that gap with a block around it, so the shape check counts.
+  const pack = { ...packWith({}), sanctionLadder: [{ ...RUNG_REMOVAL }] };
+  assert.throws(() => resolve({ pack }), (e: unknown) => {
+    const msg = String(e);
+    assert.match(msg, /pack_invalid/);
+    assert.match(msg, /rung/, 'it says what is short');
+    return true;
+  });
+});
+
+test('a rung that does not say what the member is told refuses to resolve (D37)', () => {
+  const pack = { ...packWith({}), sanctionLadder: [{ ...RUNG_NUDGE, memberTold: '' }, RUNG_REMOVAL] };
+  assert.throws(() => resolve({ pack }), (e: unknown) => {
+    const msg = String(e);
+    assert.match(msg, /pack_invalid/);
+    assert.match(msg, /nudge/);
+    assert.match(msg, /told|member_told/, 'and names the missing field, because "the member is told" is the difference between a sanction and a disappearance');
+    return true;
+  });
+});
+
+test('POSITIVE CONTROL: a rung naming a capability the fleet does not declare is legal — the gate is reachability, not vocabulary (D37)', () => {
+  const pack = {
+    ...packWith({}),
+    sanctionLadder: [RUNG_NUDGE, { ...RUNG_REMOVAL, via: 'discord | ban' }],
+  };
+  assert.doesNotThrow(() => resolve({ pack }),
+    '`ban` is a word the ladder is allowed to contain — no agent holds it, so the rung describes a human act in the platform\'s own UI, and forbidding the word would forbid a community from writing down what its organiser actually does');
+});
