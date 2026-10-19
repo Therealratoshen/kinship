@@ -162,6 +162,25 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    **53 → 54**. Paperclip's exclusive card checkout was **declined, not forgotten**: `by` is still a bare string and
    **Q12** is unratified, so the lock has no identity to key on. Nothing here starts phase 1 — **D9** is still the only
    signal, and the runtime still sends nothing. Recount with `node runtime/tour.ts --json`.)*
+   *(2026-10-19 sixth addendum, still not a rewrite: **227 tests across 25 files** on the owner's "I need some
+   company setting and other setting included", resolved by one question rather than a guess — "company" = an
+   **org tier above the pack** (`orgs/<key>.yaml`, spec §1.10 / PRD **FR-1.18**, **D35**), "other settings" =
+   **roles**: one closed human seat set plus a declared agent roster (spec §1.11 / PRD **FR-1.19**, **D36**).
+   The finding that shaped the tier is not the feature, it is the limit: under this repo's own refuse-not-clamp
+   rule an operator **cannot change a community's number** — an org may only reject a pack whose declared value
+   sits below its floor, or fill a blank the pack left. That is the difference between an open-source control
+   plane and a hosted product with extra steps, so the limit shipped written into the requirement. The seat half
+   replaced four `!== 'organiser'` literals with one set and a build failure if a literal returns; its size stays
+   **Q12**'s, which is why a second seat is refused naming the question instead of being half-supported. A third
+   read side, `Fleet.settings()`, makes "which file put this number in force?" an artefact. Guarantees
+   **15 → 19**, scripts **41 → 52**, validator ids **54 → 58** — and the id list is not contiguous: `PKG-49/50/51`
+   never existed anywhere in the repo, so the count is true while the numbering implies a rule nobody wrote.
+   Three defects this pass found in its own footing, recorded rather than smoothed: a boolean strictness rule
+   shipped as `&&` where the direction is `||` (it would have clamped a disclosure-off pack up instead of
+   refusing it), `PKG-06`'s slug-vs-temp-dir trap making three shipped tamper tests pass on a rename error
+   rather than the invariant they named, and `FR-1.18` cited in the spec before the PRD row existed — the D33
+   class again. **D9** remains the only phase-1 signal; the event tier, budgets-as-floors, wildcards and card
+   checkout stay unbuilt. Recount with `node runtime/tour.ts --json`.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

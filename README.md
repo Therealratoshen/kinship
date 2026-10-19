@@ -54,9 +54,12 @@ Node ≥ 23. No npm. No build step.
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 29-case tamper-resistant contract test, plus `scripts/gates.mjs` — one
+- The validator and its 43-case tamper-resistant contract test (58 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
+- The tier above the pack (`orgs/kinshipai.yaml`) — org **floors** and an **autonomy ceiling** resolved org →
+  pack with **refuse, never clamp**: an operator can reject a pack that goes below a floor or fill a blank the
+  pack left, and cannot rewrite a number a community declared (spec §1.10 / PRD FR-1.18)
 
 **Gated behind shadow-mode measurement:**
 - Any channel transport (WhatsApp, Telegram, email, Discord)
@@ -66,7 +69,7 @@ The gating mechanism is real: every member-facing commit refuses with `no_transp
 
 ## The governance spec
 
-`spec/GOVERNANCE-SPEC-OUTLINE.md` is the publishable artifact. It covers the autonomy ladder, grant taxonomy, audit replay, event-lifecycle state machine, member protections, disclosure, stranger-input containment, shatter-guard, and cross-community promotion. Part 6 maps every spec rule to its runtime file and test.
+`spec/GOVERNANCE-SPEC-OUTLINE.md` is the publishable artifact. It covers the autonomy ladder, grant taxonomy, audit replay, event-lifecycle state machine, member protections, disclosure, stranger-input containment, shatter-guard, cross-community promotion, settings resolution across the org/pack tiers, and the human seat set. Part 6 maps every spec rule to its runtime file and test.
 
 ## For community operators
 

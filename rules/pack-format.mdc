@@ -1,6 +1,6 @@
 ---
 description: The pack directory shape and what the validator actually checks
-globs: packs/**, scripts/**
+globs: packs/**, scripts/**, orgs/**
 ---
 
 # Pack format
@@ -8,18 +8,38 @@ globs: packs/**, scripts/**
 Mirror of `research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §5 and `packs/kopdar-ops/`. Format
 donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
 
-1. **The directory is the API.**
+1. **The directory is the API — and a pack is not the top tier.**
 
        packs/<slug>/
          PACK.md              frontmatter: key, slug, version, bundled, license, manager,
                               agents[], requiredSkills[]; body: what it does, what it refuses
          .kinship.yaml        schema: kinship/v1 — autonomy_by_class, tools, guardrails,
-                              budgets, needs, attribution
+                              budgets, needs, attribution, `organisation:`
          agents/<role>/AGENTS.md   frontmatter: role, key, reports_to, skills
          skills/<name>/SKILL.md    frontmatter: key, used_by; body carries one **Assertion.**
 
+       orgs/<key>.yaml        schema: kinship-org/v1 — key, name, human_seats[], agent_roles[],
+                              floors (guardrails), autonomy_ceiling{}
+
    `AGENTS.md` (plural) is deliberate, not a typo of the donor's `AGENT.md`: it matches the
    AGENTS.md convention already used by coding agents (`research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` §5).
+
+   A pack names its org, and `loadPack` reads that org file — the only place either manifest is
+   read, and the reason `node:fs` is allowlisted for `pack.ts` alone in the boundary gate.
+   **Refuse, never clamp** (spec §1.10 / PRD **FR-1.18**, `DECISIONS.md` D35): the org may fill a
+   guardrail the pack left blank and may narrow an autonomy class, and it may not overwrite a value
+   the pack declared — a pack weaker than its org's floor fails the boot naming key, both numbers,
+   and the org. So a fork cannot go below its org, and an operator cannot quietly change a
+   community's number; both halves of that sentence are the product. Naming an org whose manifest is
+   absent also fails — booting floorless would silently drop every floor the operator thought they
+   were holding. `orgs/` and `packs/` are separate namespaces: a manifest is a bare org key, never
+   a pack key, and **PKG-58–61** hold the org shape in CI the same way the runtime holds it at boot.
+
+   The org's `human_seats` is the one closed set the four human-only acts consult — `decideCard`,
+   `issueGrant`, `revokeGrant`, `releaseShatter` (spec §1.11 / PRD **FR-1.19**, D36). Its shape is
+   product; its size is not built: more than one seat is refused naming **PRD §12-Q12**, and a pack
+   agent whose name collides with a seat is refused, because that is how an agent acquires the human
+   veto. `agent_roles` is reporting, not a whitelist.
 
 2. **Keys are namespaced and hierarchical.** `kinshipai/bundled/event-ops/kopdar` owns
    `…/kopdar/skills/<name>` and `…/kopdar/agents/<role>`. A skill whose key is not under its
@@ -55,7 +75,12 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
    machine and a pack gate that requires an install does not get run. New rules get a passing
    *and* a failing case in `validate-pack.test.mjs`; the tamper cases copy the pack into a temp
    directory, so a fixture edit that breaks an anchor fails the test instead of silently
-   skipping it.
+   skipping it. **A temp copy must live inside a folder named after the slug** — `PKG-06` compares
+   the directory name to `PACK.md`'s slug, so `mkdtempSync()` alone makes every tamper case fail on
+   an unrelated rule. That is how three shipped tests ended up asserting only `/pack_invalid/` and
+   passing on the rename error rather than the invariant they named; they now assert the rule id
+   (**PKG-24 / PKG-30 / PKG-48 / PKG-60**), and `runtime/test/pack.test.ts`'s `forkCopy()` is the
+   helper to reuse rather than re-deriving.
 
 7. **A pack that cannot boot honestly beats a pack that invents content.** Every `needs:` entry
    must be answered — `escalation_contact` and `member_notice_text` are unskippable. An empty

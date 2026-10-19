@@ -4,7 +4,7 @@ A **forkable example**, not a product. It is the reference shape for `kinship/v1
 event lifecycle, one approval queue, and a set of invariants a fork is not allowed to delete. Read
 [`PACK.md`](PACK.md) for what the squad does and why each refusal exists; this file is only the on-ramp.
 
-Everything below was run against this directory on 2026-10-18.
+Everything below was run against this directory on 2026-10-19.
 
 ## Try it without writing anything
 
@@ -14,7 +14,7 @@ From the **repo root**:
 node scripts/validate-pack.mjs packs/kopdar-ops   # shape gate: every PKG-* rule (recount: grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l)
 node runtime/tour.ts                              # drives THIS pack: drafts, you approve, it refuses to send
 node runtime/tour.ts --json                       # same, as a machine-readable contribution map
-cd runtime && node --test test/*.test.ts          # the semantics suite, incl. three tamper cases against this pack (count: `node runtime/tour.ts --json`)
+cd runtime && node --test test/*.test.ts          # the semantics suite, incl. five tamper cases against this pack (count: `node runtime/tour.ts --json`)
 ```
 
 The tour is the fastest way to see what the pack *is*: it boots this directory, produces a real approval card,
@@ -34,7 +34,7 @@ pack.example.yaml    superseded single-file shape; kept as a pointer (D17), read
 The directory *is* the forkable unit. A one-file YAML cannot carry per-agent instructions, per-skill
 assertions, or a namespaced key, which is why the flat example was retired the same day (**D17**).
 
-## Before you edit: the four things that are not yours to change
+## Before you edit: the five things that are not yours to change
 
 1. **`bundled: true` is ours.** It is the claim that the invariants in this directory are held by us. A
    community pack must not assert it, and a fork that keeps it while deleting what it guarantees is the exact
@@ -50,14 +50,35 @@ assertions, or a namespaced key, which is why the flat example was retired the s
 4. **`needs:` is an anti-spam gate, not a checklist.** Boot requires all eight answered; one unset and the
    runtime raises `need_unanswered` rather than inventing content. That invention is the failure mode that makes
    AI community tools feel like spam, so it is refused at boot instead of being logged as a warning.
+5. **This pack names an org, and the org sits above it** (`organisation: kinshipai` → `orgs/kinshipai.yaml`,
+   spec §1.10 / PRD **FR-1.18**, **D35**). Two consequences for a fork, in the order they bite:
+   **you may not go below its floors** — `member_message_cap_per_24h: 5` under a floor of `4` fails the boot
+   naming the key, both numbers, and the org, and it is *refused, not clamped*, because a system that quietly
+   sends 4 after you wrote 5 leaves your file disagreeing with the world (**PKG-60** in CI, `settings.ts` at
+   boot); and **the org file must exist** — pointing `organisation:` at a manifest that isn't there refuses too,
+   since booting floorless would drop every floor the operator thought they held (**PKG-58**). If you fork out
+   from under `kinshipai`, you do not inherit floors *and* lose the floor: write your own `orgs/<key>.yaml`
+   (orgs are separate namespaces from packs; a bare org key is never a pack key) or declare no `organisation:`
+   at all and become your own top tier. The seat set is the other half of that file: `decideCard`, `issueGrant`,
+   `revokeGrant` and `releaseShatter` accept only a declared human seat, an org with a second seat is refused
+   naming **PRD §12-Q12** (delegation is not built, and a fork must not build it sideways), and an *agent*
+   named `organiser` is refused as a seat collision — that is how an agent would otherwise acquire the human
+   veto over its own output (**FR-1.19**, **D36**).
+
+   One contributor hazard while testing any of this: a temp copy of this directory must stay inside a folder
+   named `kopdar-ops`, because **PKG-06** compares the directory name to the slug. Copy it into a bare
+   `mkdtempSync()` path and every tamper case fails on the rename, not the rule — which is how three shipped
+   tests were passing for the wrong reason until 2026-10-19; they assert the `PKG-*` id now.
 
 ## Forking it
 
 1. Copy the directory, then change `key:` in `.kinship.yaml` to your own namespaced key
    (`<you>/<lane>/<slug>`) and set `bundled: false`. The key is what makes the attribution trail
    (`attribution.fork_chain`) addressable — reputation, not revenue (**D5**).
-2. Keep the guardrail keys and the `defaults: deny` line. Change *values* only inside their bounds; if you think
-   a bound is wrong, open an issue arguing for it rather than editing the floor.
+2. Keep the guardrail keys and the `defaults: deny` line. Change *values* only inside their bounds **and at or
+   above your org's floors** — a bound is the validator's, a floor is the org's, and breaching either is a pack
+   that refuses to boot rather than a warning. If you think a bound is wrong, open an issue arguing for it rather
+   than editing the floor.
 3. Answer the eight `needs` with your community's real names, channels, and escalation contact.
    `escalation_contact` is load-bearing: `escalate.to_human` has no target without it, and
    `member_notice_text` is the disclosure line members are told, in both languages.

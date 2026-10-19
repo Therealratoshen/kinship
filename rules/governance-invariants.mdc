@@ -1,11 +1,11 @@
 ---
 description: The governance invariants Kinship will not trade away
-globs: spec/**, packs/**/.kinship.yaml, packs/**/PACK.md, pilots/**
+globs: spec/**, orgs/**, packs/**/.kinship.yaml, packs/**/PACK.md, pilots/**
 ---
 
 # Governance invariants
 
-Derive from `spec/GOVERNANCE-SPEC-OUTLINE.md` §1.1–1.9 and §2.7–2.8. If this file and the
+Derive from `spec/GOVERNANCE-SPEC-OUTLINE.md` §1.1–1.11 and §2.7–2.8. If this file and the
 spec disagree, the spec wins and this file gets corrected in the same change.
 
 1. **Autonomy is per action class, never per agent.** An agent may be `draft` for
@@ -45,3 +45,19 @@ spec disagree, the spec wins and this file gets corrected in the same change.
 9. **The shatter path is defined before it is needed:** a member complaint freezes the lane to
    draft and logs it (spec §2.6). Every claim of follow-up requires a persisted monitor row;
    "I'll follow up" with no row is a ghost watcher and is rejected.
+
+10. **Settings resolve org → pack, and a higher tier refuses rather than overwrites**
+    (spec §1.10 / PRD **FR-1.18**, D35). An org may fill a guardrail the pack left blank and may
+    narrow an autonomy class; it may **not** replace a value the pack declared, and it may not
+    declare `never` — absence is the pack's to declare, per invariant 2. A pack weaker than its
+    org's floor fails the boot naming the key, both numbers and the org. The consequence is a
+    feature, not a limitation: an operator cannot quietly change a community's number.
+
+11. **The human-only acts consult one declared seat set, not a name** (spec §1.11 / PRD
+    **FR-1.19**, D36): `decideCard`, `issueGrant`, `revokeGrant`, `releaseShatter`. Do not add a
+    fifth `=== 'organiser'` comparison — call `assertSeat`; a test fails the build if a literal
+    returns. Two things are **not** actors and must never be seat-checked: a shatter complainant
+    (a member's complaint is not an act, and gate-checking it turns a governance system into a
+    silencer) and `on_behalf_of` (answerability is not authority; `'unattributable'` is legal).
+    An org with a second seat is refused naming PRD §12-Q12 — the shape is built, delegation is
+    the owner's unanswered question, and a fork must not answer it sideways.

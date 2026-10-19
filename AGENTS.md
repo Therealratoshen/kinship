@@ -6,12 +6,13 @@
 
 An open-source, self-hosted **supervised** fleet that runs the operational work of a
 community — event lifecycle, reminders, recaps — while a named human holds approval and veto
-over anything member-facing. The fleet proposes. The organiser approves. Every action is
+over anything member-facing. The fleet proposes. A **human seat** approves, and while PRD §12-Q12
+(delegation) is unratified the org declares exactly one: `organiser`. Every action is
 logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(182 tests across 22 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
+(227 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 
@@ -42,6 +43,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 | `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — read before touching `packs/` or `scripts/` |
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
 | `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
+| `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec §1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
 | `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
 | `SECURITY.md` | How to report a vulnerability. Not a public issue. |
