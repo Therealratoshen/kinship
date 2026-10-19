@@ -293,12 +293,16 @@ export function validatePack(dir, opts = {}) {
   })();
   const machRoles = agentBlocks.map((o) => o.l.replace(/:$/, ''));
   const allClassNames = [];
+  // Every tool the fleet may actually execute, kept for the sanction-ladder gate (PKG-63) below: a
+  // rung is only unreachable if nothing in this list can carry it out.
+  const fleetTools = [];
   for (const r of roles) if (!machRoles.includes(r)) add('PKG-28', `agent \`${r}\` has prose instructions but no permissions block in .kinship.yaml`);
   for (const { l, i, indent } of agentBlocks) {
     const role = l.replace(/:$/, '');
     const raw = block(ml, i, indent);
     const body = raw.map((o) => o.text.trim());
     const tools = body.filter((t) => t.startsWith('- ') && t.includes('|')).map((t) => t.slice(2).split('|').map((s) => s.trim()));
+    for (const [channel, action] of tools) fleetTools.push({ role, tool: `${channel} | ${action}` });
     for (const [channel, action] of tools) {
       if (FORBIDDEN_ACTIONS.has(action)) add('PKG-29', `agent \`${role}\` declares \`${channel} | ${action}\` — that capability must be absent from a bundled pack, not denied at runtime`);
       for (const f of FORBIDDEN_CHANNEL_ACTION) if (channel === f.channel && action === f.action) add('PKG-30', `agent \`${role}\` declares \`${channel} | ${action}\`: ${f.rule}`);
@@ -393,6 +397,10 @@ export function validatePack(dir, opts = {}) {
   const orgRef = orgRefRaw === null || orgRefRaw === '' || orgRefRaw === 'null' ? null : orgRefRaw;
   let orgPath = null;
   let orgText = null;
+  // The human seat set, hoisted so the sanction-ladder gate below can read it. `null` means there is
+  // no org tier (or it names no seats), in which case the seat is the one the runtime has always
+  // gated on — see `runtime/src/roles.ts`.
+  let orgSeats = null;
   if (orgRef === null) {
     notices.push(`PKG-N4  no \`organisation:\` — this pack is its own top tier, so NO org floor was applied to it and no org holds its member protections. Legal for an unaffiliated fork; a gap for a bundled pack`);
   } else {
@@ -409,6 +417,7 @@ export function validatePack(dir, opts = {}) {
 
       // --- PKG-59: the seats and the roster -----------------------------------------------------
       const seats = machList(orgText, 'human_seats');
+      orgSeats = seats && seats.length ? seats : null;
       if (seats === null) add('PKG-59', `${orgPath} declares no \`human_seats:\` — spec §2.7 puts approval and veto with a named human, and an org with no seat is an unattended fleet`);
       else if (seats.length === 0) add('PKG-59', `${orgPath} has an empty \`human_seats:\` — same failure in the other direction: a list that names nobody`);
       else if (seats.length > 1) add('PKG-59', `${orgPath} declares ${seats.length} human seats (${seats.join(', ')}) and only one is supported — a second seat is delegation, which is PRD §12-Q12, the owner's open question; until it is answered the runtime has no delegation path to gate`);
@@ -459,6 +468,84 @@ export function validatePack(dir, opts = {}) {
         else if (val === 'never') add('PKG-61', `autonomy_ceiling \`${cls}\` is \`never\` — \`never\` means the tool is ABSENT from the pack and a reviewer greps for it (invariant #1); a central \`never\` would be a denial wearing absence's clothes, so absence stays the pack's to declare`);
       }
     }
+  }
+
+  // --- 8b. the sanction ladder (DECISIONS.md D37) ----------------------------------------------------
+  // A community may write down the rungs a member climbs before they are gone. The block is optional —
+  // a community that does not moderate has no rungs to name, and nothing here may hand it a ladder it
+  // did not write — and where it exists, two gates hold, opposite in direction, which is why they are
+  // two PKG ids and not one:
+  //
+  //   PKG-62  the ladder is a PROMISE the community makes to its members, so it is read back as one: at
+  //           least two rungs (one step is a binary, not graduated response), every rung names a human
+  //           seat as its actor and says what the member is told, and the bottom rung names the way
+  //           back in (spec §2.9.4). A sanction delivered in the dark is a rumour, not a process.
+  //   PKG-63  the ladder is not a LANE: a rung's `via` may not name a tool some agent declares under
+  //           `tools:`. Invariant #1 read from the other side — a capability the fleet can execute lives
+  //           in the tools list where a reviewer can grep it, so a rung the fleet can execute is a
+  //           moderation lane wearing a community document.
+  //
+  // The reachability check covers exactly the field the runtime reads (`via`) and no other spelling of
+  // it, because that is the field that can mean something. Reading strictness — a rung that invents a
+  // key, a line that is not `key: value`, a rung with no name — belongs to `runtime/src/pack.ts`'s parse
+  // gate and is deliberately NOT duplicated here: `loadPack` runs this script first, so a validator that
+  // also refused an unreadable line would leave the parser's refusal unable to ever fire, which is the
+  // check-that-cannot-fail class this repo keeps recording (D24, D28, D29). Nothing is quietly dropped:
+  // the line the validator declines to judge, the parser refuses.
+  // The same rules are enforced again at boot in `runtime/src/settings.ts`: CI door and boot door, both
+  // tested, exactly as the org tier is gated twice.
+  const ladderIdxs = ml.reduce((acc, l, i) => (/^sanction_ladder:/.test(l) ? [...acc, i] : acc), []);
+  if (ladderIdxs.length > 1) {
+    add('PKG-62', `\`sanction_ladder:\` is written ${ladderIdxs.length} times (lines ${ladderIdxs.map((i) => i + 1).join(', ')}) — a second block is read by no one: a reader takes the first and ignores the rest, so a fork could ship a ladder no check ever saw. One file may not disagree with itself`);
+  }
+  if (ladderIdxs.length > 0) {
+    // The seat set comes from the org the pack names; with no org tier the only seat is the one the
+    // runtime has always gated on (`runtime/src/roles.ts`, DEFAULT_HUMAN_SEATS).
+    const seats = orgSeats ?? ['organiser'];
+    const rungs = [];
+    let current = null;
+    for (const entry of block(ml, ladderIdxs[0], 0)) {
+      const t = entry.text.trim();
+      if (!t) continue;
+      if (t === '-' || t.startsWith('- ')) { current = {}; rungs.push(current); if (t === '-') continue; }
+      const kv = /^-?\s*([A-Za-z_][\w-]*):\s*(.*)$/.exec(t);
+      // A line this gate cannot read is NOT this gate's judgement to make, and it is not quietly dropped
+      // either: `runtime/src/pack.ts` refuses the boot on it (`ladder parse gate`). Reading strictness
+      // belongs to the single parser, because a second reader with its own idea of "unreadable" is how
+      // one of the two ends up a check that can never fire.
+      if (!kv || current === null) continue;
+      current[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
+    }
+    // Only a rung that names itself can be judged: an entry with no `rung:` is the parse gate's refusal.
+    const named = rungs.filter((r) => typeof r.rung === 'string' && r.rung !== '');
+    if (named.length === 0) {
+      add('PKG-62', '`sanction_ladder:` is declared with no rung under it — the key tells a reader this community has a moderation policy and the empty list says it has none. Either write the rungs or delete the key');
+    }
+    if (named.length === 1) {
+      add('PKG-62', `ladder of one rung (\`${named[0].rung}\`) — one step is a binary, not a graduated response: the finding this pack is built from is that effective communities escalate, and the sequence is nudge → private word → public correction → removal (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §1). Two rungs, or none`);
+    }
+    const norm = (t) => String(t).replace(/\s+/g, ' ').trim().toLowerCase();
+    const holders = new Map();
+    for (const { role, tool } of fleetTools) {
+      const k = norm(tool);
+      if (!holders.has(k)) holders.set(k, []);
+      holders.get(k).push(role);
+    }
+    named.forEach((rung, i) => {
+      if (!rung.member_told) {
+        add('PKG-62', `rung \`${rung.rung}\` sanctions without saying what the member is told (spec §2.9.4) — the member is the subject of this ladder, not the audience of a sanction delivered in the dark`);
+      }
+      if (!seats.includes(rung.by)) {
+        add('PKG-62', `rung \`${rung.rung}\` gives the sanction to \`${rung.by ?? '(absent)'}\`, which is not a human seat (${seats.join(', ')}) — the fleet flags and a person sanctions (§2.7); an agent that removes a member is the failure mode this pack exists to refuse`);
+      }
+      const hit = holders.get(norm(rung.via ?? ''));
+      if (hit) {
+        add('PKG-63', `rung \`${rung.rung}\` is carried by \`${rung.via}\`, which ${hit.map((r) => `agent \`${r}\``).join(' and ')} declare as a tool — a rung the fleet can execute is not a ladder, it is an autonomous moderation lane (invariant #1). Drop the tool or hand the rung to the human's own action`);
+      }
+      if (i === named.length - 1 && !rung.appeal) {
+        add('PKG-62', `the ladder ends at \`${rung.rung}\` and names no appeal — the bottom of a sanction ladder is exactly where the route back in has to be written down (spec §2.9.4); a rung with no way back is an ejection, not a sanction`);
+      }
+    });
   }
 
   // --- 9. structure, not state ------------------------------------------------------------

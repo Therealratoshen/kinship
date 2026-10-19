@@ -400,3 +400,91 @@ test('a pack that names no organisation is legal and is told so in a notice, not
     assert.equal(r.checked.org, null);
     assert.ok(r.notices.some((n) => /organisation/i.test(n)), 'the gate says out loud that no org floor was applied, so a green run is not read as one');
   }));
+
+// --- the sanction ladder (DECISIONS.md D37) ---------------------------------------------------
+// A pack may write down the rungs its community climbs before a member is gone. Two rules, and the split
+// between them is the whole point: **PKG-62** is the community's own promise checked back on it (every
+// rung names a human, says what the member is told, the bottom rung names the way back), **PKG-63** is
+// the fleet kept off the ladder entirely (a rung may not name a tool some agent declares).
+//
+// An unknown key inside a rung is NOT checked here — that is `runtime/src/pack.ts`'s parse gate, and the
+// division is deliberate: a validator that ignores a line it does not understand would be the second
+// reader that quietly drops it, and `pack.test.ts` pins the door that refuses instead.
+
+test('a ladder rung handed to an agent fails the build — the fleet flags, a human sanctions (PKG-62)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), '  - rung: private-word\n    by: organiser', '  - rung: private-word\n    by: moderator');
+    const r = validatePack(dir);
+    const hit = r.errors.filter((e) => e.startsWith('PKG-62'));
+    assert.equal(hit.length, 1, `expected one ladder violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /private-word/, 'names the rung');
+    assert.match(hit[0], /moderator/, 'names the actor it rejected');
+  }));
+
+test('a ladder whose last rung names no appeal fails the build (PKG-62)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), "    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec §2.9.4)'", '');
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-62') && /removal/.test(e)), 'the bottom of the ladder is where a member needs the route back');
+  }));
+
+test('a `sanction_ladder:` key that names no rung fails — an empty ladder is a policy written down as nothing (PKG-62)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, text.replace(/sanction_ladder:[\s\S]*\nattribution:/, 'sanction_ladder: []\n\nattribution:'));
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-62') && /no rung/i.test(e)),
+      'the key is present, so a reader is told a ladder exists; the list is empty, so it names none of it');
+  }));
+
+test('a ladder of one rung fails the build — one step is a binary, not a graduated response (PKG-62)', () =>
+  inCopy((dir) => {
+    // Written with the appeal present, so the ONLY rule that can fire here is the count. A test that
+    // asserts `PKG-62` while a different PKG-62 branch is the one that fired is the D24 class.
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    assert.match(text, /sanction_ladder:/, 'fixture drifted: the pack no longer declares a ladder');
+    writeFileSync(f, text.replace(/sanction_ladder:[\s\S]*\nattribution:/, 'sanction_ladder:\n  - rung: only-step\n    by: organiser\n    member_told: x\n    via: y\n    appeal: z\n\nattribution:'));
+    const r = validatePack(dir);
+    const hit = r.errors.filter((e) => e.startsWith('PKG-62'));
+    assert.equal(hit.length, 1, `expected the count rule alone, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /only-step/);
+  }));
+
+test('a rung whose `via` is a tool the fleet declares fails the build — the ladder is not a lane (PKG-63)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), "  - rung: nudge\n    by: organiser\n    member_told: 'a reminder of the rule in the thread, naming the rule and not the person'\n    via: organiser-in-channel", "  - rung: nudge\n    by: organiser\n    member_told: 'a reminder of the rule in the thread'\n    via: telegram | send");
+    const r = validatePack(dir);
+    const hit = r.errors.filter((e) => e.startsWith('PKG-63'));
+    assert.equal(hit.length, 1, `expected one reachability violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /telegram\s*\|\s*send/);
+    assert.match(hit[0], /engagement/, 'names the agent that holds the tool, so the fix is one of two edits and both are visible');
+  }));
+
+test('POSITIVE CONTROL: a rung naming a capability nobody declares is legal — the gate is reachability, not vocabulary (PKG-63)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), '    via: host-ui', '    via: discord | ban');
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `a human's platform action that no agent holds must pass: ${r.errors.join('\n  ')}`);
+    assert.ok(!codes(r).includes('PKG-63'), 'forbidding the WORD would only stop a community writing down what its organiser does');
+  }));
+
+test('POSITIVE CONTROL: a pack with no sanction ladder at all is legal and passes (D37)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, text.replace(/sanction_ladder:[\s\S]*\nattribution:/, 'attribution:'));
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `absence is legal — a community that does not moderate has no rungs to name, and the runtime must not supply one: ${r.errors.join('\n  ')}`);
+  }));
+
+test('two `sanction_ladder:` blocks in one file fail the build — the file may not disagree with itself (PKG-62)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, `${text}\nsanction_ladder:\n  - rung: shadow-ladder\n    by: organiser\n    member_told: x\n    via: y\n    appeal: z\n`);
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-62') && /twice|second/i.test(e)),
+      'a hand-rolled parser reads the first block and ignores the second, so a fork could ship a ladder no check ever saw');
+  }));
