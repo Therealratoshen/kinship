@@ -54,17 +54,37 @@ const DISCLOSURE_EN = 'this message was sent by the automated assistant of AI Bu
 const REMINDER_ID = `Ingat ya besok kopdar!\n\n${DISCLOSURE_ID}`;
 const REMINDER_EN = `Reminder: kopdar tomorrow!\n\n${DISCLOSURE_EN}`;
 
-interface Observed { threw: boolean; code: string }
+interface Observed { threw: boolean; code: string; message: string }
 
 /** Run `fn`, capture whether it threw and the refusal code — a refusal is an outcome, not a crash. */
 function observe(fn: () => unknown): Observed {
   try {
     fn();
-    return { threw: false, code: '' };
+    return { threw: false, code: '', message: '' };
   } catch (e) {
     const err = e as { code?: string; message?: string };
-    return { threw: true, code: String(err.code ?? err.message ?? e) };
+    const raw = String(err.message ?? e);
+    return { threw: true, code: String(err.code ?? err.message ?? e), message: raw };
   }
+}
+
+/**
+ * A writable copy of the shipped pack, in a folder that keeps its slug.
+ *
+ * The naming is not cosmetic: PKG-06 requires the directory name to match `slug:`, so a copy dropped
+ * straight into a random temp folder refuses to boot *for that reason* — and a tamper demo would then
+ * show a refusal the mutation had nothing to do with. A guarantee that passes for the wrong reason is
+ * the failure class this repo keeps recording (D24, D28, D29), so the folder is named and each demo
+ * below asserts the rule it expects in the message.
+ */
+function tamperPack(mutate: (yaml: string) => string): { obs: Observed; cleanup: () => void } {
+  const tmp = mkdtempSync(join(tmpdir(), 'kinship-tour-'));
+  const dir = join(tmp, 'kopdar-ops');
+  cpSync(PACK_DIR, dir, { recursive: true });
+  const yamlPath = join(dir, '.kinship.yaml');
+  writeFileSync(yamlPath, mutate(readFileSync(yamlPath, 'utf8')));
+  const obs = observe(() => loadPack(dir));
+  return { obs, cleanup: () => rmSync(tmp, { recursive: true, force: true }) };
 }
 
 // --- the tour: drive the real pack, record what it refuses ------------------------------------------
@@ -104,18 +124,22 @@ function runStory() {
     textId: 'promo partner', textEn: 'partner promo',
   }));
 
-  // 5) A fork that adds `whatsapp | send` cannot even boot — the ban lives in the toolset, gated at boot (D11/D13/D17).
-  let tamper: Observed = { threw: false, code: '' };
-  const tmp = mkdtempSync(join(tmpdir(), 'kinship-tour-'));
-  try {
-    cpSync(PACK_DIR, tmp, { recursive: true });
-    const yamlPath = join(tmp, '.kinship.yaml');
-    const yaml = readFileSync(yamlPath, 'utf8');
-    writeFileSync(yamlPath, yaml.replace('      - whatsapp | draft', '      - whatsapp | draft\n      - whatsapp | send'));
-    tamper = observe(() => loadPack(tmp));
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
+  // 5) A fork cannot widen a protection it did not write. Two shapes of the same rule, both through the
+  //    real boot gate on a slug-named copy: a tool the pack may not declare (D11), and a member number
+  //    the org holds a floor on (D35). The folder naming matters — see `tamperPack`.
+  const whatsappFork = tamperPack((yaml) => yaml.replace('      - whatsapp | draft', '      - whatsapp | draft\n      - whatsapp | send'));
+  const floorFork = tamperPack((yaml) => yaml.replace('member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 5'));
+  const tamper = whatsappFork.obs;
+  const orgFloor = floorFork.obs;
+
+  // 5b) A pack cannot hand an agent the human's name. The seat set is closed (D36), so an agent called
+  //     `organiser` would hold the veto over its own output — refused at resolution, before any state.
+  const seatFork = observe(() => new Fleet({
+    ...pack,
+    agents: { ...pack.agents, organiser: { role: 'organiser', tools: [], autonomyByClass: { 'commit.channel-post': 'opt-in-auto' as const } } },
+  }, ANSWERS, DAY));
+  whatsappFork.cleanup();
+  floorFork.cleanup();
 
   // 6) The runner (§1.6): a run owns its own meter, stops at the pack's cap, keeps its partial results.
   //    The cap is tightened to 3 for the demo — the real pack says 15; the rule being shown is the same.
@@ -156,8 +180,21 @@ function runStory() {
   //    cannot show is the approved card whose send is still sitting with a human (D21).
   const inbox = healthFleet.inbox();
 
+  // 10) The tier stack (D35/D36): what is actually in force, and which file put it there. The same log
+  //     read as health/inbox — it appends nothing, dates itself, and replays identically — and the only
+  //     one that answers "is this number the pack's or the org's?", which is the question a member
+  //     protection has to be able to answer (§1.2).
+  const eventsBeforeSettings = fleet.state.events.length;
+  const settings = fleet.settings();
+  const settingsIsPureRead = fleet.state.events.length === eventsBeforeSettings
+    && JSON.stringify(fleet.settings()) === JSON.stringify(settings);
+
+  // The org floor the pack beat, read out of the provenance row rather than restated here.
+  const capRow = settings.provenance.find((p) => p.key === 'member_message_cap_per_24h');
+
   return {
-    pack, bootGate, draft, commit, cross, tamper, runner, leak, health, inbox,
+    pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, leak, health, inbox,
+    settings, settingsIsPureRead, capRow,
     mainFleetHealth: fleet.health(),
     mainFleetInbox: fleet.inbox(),
     timeline: fleet.auditTimeline(),
@@ -195,7 +232,15 @@ function guarantees(s: ReturnType<typeof runStory>) {
     member_action_starts_as_draft: s.draft.disposition === 'card',
     commit_refuses_no_transport: s.commit.threw && /no_transport/.test(s.commit.code),
     cross_promo_needs_partner_policy: s.cross.threw && /class_unavailable/.test(s.cross.code),
-    fork_cannot_add_whatsapp_send: s.tamper.threw && /pack_invalid/.test(s.tamper.code),
+    // Both refusals name the rule that fired, not merely `pack_invalid`: with a random temp folder
+    // name PKG-06 (path vs slug) would fail the boot on its own and this demo would bless nothing.
+    fork_cannot_add_whatsapp_send: s.tamper.threw && /PKG-30/.test(s.tamper.message),
+    fork_cannot_lower_an_org_floor: s.orgFloor.threw && /PKG-60/.test(s.orgFloor.message)
+      && /member_message_cap_per_24h/.test(s.orgFloor.message) && /refused, not clamped/.test(s.orgFloor.message),
+    pack_cannot_add_a_human_seat: s.seatFork.threw && /pack_invalid/.test(s.seatFork.code) && /seat collision/.test(s.seatFork.message),
+    org_floor_is_visible_in_the_effective_number: s.settings.guardrails.memberMessageCapPer24h === 2
+      && s.capRow?.source === 'pack' && /4/.test(s.capRow?.note ?? ''),
+    settings_report_is_a_pure_read: s.settingsIsPureRead,
     run_cap_truncates_and_keeps_partial: s.runner.truncated === true && s.runner.executed === 3 && s.runner.dropped === 2
       && s.runner.outcomes.every((o) => o.result !== 'refused'),
     partner_copy_cannot_carry_a_member_ref: s.leak.threw && /partner_data_leak/.test(s.leak.code),
@@ -252,7 +297,9 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
 
   hr('4. Governance refuses bad lanes and bad forks');
   console.log(`  cross-promo without partner_policy → ${s.cross.code || '(reachable!)'} — absent, not denied (spec §2.11)`);
-  console.log(`  fork adds 'whatsapp | send' → boot ${s.tamper.threw ? `refused: ${s.tamper.code}` : 'ACCEPTED (invariant broken!)'}`);
+  console.log(`  fork adds 'whatsapp | send' → boot ${s.tamper.threw ? `refused by ${/PKG-\d+/.exec(s.tamper.message)?.[0] ?? s.tamper.code}` : 'ACCEPTED (invariant broken!)'}`);
+  console.log(`  fork raises the member cap 2 → 5, above its org's floor of 4 → boot ${s.orgFloor.threw ? `refused by ${/PKG-\d+/.exec(s.orgFloor.message)?.[0] ?? s.orgFloor.code}: ${/refused, not clamped/.test(s.orgFloor.message) ? 'refused, not clamped' : '(said nothing about clamping)'}` : 'ACCEPTED (the org tier is decorative!)'}`);
+  console.log(`  pack names an agent after the human seat → ${s.seatFork.threw ? `refused: ${s.seatFork.code}` : 'ACCEPTED (an agent would hold the veto)'}`);
 
   hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
@@ -280,7 +327,19 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  member inputs: ${s.inbox.memberInputs.received} received, ${s.inbox.memberInputs.awaitingVerdict} awaiting a verdict, joinable: ${s.inbox.memberInputs.linkable} — ${s.inbox.memberInputs.note.slice(0, 58)}…`);
   console.log(`  ordering means waiting, not importance: ${s.inbox.limits.length} stated limits`);
 
-  hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
+  hr('9. The tier stack (spec §1.7, PRD FR-1.18) — what is in force, and which file put it there');
+  console.log(`  resolved from: ${s.settings.tiers.join(' -> ')} · org ${s.settings.orgKey ?? '(none — this pack is its own top tier)'}`);
+  for (const row of s.settings.provenance.filter((p) => p.tier === 'guardrail')) {
+    console.log(`  · ${row.key.padEnd(28)} ${String(row.effective).padEnd(5)} from ${row.source.padEnd(7)} ${row.note.slice(0, 60)}${row.note.length > 60 ? '…' : ''}`);
+  }
+  console.log(`  human seats: ${s.settings.humanSeats.join(', ')} — one, while PRD §12-Q12 (delegation) is the owner's unanswered question`);
+  console.log(`  agent roles the org recognises: ${s.settings.agentRoles.join(', ')}`);
+  console.log(`  ceilings that only narrow: ${Object.entries(s.settings.autonomyCeiling).map(([c, l]) => `${c}<=${l}`).join(' ') || 'none'}`);
+  console.log(`  a settings read that wrote to the log would be a fifth governing actor: ${s.settingsIsPureRead ? 'it appends nothing, and replays identical' : 'FAIL — it mutated state'}`);
+  console.log(`  what this tier cannot do: ${s.settings.limits.length} stated limits, incl. "the org cannot change a value a pack declared"`);
+
+  hr('Still prose (derived from `UNIMPLEMENTED_REFUSAL_CODES`, not restated)');
+  for (const code of Object.keys(UNIMPLEMENTED_REFUSAL_CODES)) console.log(`  ${code} — declared debt; see \`tour.ts --json\` .contributionMap.declaredDebt before opening a PR on it`);
 
   hr('The audit trail — every outcome above is a replayable log line');
   for (const line of s.timeline) console.log(`  ${line}`);
@@ -306,9 +365,20 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
     pack: {
       key: s.pack.key,
       schema: s.pack.schema,
+      organisation: s.pack.organisation,
       locale: s.pack.locale,
       needs: s.pack.needs,
       autonomyByClass: actionClasses(s.pack),
+    },
+    tierStack: {
+      whatItIs: 'runtime/src/settings.ts (`Fleet.settings()`, resolved once in the constructor) — the org -> pack resolution the spec names (§1.7 / PRD FR-1.18). `orgs/<key>.yaml` holds floors and an autonomy ceiling; the pack holds its own numbers; enforcement reads the RESOLVED values, never the raw pack.',
+      note: 'The org tier has exactly two powers, and the third it does not have is the design: it can REFUSE a pack whose declared value is weaker than its floor, and it can FILL a key the pack never wrote. It can never replace a number a pack declared — refuse, not clamp — so the effective value always appears in a file. Guardrail floors are validations (`pack_invalid`); ceilings are real narrowings (§1.7); `never` in an org ceiling is refused because absence is the pack\'s to declare (invariant #1); a seat set is an org declaration, size one while PRD §12-Q12 is unanswered.',
+      resolved: s.settings,
+      proof: {
+        fork_below_org_floor: s.orgFloor.threw ? s.orgFloor.message : 'ACCEPTED — the tier is decorative',
+        pack_agent_named_after_a_seat: s.seatFork.threw ? s.seatFork.message : 'ACCEPTED — an agent would hold the human veto',
+        settings_read_is_pure: s.settingsIsPureRead,
+      },
     },
     guarantees: g,
     fleetCondition: {
@@ -339,6 +409,8 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         { id: 'channel-transport', where: 'DECISIONS.md D21', note: 'Behind the shadow-mode gate (D9). Do NOT open a PR adding a transport — "phase 1 sends nothing" is the point.' },
         { id: 'whatsapp-send', where: 'DECISIONS.md D11/D13/D17', note: 'The validator refuses `whatsapp | send` at pack boot. Never add it.' },
         { id: 'host-adapter-inside-runtime', where: 'spec/HOST-CONTRACT.md (D33) · runtime/test/boundary.test.ts (D32)', note: 'An adapter — a provider SDK, a channel socket, a scheduler, a key — belongs in a sibling package (`adapters/<host>/`), never under `runtime/src`: the boundary gate fails the build on it there, on purpose. Do NOT open a PR adding one inside runtime/ before D9.' },
+        { id: 'second-human-seat', where: 'PRD §12-Q12 · runtime/src/roles.ts · orgs/*.yaml (`human_seats`)', note: 'The seat SHAPE is a set; the SIZE is one, and that is the owner\'s open question about delegation, not a runtime limitation to "fix" by adding a `delegate`. A second seat means deciding who can veto a member-facing send on someone else\'s behalf — a decision log entry before it is code.' },
+        { id: 'org-tier-clamp', where: 'runtime/src/settings.ts · spec §1.7 / PRD FR-1.18', note: 'A pack weaker than its org\'s floor is REFUSED, never silently rounded to the floor. Do NOT open a PR "simplifying" this into strictest-wins-with-a-warning: a value edited to 20 and enforced at 4 is a file that lies about the system it configures.' },
       ],
       readFirst: [
         'spec/GOVERNANCE-SPEC-OUTLINE.md — Part 6 maps every rule to its runtime file and holding test',
