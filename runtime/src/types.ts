@@ -192,6 +192,25 @@ export interface InputRecord {
 }
 
 // --- pack shape (parsed .kinship.yaml — see pack.ts) --------------------------------------------------------------
+/**
+ * One rung of the ladder a community climbs before a member is gone (`DECISIONS.md` D37, applied from
+ * `research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md` §5). **Declared, never executed**: `by` is a
+ * human seat, `via` describes the human act rather than naming a tool, and the final rung names the
+ * `appeal`. The runtime parses it so a fork cannot quietly widen it — it does not read it when deciding
+ * anything, because a fleet that can sanction is a moderation bot with a governance manual beside it.
+ */
+export interface SanctionRung {
+  rung: string;
+  /** The human seat that performs this rung. Never a declared agent role. */
+  by: string;
+  /** What the member is told at this rung — the difference between a sanction and a disappearance. */
+  memberTold: string;
+  /** How the rung is carried out, in prose (`host-ui`, `organiser-in-dm`). Not a `channel | action` tool. */
+  via: string;
+  /** Only meaningful on the last rung, and required there: the way back into the community. */
+  appeal?: string;
+}
+
 export interface PackedAgent {
   role: string;
   autonomyByClass: Record<string, Autonomy>;
@@ -234,6 +253,12 @@ export interface Packed {
    * having decided everything it carries, which is the conservative reading.
    */
   declared?: string[];
+  /**
+   * The community's sanction rungs, in order, when the pack wrote them down. `undefined` means the pack
+   * declared no ladder — which is legal (a community that does not moderate has no rungs to name) and is
+   * deliberately not a default ladder the runtime supplied on its behalf.
+   */
+  sanctionLadder?: SanctionRung[];
 }
 
 /** Answers to the `needs:` gate — supplied by the organiser at boot, never invented (§2.7). */
