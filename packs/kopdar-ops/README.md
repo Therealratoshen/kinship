@@ -25,7 +25,8 @@ and then refuses the commit with `no_transport` — because no channel transport
 
 ```
 PACK.md              frontmatter (key, bundled, agents[], requiredSkills) + the prose a forker needs
-.kinship.yaml        schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs
+.kinship.yaml        schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs,
+                     `sanction_ladder:` (optional; see "Your consequences, as data" below)
 agents/<role>/AGENTS.md   per-agent instructions — event-ops · engagement · moderator
 skills/<name>/SKILL.md    16 procedures, each with an assertion that fails the pack
 pack.example.yaml    superseded single-file shape; kept as a pointer (D17), read by nothing
@@ -100,6 +101,25 @@ the host that runs the model (`spec/HOST-CONTRACT.md` seam 1, **D33**); Kinship 
 comment or a markdown instruction too — fails the shape gate, and the message names the file, the line, and the
 *shape*, never the value, because a scanner that prints what it found is how a key reaches a public build log
 (**D34**).
+
+## Your consequences, as data: `sanction_ladder:`
+
+This pack states, in four rungs, what its community does when someone breaks a rule — `nudge → private-word →
+public-correction → removal` — and each rung names **who acts** (`by: organiser`, a seat from
+`orgs/kinshipai.yaml`'s `human_seats`) and **what the member is told**. The last rung names the way back in
+(`appeal:`). Semantics: spec **§2.12**; requirement: PRD **FR-5.11**; decision: `DECISIONS.md` **D37**.
+
+It is a *description*, not a capability. There is no `moderation.sanction` action class, no ban/mute/remove tool
+in any `tools:` list, and nothing in `runtime/` can climb a rung — it only reads the ladder to check the promise
+holds. `PKG-62` refuses a ladder that breaks its own shape (a rung handed to an agent instead of a seat, a rung
+with no `member_told`, a last rung with no appeal, a ladder of one rung, a second `sanction_ladder:` block in the
+same file). `PKG-63` refuses a rung whose `via:` matches a tool some agent here actually declares — a
+reachability gate, not a vocabulary ban: `via: discord | ban` passes for a fork whose organiser uses Discord's
+own controls, because forbidding the *word* would only stop a community describing what its humans do.
+
+**Deleting the whole key is legal** (D37): a community that does not moderate has no rungs to name, and the
+runtime will not supply a default ladder it never wrote. What is not yours to change is the boundary the key
+sits inside — the fleet flags, a person sanctions (invariant #1). Do not open a PR adding a sanction tool.
 
 ## What this pack does *not* prove
 

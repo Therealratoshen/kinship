@@ -12,7 +12,7 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(227 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
+(237 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 
@@ -22,7 +22,9 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
    starts at `draft`. An action class set to `never` must have no implementing tool to call —
    a reviewer must be able to grep the tool list and find nothing, not find a denied call.
    Escalation is per **action class**, never per agent, and only ever as far as the evidence
-   in the governance spec licenses.
+   in the governance spec licenses. A pack may now *describe* its sanctions (`sanction_ladder:`, D37 / spec
+   §2.12) and the fleet may still not carry one out: `PKG-63` refuses any rung whose `via:` names a tool some
+   agent declares, and there is no `moderate.sanction` class to escalate.
 2. **The control plane is the product; the runtime is a commodity.** Kinship owns the autonomy
    ladder, the event-lifecycle state machine, the grant taxonomy, identity disclosure,
    stranger-input containment, and the replayable audit trail. It does not own model routing,
@@ -40,7 +42,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 | File | What it governs |
 |---|---|
 | `rules/governance-invariants.mdc` | The autonomy ladder, grants, budgets, disclosure — read before touching `spec/` or a pack's `autonomy_by_class` |
-| `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — read before touching `packs/` or `scripts/` |
+| `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — including the optional `sanction_ladder:` (D37) — read before touching `packs/` or `scripts/` |
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
 | `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
 | `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec §1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
@@ -69,7 +71,8 @@ not printed here, because D28 single-sourced the gate list and left the rule cou
 `node runtime/tour.ts --json` is the suite's.
 
 The validator proves **structure**: it can show a moderator declares no mutating tool and
-that `whatsapp | send` is absent. The `runtime/` proves **semantics**: suppression beats a live
+that `whatsapp | send` is absent, and (D37) that no rung of a pack's declared `sanction_ladder:` is carried by a
+tool any agent declares. The `runtime/` proves **semantics**: suppression beats a live
 grant, an edited approval goes stale, a tampered fork-pack refuses to boot, replay reproduces
 state exactly. A third claim is now proven **as code shape**: `runtime/test/boundary.test.ts` fails the
 build if anything under `runtime/src` imports a package, a network builtin or global, or a dynamic

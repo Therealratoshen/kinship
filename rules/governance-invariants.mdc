@@ -61,3 +61,13 @@ spec disagree, the spec wins and this file gets corrected in the same change.
     silencer) and `on_behalf_of` (answerability is not authority; `'unattributable'` is legal).
     An org with a second seat is refused naming PRD §12-Q12 — the shape is built, delegation is
     the owner's unanswered question, and a fork must not answer it sideways.
+
+12. **A sanction ladder is data, and the fleet may not climb it** (spec §2.12 / PRD **FR-5.11**,
+    D37). A pack may declare `sanction_ladder:` — every rung names a **seat** from invariant 11, says
+    what the member is told, and the last rung names the appeal; two rungs or none, and **no default
+    ladder is supplied** because a community's norms are not the runtime's to invent. Do not add a
+    `moderate.sanction` action class, a ban/mute/remove tool, or a rung whose `via:` names a tool some
+    agent declares (`PKG-63` refuses that; the gate is **reachability, not vocabulary** — `via: discord | ban`
+    is legal while nobody declares it). Do not make reading strictness a CI rule either: unknown keys and
+    unreadable lines belong to `runtime/src/pack.ts` alone, because `loadPack` runs the validator first and
+    a duplicated refusal makes the parser's door unreachable — the D24 class.

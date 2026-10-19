@@ -14,7 +14,7 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
          PACK.md              frontmatter: key, slug, version, bundled, license, manager,
                               agents[], requiredSkills[]; body: what it does, what it refuses
          .kinship.yaml        schema: kinship/v1 — autonomy_by_class, tools, guardrails,
-                              budgets, needs, attribution, `organisation:`
+                              budgets, needs, attribution, `organisation:`, `sanction_ladder:`
          agents/<role>/AGENTS.md   frontmatter: role, key, reports_to, skills
          skills/<name>/SKILL.md    frontmatter: key, used_by; body carries one **Assertion.**
 
@@ -86,3 +86,33 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
    must be answered — `escalation_contact` and `member_notice_text` are unskippable. An empty
    `sponsor_list` is legal; a fabricated one is the failure mode that makes AI community tooling
    feel like spam.
+
+8. **`sanction_ladder:` is a community writing its consequences down — and it is data, not a lane**
+   (spec §2.12 / PRD **FR-5.11**, `DECISIONS.md` **D37**). Optional, and **absence is legal**: a
+   community that does not moderate has no rungs to name, and the runtime will not supply a default
+   ladder it never wrote.
+
+       sanction_ladder:
+         - rung: nudge
+           by: organiser                # must be one of the org's human_seats
+           member_told: '...'           # required on every rung
+           via: organiser-in-channel    # must NOT match a declared `tools:` entry
+         - rung: removal
+           by: organiser
+           member_told: '...'
+           via: host-ui
+           appeal: '...'                # required on the last rung only
+
+   The validator enforces **PKG-62** (a seat, a `member_told:`, a final `appeal:`, two rungs or
+   none, no duplicate `sanction_ladder:` block — a file may not disagree with itself, because a
+   reader takes the first block and ignores the rest) and **PKG-63**, which refuses a rung whose
+   `via:` matches a tool some agent in the same pack declares. **PKG-63 is a reachability gate,
+   not a vocabulary ban**: `via: discord | ban` passes while no agent declares that tool, because
+   forbidding the word would only stop a community describing what its organiser does with the
+   platform's own controls. Do not add a `moderate.sanction` class, a ban/mute/remove tool, or an
+   autonomy key for any of it — invariant #1 says the fleet flags and a person sanctions.
+
+   Reading strictness lives in `runtime/src/pack.ts` **alone**: an unknown key inside a rung, a line
+   this parser cannot read, and a rung with no name all refuse to boot. Keep it out of the validator,
+   because `loadPack` runs the validator first — a duplicated refusal there would make the parser's
+   own door unreachable, and a check that cannot fail is worth exactly nothing (the D24 class).

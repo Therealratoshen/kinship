@@ -181,6 +181,25 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    rather than the invariant they named, and `FR-1.18` cited in the spec before the PRD row existed — the D33
    class again. **D9** remains the only phase-1 signal; the event tier, budgets-as-floors, wildcards and card
    checkout stay unbuilt. Recount with `node runtime/tour.ts --json`.)*
+
+*(2026-10-19 seventh addendum, still not a rewrite: **237 tests across 25 files** on the owner's "how does
+   normal community work, and can you try to apply it in this system" followed by one word of authorization —
+   **"go"**. The research pass (`research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md`) found that real
+   communities sanction **graduatedly and mostly by themselves** (Ostrom), and that this repo had no way to
+   *record* such a sequence without turning it into an action class — so the only faithful place to put it was
+   as data: `sanction_ladder:` (spec §2.12 / PRD **FR-5.11**, **D37**). Four rungs in the seed pack, every rung
+   naming a human seat and what the member is told, the last naming the appeal; **PKG-62** checks the community's
+   own promise back on it and **PKG-63** checks the fleet cannot reach any rung — by *reachability, not
+   vocabulary*, so `via: discord | ban` passes while no agent declares that tool, which is the positive control
+   that keeps this a record rather than a censor. No `moderation.sanction` class, no tool, no autonomy level;
+   absence is legal and no default ladder ships. Guarantees **19 → 21**, scripts **52 → 60**
+   (`validate-pack.test.mjs` **43 → 51**), validator ids **60**. One defect this pass found by shipping it: my
+   first PKG-62 refused ladder lines it could not parse, which made `pack.ts`'s own refusal unreachable because
+   `loadPack` runs the validator first — the D24 class again, caught by the runtime suite before commit, and now
+   the reason the CI/boot/parser door division is written down in three files. The same research file's §5(a)
+   `moderation.outcome` and §5(c) a ninth `needs:` arrival question are **still the owner's calls and remain
+   unbuilt**; so does **D9**, which is still the only phase-1 signal. Recount with
+   `node runtime/tour.ts --json` and `node --test scripts/*.test.mjs`.)*
    (a recorded deviation: no bun on this machine; `bun test` is one command away when it exists). The plan's
    arithmetic is unchanged — owner hours stay ~0 and the 4–5 h/wk ceiling is untouched. What moved is risk,
    not schedule: build hours now precede the feeling-shift evidence, and if W5 returns KILL, the runtime is

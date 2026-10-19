@@ -54,9 +54,13 @@ Node ≥ 23. No npm. No build step.
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 43-case tamper-resistant contract test (58 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
+- The validator and its 51-case tamper-resistant contract test (60 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
+- The sanction ladder (`sanction_ladder:` in a pack, spec §2.12 / PRD FR-5.11, `DECISIONS.md` D37) — a community
+  may write down the graduated consequences it applies, each rung naming a human seat and what the member is
+  told, and the fleet still cannot carry one out: no `moderation.sanction` class, no tool, and `PKG-63` refuses
+  any rung whose `via:` matches a declared tool. Deleting the key is legal; a default ladder is never supplied
 - The tier above the pack (`orgs/kinshipai.yaml`) — org **floors** and an **autonomy ceiling** resolved org →
   pack with **refuse, never clamp**: an operator can reject a pack that goes below a floor or fill a blank the
   pack left, and cannot rewrite a number a community declared (spec §1.10 / PRD FR-1.18)

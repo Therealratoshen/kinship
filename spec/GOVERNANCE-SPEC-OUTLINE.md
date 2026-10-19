@@ -550,6 +550,46 @@ The pattern this closes is the classic unsupervised-fleet failure: a partner ask
 says yes once, and an always-grant quietly means every event, forever, to everyone — including the people
 who said stop. A grant that names no partner and no window is not generosity; it is an omission (§1.8).
 
+### 2.12 The sanction ladder: the community writes its rungs down, the fleet cannot climb them
+
+§2.9.4 promised the flagged member due process — told after the fact, with a reason, appealing into the same
+queue. §1 item 4 of `research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md` records what real communities
+actually do: they sanction **graduatedly** — a nudge, then a private word, then a public correction, then
+removal as a rare and regretted last step (Ostrom, graduated sanctions). Nothing in this spec so far let a
+community *state* that sequence, because the only vocabulary available was an action class, and an action
+class is a thing an agent can do. That is the wrong container: the sequence belongs to the community and the
+act belongs to a person. So the pack may now declare a ladder as **data**, and this section states the five
+properties an implementer can fail a test on (`DECISIONS.md` **D37**, PRD **FR-5.11**):
+
+- **A rung is not a capability.** `sanction_ladder:` lives beside `guardrails:` in the pack and appears in no
+  `tools:` list, no `autonomy_by_class` key, and no action class. There is no `moderate.sanction` class to
+  escalate — Part 5's absent list carries it. **The gate is reachability, not vocabulary:** a rung's `via:` is
+  refused when some agent in the same pack declares that exact tool, and is legal when nobody does, because a
+  community is allowed to write down that its organiser uses Discord's own ban button. `PKG-63`.
+- **Every rung names a human seat.** `by:` must be a member of the org's `human_seats` set (§1.11, D36),
+  defaulting to `organiser`. This is invariant #1 stated from below: the fleet flags, a person sanctions, and a
+  ladder that hands a rung to an agent is an autonomous moderation lane wearing a ladder's clothes. `PKG-62`.
+- **Every rung says what the member is told.** `member_told:` is required. A sanction the subject learns about
+  by inference is a rumour, and §2.9.4 already promised better than that.
+- **The last rung names the way back.** `appeal:` is required on the final rung only — the bottom of a ladder is
+  exactly where a member needs the route back in, and a rung with no way back is an ejection, not a sanction.
+- **Two rungs, or none.** A ladder of one rung is a binary. **Absence is legal and no default ladder is
+  supplied**: a community that does not moderate has no rungs to name, and a runtime that invents them would be
+  writing the community's norms for it — the same reason `needs:` refuses to imagine a sponsor list.
+
+The reading rules belong to the strict reader, not the shape gate. `runtime/src/pack.ts` refuses an unknown key
+inside a rung, a line it cannot parse, and a rung with no name; the validator deliberately does **not** refuse
+those, because `loadPack` runs the validator first and a duplicated refusal would make the parser's door
+unreachable — a check that cannot fail is the D24 class, and a validator that silently *skipped* an unreadable
+line would be worse. What the validator does check is that the file may not contradict itself: a second
+`sanction_ladder:` block in one file fails, because a hand-rolled reader takes the first and ignores the rest,
+so a fork could ship a ladder no check ever saw.
+
+`[UNVERIFIED]` Whether a declared ladder changes anything for a member is untestable here: phase 1 sends
+nothing (D21), the rungs are executed by humans outside the fleet, and the ladder is not wired to any event
+type. What this section claims is narrower and checkable — that a pack can record its consequences honestly,
+and that recording them does not hand the fleet a way to carry them out.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -624,6 +664,9 @@ grant (§1.8).
 - ❌ `message.anonymous` / `message.without-disclosure` — §2.8
 - ❌ `message.as-member` — an agent posting as if it were a community member (astroturfing). §2.8 makes agents say what they are; this makes pretending structurally impossible. A partner asking the fleet to "just post it like a member wrote it" is declined by absence, not by policy
 - ❌ `moderation.delete` / `moderation.ban` — the human acts (E6, FR-3.2)
+- ❌ `moderation.sanction` — there is no action class for climbing the ladder (§2.12, **D37**). A ladder is a pack's
+  *statement* about what its humans do, so it has no class, no tool, and no autonomy level; `PKG-63` refuses a rung
+  whose `via:` names a tool some agent declares, which is the same boundary seen from the pack's side
 - ❌ `score.member` — engagement scores, attendance rankings, per-member profiles. Not "restricted": absent.
   A product that *can* rank members will be asked to, by a sponsor, quarterly (§2.9)
 - ❌ `member.opt-out-ignore` / `member.opt-out-override` — clearing or bypassing a suppression row is not a
@@ -644,9 +687,10 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 7,035 as of 2026-10-19, split 3,157 domain code / 3,412 tests / 466 tour. The count is re-run whenever a
-row is added here — the previous row in this sentence said 5,148 on 2026-10-18, and the 1,887-line gap between
-those two numbers is D31–D36, of which 1,013 lines are tests). This map is the walk a reviewer
+prints 7,361 as of 2026-10-19, split 3,278 domain code / 3,567 tests / 516 tour. The count is re-run whenever a
+row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
+D35–D36 pass, and the 326-line gap since is D37 (the sanction ladder), 155 lines of runtime tests and 50 of tour
+against 121 of domain code — plus 88 more test lines under `scripts/`, which this counter does not scan. This map is the walk a reviewer
 takes from a spec rule to the code and the test that holds it. Its boundary, stated before the rows:
 it maps *the semantics*, not a deployed system. No channel transport ships, every member-facing
 commit refuses at the transport gate with its one-send authorization intact, and phase 2's transport
@@ -656,7 +700,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 |---|---|---|
 | §1.1 ladder: default deny, absent ≠ denied, unknown role, `never` as floor | `src/ladder.ts`, `src/types.ts` (`Autonomy`) | `test/ladder.test.ts` |
 | §1.2 audit replay: append-only log, `replay` deep-equality, readable `#seq` timeline, refusals as records | `src/store.ts` (`append` stores a **structured clone**, so a caller mutating its payload afterwards cannot rewrite history), `src/apply.ts`, `src/engine.ts` (`auditTimeline`, `logRefusal`) | `test/store.test.ts`, `test/apply.test.ts`, `test/replay.test.ts`, `test/engine.test.ts` |
-| §1.2 read side (PRD **FR-1.15**, and the first enforcement of **FR-1.11**): the fleet's condition is one dated, positioned snapshot derived only from rows already logged — freezes, queue depth *and card age*, budget state with `null` for an unset ceiling, overdue wakes, refusals counted by code, idle agents — carrying no member identifier and naming what it refuses to measure | `src/health.ts` (`deriveHealth`, exposed as `Fleet.health()`; `withhold()` reuses `partner.ts`'s registry scan), `src/engine.ts` (the method appends nothing) | `test/health.test.ts` (15 cases: purity across two calls, replay deep-equality of the *read*, `retire` at 3 cycles vs `watch` at 1, prefixed/bare/clean substitution controls, the two-integer member block and the `unmeasured` field), `runtime/tour.ts` (3 of the 11 guarantees that existed at D30; the tour now prints 19) |
+| §1.2 read side (PRD **FR-1.15**, and the first enforcement of **FR-1.11**): the fleet's condition is one dated, positioned snapshot derived only from rows already logged — freezes, queue depth *and card age*, budget state with `null` for an unset ceiling, overdue wakes, refusals counted by code, idle agents — carrying no member identifier and naming what it refuses to measure | `src/health.ts` (`deriveHealth`, exposed as `Fleet.health()`; `withhold()` reuses `partner.ts`'s registry scan), `src/engine.ts` (the method appends nothing) | `test/health.test.ts` (15 cases: purity across two calls, replay deep-equality of the *read*, `retire` at 3 cycles vs `watch` at 1, prefixed/bare/clean substitution controls, the two-integer member block and the `unmeasured` field), `runtime/tour.ts` (3 of the 11 guarantees that existed at D30; the tour now prints 21 — the number in these read-side rows is recomputed per pass, never carried) |
 | §1.3 no ghost watchers: a promise to follow up requires a persisted wake row | `src/lifecycle.ts` (`scheduleWake`, `assertWakeBacked`) | `test/lifecycle.test.ts` |
 | §1.4 exclusive ownership; the 409 that is never retried | `src/lifecycle.ts` (`claimPhaseOrigin`, `checkoutEvent`) | `test/lifecycle.test.ts` |
 | §1.5 revision-bound approvals; edit consumes the live authorization, v2 re-queues, `stale_target` | `src/cards.ts` (revision hash over both languages) | `test/cards.test.ts`, `test/engine.test.ts` |
@@ -670,9 +714,10 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §2.6 shatter-guard: complaint freezes the lane to draft; only **a human seat** releases (the row said "the organiser" until D36 made the seat set the source of that authority — the *rule* is unchanged, the name now comes from the org) | `src/shatter.ts`, `src/ladder.ts`, `src/roles.ts` (`assertSeat`) | `test/ladder.test.ts`, `test/replay.test.ts`, `test/roles.test.ts` (the complainant-is-not-an-actor exclusion) |
 | §2.9 member as subject: suppression beats any grant, absent row fails closed, no un-suppress, cap counts the member, quiet hours are the member's clock, aggregation floor refuses below 10 | `src/members.ts`, `src/engine.ts` (commit order) | `test/members.test.ts`, `test/engine.test.ts` (order proof) |
 | §2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap, no member identifier in partner-facing copy | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/partner.ts` (the identifier scan: registry-bounded, both languages, names the member and never the copy), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: the content rule runs ahead of authorization so the approved-card path is covered too; the cap sits after the per-member protections and before the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/partner.test.ts`, `test/engine.test.ts` (order proofs), `test/pack.test.ts` |
+| §2.12 the sanction ladder (PRD **FR-5.11**, `DECISIONS.md` **D37**): a pack may declare its graduated response as **data**, and the fleet cannot carry any of it out — every rung names a human seat from §1.11's set, states what the member is told (§2.9.4), the last rung names the appeal, two rungs or none, absence is legal and **no default ladder is supplied**. The gate is reachability rather than vocabulary: a `via:` is refused when some agent declares that exact tool and is legal when nobody does | `src/types.ts` (`SanctionRung`), `src/pack.ts` (`parseSanctionLadder` — the strict reader: unknown key, unreadable line, unnamed rung), `src/settings.ts` (`resolveSettings` re-checks the shape + reachability at boot), `scripts/validate-pack.mjs` **PKG-62 / PKG-63** (the shape and the reachability, in CI), `packs/kopdar-ops/.kinship.yaml` (4 rungs: nudge → private-word → public-correction → removal) | `test/pack.test.ts` (15 cases incl. the empty-ladder and duplicate-block refusals, and the POSITIVE CONTROL that a pack with no ladder boots unchanged), `test/settings.test.ts` (the seat refusal, the missing `member_told`, the missing appeal, the single-rung binary, and a rung wired to `telegram \| send`), `scripts/validate-pack.test.mjs` (8 cases, both directions per rule incl. `via: discord \| ban` passing because no agent declares it), `runtime/tour.ts` (`sanction_ladder_is_declared_and_out_of_reach`, `fork_cannot_hand_a_rung_to_an_agent_or_a_tool`; the tour now prints 21) |
 | Pack boot gate: a fork cannot weaken an invariant (FR-1.14) — the validator's own `validatePack` runs before parsing | `src/pack.ts` | `test/pack.test.ts` (tamper cases on the real `packs/kopdar-ops`) |
-| §1.2 read side, **second artefact** (PRD **FR-1.16**): the same log read as a *list* instead of counts — what a human currently owes, by kind (`verdict` / `handoff` / `release` / `overdue`), ordered by how long it has waited, with ranking explicitly refused, the identifier sweep run **before** the 160-char preview cut, and `memberInputs.linkable: false` because the log carries no input→card join | `src/inbox.ts` (`deriveInbox`, exposed as `Fleet.inbox()`), borrowing `health.ts`'s now-exported `pendingCards` + `withholdMemberIdentifiers` rather than re-implementing them, `src/engine.ts` (the method appends nothing) | `test/inbox.test.ts` (11 cases: purity across two calls and replay deep-equality *of the read*, the `handoff` kind that lived only in the log until D31, cross-kind age ordering, the leak-at-the-cutline control, `limits` naming age ≠ importance), `runtime/tour.ts` (4 of the 15 guarantees that existed at D31; the tour now prints 19) |
-| §1.2 read side, **third artefact** (D35): the *tier stack* itself as a dated, positioned read — what each effective guardrail value is, which file put it there (`pack` / `org` / `default`), which org floor a pack-level value is holding above, what the resolved autonomy ceiling allows per action class, the seat set, the recognised agent roles, and the limits it refuses to exceed. A settings *write* would be a fifth governing actor, so `Fleet.settings()` appends nothing and replays identical | `src/settings.ts` (`deriveSettings`, exposed as `Fleet.settings()` through `src/engine.ts`, which appends nothing), `src/pack.ts` (`Packed.declared` — the set of keys the pack itself wrote, which is what makes provenance a fact rather than a guess) | `test/settings.test.ts` (20 cases, incl. purity across two calls and replay deep-equality *of the read*, provenance sourced from the keys the pack actually wrote rather than the ones it merely did not override, and the seat-collision refusal that stops a pack from handing itself a human act by naming an agent `organiser`) |
+| §1.2 read side, **second artefact** (PRD **FR-1.16**): the same log read as a *list* instead of counts — what a human currently owes, by kind (`verdict` / `handoff` / `release` / `overdue`), ordered by how long it has waited, with ranking explicitly refused, the identifier sweep run **before** the 160-char preview cut, and `memberInputs.linkable: false` because the log carries no input→card join | `src/inbox.ts` (`deriveInbox`, exposed as `Fleet.inbox()`), borrowing `health.ts`'s now-exported `pendingCards` + `withholdMemberIdentifiers` rather than re-implementing them, `src/engine.ts` (the method appends nothing) | `test/inbox.test.ts` (11 cases: purity across two calls and replay deep-equality *of the read*, the `handoff` kind that lived only in the log until D31, cross-kind age ordering, the leak-at-the-cutline control, `limits` naming age ≠ importance), `runtime/tour.ts` (4 of the 15 guarantees that existed at D31; the tour now prints 21 — this row and the health row above each said 19 when they were written, and the count is recomputed per pass, never carried) |
+| §1.2 read side, **third artefact** (D35): the *tier stack* itself as a dated, positioned read — what each effective guardrail value is, which file put it there (`pack` / `org` / `default`), which org floor a pack-level value is holding above, what the resolved autonomy ceiling allows per action class, the seat set, the recognised agent roles, and the limits it refuses to exceed. A settings *write* would be a fifth governing actor, so `Fleet.settings()` appends nothing and replays identical | `src/settings.ts` (`deriveSettings`, exposed as `Fleet.settings()` through `src/engine.ts`, which appends nothing), `src/pack.ts` (`Packed.declared` — the set of keys the pack itself wrote, which is what makes provenance a fact rather than a guess) | `test/settings.test.ts` (27 cases as of D37 — was 20 when this row was written: incl. purity across two calls and replay deep-equality *of the read*, provenance sourced from the keys the pack actually wrote rather than the ones it merely did not override, and the seat-collision refusal that stops a pack from handing itself a human act by naming an agent `organiser`) |
 | Host boundary: what `runtime/` may not own (PRD **FR-1.17**, `DECISIONS.md` D32/D33) — no third-party package, no network builtin or network global, no dynamic `import()`, no `node:fs` outside `pack.ts`; and a credential-shaped prefix in any pack file fails the shape gate | `runtime/test/boundary.test.ts` (the scanner: scope `runtime/src/**`, comments stripped so prose about a transport is not a transport), `scripts/validate-pack.mjs` **PKG-57**, `runtime/package.json` (an empty dependency set is itself asserted), semantics in **`spec/HOST-CONTRACT.md`** | `test/boundary.test.ts` (6 cases — one positive control per rule, a legal-file control, and an anti-vacuity check that the scanned module list is non-empty), `scripts/validate-pack.test.mjs` (a key-shaped string fails the build; a 48-hex revision hash and a `$KINSHIP_HOST_TOKEN` placeholder pass; a PEM block fails) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end
