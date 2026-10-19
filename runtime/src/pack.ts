@@ -8,12 +8,18 @@
  * subset a pack uses is flat blocks, and a dependency-free read is the difference between
  * "fork this folder" working offline and not. Anything it cannot parse fails the boot —
  * a parser that guesses is a trust boundary with holes.
+ *
+ * `loadPack` is also the only place the **organisation** manifest is read (D35): a pack names its
+ * org, and the org's floors come in with it. Still one reader, still `node:fs` in one file — the
+ * boundary gate in `runtime/test/boundary.test.ts` allows pack.ts precisely because reading a pack
+ * plus its own org file is the config read, not a credential read (the key never enters Kinship).
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
-import type { Autonomy, Packed, PackedAgent } from './types.ts';
+import { parseOrg } from './org.ts';
+import type { Autonomy, Packed, PackedAgent, PackedOrg } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
 
@@ -104,6 +110,35 @@ function parseAgents(yaml: string): Record<string, PackedAgent> {
 }
 
 /**
+ * The guardrail keys a pack *file* may write, in the spelling the files use. What the file spelled
+ * out is a decision; what the parser defaulted is not (see `settings.ts` — the org may refuse a
+ * decision and fill a blank, and may do only those two things).
+ */
+const FLOOR_NAMES = ['report_aggregation_floor', 'member_message_cap_per_24h', 'identity_disclosure', 'defaults'];
+
+/**
+ * Where the organisation manifests are. A fork is a whole repo, so `orgs/` sits beside `packs/` and
+ * walking up from the pack folder finds it; a pack handed to the loader from somewhere else (a temp
+ * copy in a test, a mounted folder in CI) is resolved from the working directory, the same way
+ * `scripts/validate-pack.mjs` finds the repo. First candidate that exists wins, and if none does the
+ * boot refuses rather than proceeding floorless.
+ */
+function findOrgsRoot(dir: string): { root: string | null; checked: string[] } {
+  const checked: string[] = [];
+  let cur = dir;
+  for (let depth = 0; depth < 4; depth++) {
+    cur = join(cur, '..');
+    const candidate = join(cur, 'orgs');
+    checked.push(candidate);
+    if (existsSync(candidate)) return { root: candidate, checked };
+  }
+  const fromCwd = join(process.cwd(), 'orgs');
+  checked.push(fromCwd);
+  if (existsSync(fromCwd)) return { root: fromCwd, checked };
+  return { root: null, checked };
+}
+
+/**
  * Read + validate a pack directory. The validator runs FIRST — a structurally invalid pack
  * refuses before anything is parsed, so the parser is only ever trusted on a gated folder.
  */
@@ -129,6 +164,28 @@ export function loadPack(dir: string): Packed {
   const llmRaw = budgets.get('llm_per_event_idr');
   const llmPerEventIdr = llmRaw !== undefined && /^\d+$/.test(llmRaw) ? Number(llmRaw) : null; // null stays null: the unset ceiling refuses (§12-Q9)
 
+  // --- the organisation tier (D35) ---------------------------------------------------------------
+  // The pack names an org; the org holds floors. This is the only place either file is read, and the
+  // rule is fail-closed: an `organisation:` whose manifest cannot be found is a refusal, never a
+  // silent drop to no-tier, because the operator is the one party who would not learn their floor
+  // stopped applying.
+  const organisationRaw = topScalar(yaml, 'organisation');
+  const organisation = organisationRaw === null || organisationRaw === '' || organisationRaw === 'null' ? null : organisationRaw;
+  let org: PackedOrg | undefined;
+  if (organisation !== null) {
+    const { root, checked } = findOrgsRoot(dir);
+    const file = root === null ? null : join(root, `${organisation}.yaml`);
+    if (file === null || !existsSync(file)) {
+      refuse('pack_invalid', 'org tier gate (FR-1.18)',
+        `pack \`${key}\` names organisation \`${organisation}\` and no manifest was found — checked ${checked.map((c) => `\`${join(c, `${organisation}.yaml`)}\``).join(', ')} — booting floorless is not a fallback here, it is the failure this gate exists to catch`);
+    }
+    org = parseOrg(readFileSync(file, 'utf8'), file);
+    if (org.key !== organisation) {
+      refuse('pack_invalid', 'org tier gate (FR-1.18)',
+        `pack \`${key}\` names organisation \`${organisation}\` and the manifest at \`${file}\` declares key \`${org.key}\` — two names for one org means a pack can resolve the wrong floor`);
+    }
+  }
+
   return {
     schema: 'kinship/v1',
     key,
@@ -149,5 +206,8 @@ export function loadPack(dir: string): Packed {
       crossPromoPerEventCap: guard.has('cross_promo_per_event_cap') ? numberOr(guard.get('cross_promo_per_event_cap'), 1) : 1,
     },
     needs,
+    organisation,
+    ...(org !== undefined ? { org } : {}),
+    declared: FLOOR_NAMES.filter((name) => guard.has(name)),
   };
 }

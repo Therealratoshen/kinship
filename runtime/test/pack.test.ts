@@ -85,41 +85,140 @@ test('the real pack runs the draft-only story end to end, with its own guardrail
   }), /no_transport/, 'the real pack cannot send either — no transport ships in phase 1');
 });
 
-test('a fork that deletes a member invariant gets a pack that refuses to boot (D15 / FR-1.14)', () => {
+/**
+ * A writable copy of the shipped pack, in a folder that still carries the pack's slug.
+ *
+ * The naming is load-bearing, not cosmetic: PKG-06 requires the directory name to match `slug:`, so a
+ * copy dropped straight into a random `mkdtemp` folder fails the shape gate before the tamper is ever
+ * read — and an assertion written as `/pack_invalid/` then passes on a refusal that has nothing to do
+ * with the mutation it claims to test. That is the D24/D28/D29 class (a check that blesses the wrong
+ * reason) sitting in this repo's own suite, which the org-tier tests below exposed by needing the
+ * second half of the message to be real. So the folder is named, and every tamper test names the rule
+ * it expects to see.
+ */
+function forkCopy(): { dir: string; mutate(edit: (yaml: string) => string): void; cleanup(): void } {
   const tmp = mkdtempSync(join(tmpdir(), 'kinship-pack-'));
+  const dir = join(tmp, 'kopdar-ops'); // PKG-06: path and slug must agree, or the wrong rule fires
+  cpSync(PACK_DIR, dir, { recursive: true });
+  return {
+    dir,
+    mutate: (edit) => {
+      const yamlPath = join(dir, '.kinship.yaml');
+      writeFileSync(yamlPath, edit(readFileSync(yamlPath, 'utf8')));
+    },
+    cleanup: () => rmSync(tmp, { recursive: true, force: true }),
+  };
+}
+
+test('a fork that deletes a member invariant gets a pack that refuses to boot (D15 / FR-1.14)', () => {
+  const fork = forkCopy();
   try {
-    cpSync(PACK_DIR, tmp, { recursive: true });
-    const yamlPath = join(tmp, '.kinship.yaml');
-    const yaml = readFileSync(yamlPath, 'utf8');
-    writeFileSync(yamlPath, yaml.replace(/^  member_opt_out_persists_across_lanes: true.*\n/m, ''));
-    assert.throws(() => loadPack(tmp), /pack_invalid/, 'the suppression invariant is not configurable away');
+    fork.mutate((yaml) => yaml.replace(/^  member_opt_out_persists_across_lanes: true.*\n/m, ''));
+    assert.throws(() => loadPack(fork.dir), /PKG-24.*member_opt_out_persists_across_lanes/, 'the suppression invariant is not configurable away');
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    fork.cleanup();
   }
 });
 
 test('a fork that adds `whatsapp | send` gets a pack that refuses to boot (D11/D13/D17)', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'kinship-pack-'));
+  const fork = forkCopy();
   try {
-    cpSync(PACK_DIR, tmp, { recursive: true });
-    const yamlPath = join(tmp, '.kinship.yaml');
-    const yaml = readFileSync(yamlPath, 'utf8');
-    writeFileSync(yamlPath, yaml.replace('      - whatsapp | draft', '      - whatsapp | draft\n      - whatsapp | send'));
-    assert.throws(() => loadPack(tmp), /pack_invalid/, 'the WhatsApp auto-send ban lives in the toolset, and the gate holds at boot');
+    fork.mutate((yaml) => yaml.replace('      - whatsapp | draft', '      - whatsapp | draft\n      - whatsapp | send'));
+    assert.throws(() => loadPack(fork.dir), /PKG-30.*whatsapp \| send/, 'the WhatsApp auto-send ban lives in the toolset, and the gate holds at boot');
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    fork.cleanup();
   }
 });
 
 test('a fork that edits a guardrail value out of range refuses to boot (bounded protections)', () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'kinship-pack-'));
+  const fork = forkCopy();
   try {
-    cpSync(PACK_DIR, tmp, { recursive: true });
-    const yamlPath = join(tmp, '.kinship.yaml');
-    const yaml = readFileSync(yamlPath, 'utf8');
-    writeFileSync(yamlPath, yaml.replace('member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 50'));
-    assert.throws(() => loadPack(tmp), /pack_invalid/, 'a cap of 50/day is not a cap — the bound is ours, the value is the owner\'s');
+    fork.mutate((yaml) => yaml.replace('member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 50'));
+    assert.throws(() => loadPack(fork.dir), /PKG-48.*member_message_cap_per_24h/, 'a cap of 50/day is not a cap — the bound is ours, the value is the owner\'s');
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    fork.cleanup();
   }
+});
+
+// --- the org tier at the boot gate (D35) -----------------------------------------------
+// `loadPack` is the only place a file is read, so the organisation manifest a pack names is loaded
+// here and nowhere else: a fork cannot boot past its org's floor, and cannot boot a pack whose org
+// file is missing — the second half matters as much as the first, because a silent "no org found"
+// would drop every floor the operator thought they were holding.
+
+test('the shipped pack names its organisation, and boot loads that manifest through the same gate', () => {
+  const p = loadPack(PACK_DIR);
+  assert.equal(p.organisation, 'kinshipai');
+  assert.ok(p.org, 'the org tier is present on a real boot, not only in a test fixture');
+  assert.equal(p.org.key, 'kinshipai');
+  assert.deepEqual(p.org.humanSeats, ['organiser']);
+  assert.equal(p.org.floors.memberMessageCapPer24h, 4, 'the cap no kopdar pack may exceed');
+  assert.equal(p.guardrails.memberMessageCapPer24h, 2, 'the bundled pack is stricter than its own org floor, and keeps its number');
+  assert.deepEqual(p.declared.sort().includes('member_message_cap_per_24h'), true, 'the pack wrote that key, so provenance says pack, not default');
+});
+
+test('a pack that declares no organisation boots exactly as it did before the tier existed', () => {
+  const fork = forkCopy();
+  try {
+    // The shipped line carries an explanatory comment, so the whole line goes — a replace that only
+    // matched the bare `organisation: kinshipai\n` would silently edit nothing and this test would
+    // then be proving that a pack with an org has no org, which is the opposite of what it says.
+    fork.mutate((yaml) => yaml.replace(/^organisation:[ \t]*\S[^\n]*\n/m, ''));
+    const p = loadPack(fork.dir);
+    assert.equal(p.organisation, null);
+    assert.equal(p.org, undefined, 'no tier, no floors, no ceiling — the pack is its own top tier');
+    assert.equal(p.guardrails.memberMessageCapPer24h, 2);
+  } finally {
+    fork.cleanup();
+  }
+});
+
+test('A FORK THAT GOES BELOW ITS ORG FLOOR REFUSES TO BOOT — and is not clamped (D35 / FR-1.18)', () => {
+  const fork = forkCopy();
+  try {
+    // 5 is inside the validator's own bound (1..5), so this is the org floor doing the work alone.
+    // Direction matters: for a *cap* the looser value is the larger one, so 5 breaches a floor of 4
+    // and 3 would not — 3 is the member getting fewer messages, which is what the org asked for.
+    fork.mutate((yaml) => yaml.replace('member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 5'));
+    assert.throws(() => loadPack(fork.dir), (e: unknown) => {
+      const msg = String(e);
+      assert.match(msg, /pack_invalid/);
+      // The shape gate is the one that fires on this path — `validatePack` runs before the parser, and
+      // it now knows the org tier too (PKG-60). The boot-level check in `settings.ts` is the same rule
+      // for a runtime constructed from an object rather than a folder, and `settings.test.ts` pins it.
+      assert.match(msg, /PKG-60/, 'it names the rule, so a reader can find the floor in the validator');
+      assert.match(msg, /member_message_cap_per_24h/);
+      assert.match(msg, /kinshipai/, 'it names the org whose floor was breached');
+      assert.match(msg, /refused, not clamped/, 'and says which of the two it did');
+      return true;
+    }, 'a cap of 5/day is a fork widening a member protection past what the operator holds');
+  } finally {
+    fork.cleanup();
+  }
+});
+
+test('a pack naming an organisation whose manifest is absent refuses, rather than booting floorless', () => {
+  const fork = forkCopy();
+  try {
+    fork.mutate((yaml) => yaml.replace('organisation: kinshipai', 'organisation: no-such-org'));
+    assert.throws(() => loadPack(fork.dir), (e: unknown) => {
+      const msg = String(e);
+      assert.match(msg, /no-such-org/, 'the refusal names the org it looked for, so the fix is obvious from the message');
+      assert.match(msg, /PKG-58/, 'and the rule that caught it');
+      return true;
+    });
+  } finally {
+    fork.cleanup();
+  }
+});
+
+test('the real pack boots into a Fleet whose settings carry the org tier', () => {
+  const fleet = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
+  const s = fleet.settings();
+  assert.equal(s.orgKey, 'kinshipai');
+  assert.deepEqual(s.humanSeats, ['organiser']);
+  assert.equal(s.guardrails.memberMessageCapPer24h, 2, 'effective: the pack\'s own stricter number');
+  assert.ok(s.provenance.some((p) => p.source === 'pack'));
+  assert.deepEqual(fleet.settings(), fleet.settings(), 'a pure read returns the same artefact twice, and writes nothing between the calls');
+  assert.equal(fleet.state.events.length, 0, 'and boot + settings together appended no event');
 });

@@ -12,6 +12,7 @@
  * - nothing leaves the community under the aggregation floor — refuse, never truncate.
  */
 import { refuse } from './errors.ts';
+import { effectiveGuardrails } from './settings.ts';
 import type { Ctx, FleetEvent, FleetState, SuppressionRow } from './types.ts';
 
 export function registerMember(ctx: Ctx, ref: string, tz: string): void {
@@ -53,7 +54,7 @@ const DAY_MS = 24 * 3600_000;
 
 /** FR-5.5 — the cap counts commits *to the member* in a rolling 24h, across every lane. */
 export function assertWithinCap(ctx: Ctx, _memberRef: string, at: number, recentCommitTimes: number[]): void {
-  const cap = ctx.pack.guardrails.memberMessageCapPer24h;
+  const cap = effectiveGuardrails(ctx).memberMessageCapPer24h;
   const inWindow = recentCommitTimes.filter((t) => at - t < DAY_MS).length;
   if (inWindow >= cap) {
     refuse('member_cap_exceeded', 'spec §2.9 / FR-5.5',
@@ -77,7 +78,7 @@ export function assertSendHour(memberTz: string, at: number): void {
  * acceptable failure mode is refusing to assemble; redaction after assembly is too late.
  */
 export function assertAggregateOnly(ctx: Ctx, cohortSize: number, namedRefs: string[]): void {
-  const floor = ctx.pack.guardrails.reportAggregationFloor;
+  const floor = effectiveGuardrails(ctx).reportAggregationFloor;
   if (cohortSize < floor && namedRefs.length > 0) {
     refuse('report_below_floor', 'spec §2.9 / FR-5.3',
       `cohort of ${cohortSize} is under the floor (${floor}) and ${namedRefs.length} member(s) are named — refuse to assemble`);
@@ -86,7 +87,7 @@ export function assertAggregateOnly(ctx: Ctx, cohortSize: number, namedRefs: str
 
 /** Below the floor, a count renders as a bracket, not a number. */
 export function renderBracket(ctx: Ctx, cohortSize: number): string {
-  const floor = ctx.pack.guardrails.reportAggregationFloor;
+  const floor = effectiveGuardrails(ctx).reportAggregationFloor;
   return cohortSize < floor ? `[fewer than ${floor} attendees]` : String(cohortSize);
 }
 

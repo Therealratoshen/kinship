@@ -5,13 +5,18 @@
 # and the install gate. Shape donated from Paperclip's `.paperclip.yaml` (study §5); the
 # per-action-class keying and the absent-not-denied posture are Kinship's (spec §1.1).
 #
-# Nothing reads this file yet. There is no Kinship runtime as of 2026-10-17, and phase 1 runs
-# inside an existing Paperclip instance (DECISIONS.md D10). Naming the schema before the engine
-# is the point — it is the publishable artifact. `node scripts/validate-pack.mjs` checks shape.
+# Nothing in the pack file decides behaviour on its own: `scripts/validate-pack.mjs` checks the shape
+# and `runtime/src/pack.ts` boots through that same gate, so an edit here is a change to what the
+# runtime enforces (DECISIONS.md D21). Naming the schema before the engine was the point — the
+# publishable artifact came first, and the engine was built behind it.
 
 schema: kinship/v1
 key: kinshipai/bundled/event-ops/kopdar
 version: 0.1.0
+organisation: kinshipai           # the tier above this pack: orgs/kinshipai.yaml holds the floors this
+                                  # pack may not go below, and the one human seat it may not widen (D35).
+                                  # Drop this line and the pack is its own top tier — legal, and said so
+                                  # in a validator notice rather than silently.
 bundled: true                 # invariants here are held by us; a community pack may not claim this
 locale: [id, en]              # Indonesian-first, English paired. Both, always, in member copy.
 

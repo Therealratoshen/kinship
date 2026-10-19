@@ -288,3 +288,115 @@ test('a private key block is caught by the same rule (the shape a webhook signin
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-57'), 'a commented-out key is still a key in a folder people fork');
   }));
+
+// --- the organisation tier (D35): the pack is one community, the org is the operator -------------------
+// A pack folder is forkable, and a fork can edit the numbers in it. The org manifest is the one place
+// an operator states what those numbers may never become, and it is checked here so the first line a
+// contributor gets is a build failure rather than a review comment. Resolution is explicit
+// (`{ orgsRoot }`) because the file lives outside the pack folder: a test that tampered with the repo's
+// own orgs/ would be a test that edits the working tree, and that is not how the other tamper tests run.
+
+const ORGS = () => join(process.cwd(), 'orgs');
+const orgCopy = (fn) => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-orgs-'));
+  const target = join(dir, 'orgs');
+  cpSync(ORGS(), target, { recursive: true });
+  try { return fn(target); } finally { rmSync(dir, { recursive: true, force: true }); }
+};
+
+test('the shipped pack resolves its organisation and clears every floor it names', () => {
+  const r = validatePack(PACK);
+  assert.equal(r.ok, true, `expected PASS, got:\n  ${r.errors.join('\n  ')}`);
+  assert.equal(r.checked.org, 'kinshipai', 'the tier is resolved by the gate, not only parsed by the runtime');
+});
+
+test('a cadence cap inside the validator bound but above the org floor fails by rule (PKG-60)', () =>
+  inCopy((dir) => {
+    // 5 passes BOUNDED_GUARDRAILS (1..5) and breaches the org's floor of 4: this is the test that
+    // proves the org tier does work the generic bound cannot, and it is the direction test — 3 would
+    // be *fewer* messages to the member, which is stricter than what the org holds, so 3 must pass.
+    mutate(machine(dir), 'member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 5');
+    const r = validatePack(dir);
+    const hit = r.errors.filter((e) => e.startsWith('PKG-60'));
+    assert.equal(hit.length, 1, `expected one floor violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /member_message_cap_per_24h/);
+    assert.match(hit[0], /kinshipai/, 'it names which org holds the floor');
+  }));
+
+test('the same mutation in the other direction is legal — a cap under the org floor is the member getting less', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), 'member_message_cap_per_24h: 2', 'member_message_cap_per_24h: 1');
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `a stricter cap than the org's floor must pass: ${r.errors.join('\n  ')}`);
+  }));
+
+test('an aggregation floor below the org floor fails too, and the two directions are not confused (PKG-60)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), 'report_aggregation_floor: 10', 'report_aggregation_floor: 6');
+    assert.ok(!validatePack(dir, { orgsRoot: ORGS() }).errors.some((e) => e.startsWith('PKG-60')),
+      '6 is above the org floor of 5 — higher is stricter for a floor, so this pack is legal');
+    mutate(machine(dir), 'report_aggregation_floor: 6', 'report_aggregation_floor: 4');
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-60') && /report_aggregation_floor/.test(e)),
+      'a single min/max rule for both keys is the bug this test exists to catch');
+  }));
+
+test('a pack naming an organisation whose manifest is absent fails — no floor is worse than a missing one (PKG-58)', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), 'organisation: kinshipai', 'organisation: kopdar-gone');
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-58'), `expected PKG-58, got: ${codes(r).join(', ')}`);
+    assert.match(r.errors.join(' '), /orgs[\\/]kopdar-gone\.yaml/, 'the failure says where it looked');
+  }));
+
+test('an org manifest whose key does not match its filename fails (PKG-58)', () =>
+  orgCopy((orgsDir) => {
+    const f = join(orgsDir, 'kinshipai.yaml');
+    mutate(f, 'key: kinshipai', 'key: something-else');
+    const r = validatePack(PACK, { orgsRoot: orgsDir });
+    assert.ok(codes(r).includes('PKG-58'), 'two names for one org is how a pack resolves the wrong floor');
+  }));
+
+test('an org declaring a second human seat fails the build, naming PRD §12-Q12 (PKG-59)', () =>
+  orgCopy((orgsDir) => {
+    const f = join(orgsDir, 'kinshipai.yaml');
+    mutate(f, 'human_seats:\n  - organiser', 'human_seats:\n  - organiser\n  - delegate');
+    const r = validatePack(PACK, { orgsRoot: orgsDir });
+    const hit = r.errors.filter((e) => e.startsWith('PKG-59'));
+    assert.equal(hit.length, 1, `expected one seat violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /12-Q12/, 'the message routes the fix to the owner\'s open question, not to the implementer');
+  }));
+
+test('an org that lists a seat name among its agent roles fails — that is how an agent gets the human seat (PKG-59)', () =>
+  orgCopy((orgsDir) => {
+    const f = join(orgsDir, 'kinshipai.yaml');
+    mutate(f, '  - moderator', '  - moderator\n  - organiser');
+    const r = validatePack(PACK, { orgsRoot: orgsDir });
+    assert.ok(codes(r).includes('PKG-59'), 'decideCard/issueGrant/revokeGrant/releaseShatter all read the seat set');
+  }));
+
+test('an org autonomy ceiling of `never` fails the build (PKG-61) — absent is the pack\'s to declare', () =>
+  orgCopy((orgsDir) => {
+    const f = join(orgsDir, 'kinshipai.yaml');
+    mutate(f, '  promote.cross-community: draft', '  promote.cross-community: never');
+    const r = validatePack(PACK, { orgsRoot: orgsDir });
+    assert.ok(codes(r).includes('PKG-61'), `expected PKG-61, got: ${codes(r).join(', ')}`);
+    assert.match(r.errors.join(' '), /absent/i, 'the reason is invariant #1: a central never would be denied-not-absent');
+  }));
+
+test('a credential in an org manifest fails the same PKG-57 rule — the sweep is not only the pack folder', () =>
+  orgCopy((orgsDir) => {
+    const f = join(orgsDir, 'kinshipai.yaml');
+    writeFileSync(f, `${readFileSync(f, 'utf8')}\n# host note: set key = ${['sk-', 'z'.repeat(24)].join('')}\n`);
+    const r = validatePack(PACK, { orgsRoot: orgsDir });
+    assert.ok(codes(r).includes('PKG-57'), 'the tier above the pack is forked and pasted too, and a scanner with one gap is a scanner that gets ignored');
+  }));
+
+test('a pack that names no organisation is legal and is told so in a notice, not a failure', () =>
+  inCopy((dir) => {
+    mutate(machine(dir), 'organisation: kinshipai', 'organisation: null');
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `an unaffiliated fork is a legitimate shape: ${r.errors.join('\n  ')}`);
+    assert.equal(r.checked.org, null);
+    assert.ok(r.notices.some((n) => /organisation/i.test(n)), 'the gate says out loud that no org floor was applied, so a green run is not read as one');
+  }));

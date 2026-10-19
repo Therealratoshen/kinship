@@ -1,0 +1,61 @@
+# orgs/kinshipai.yaml — the organisation tier, the manifest above the pack.
+#
+# Why this file exists (PRD FR-1.18, DECISIONS.md D35): a pack is ONE community. An operator who runs
+# a kopdar, a workshop series, and a sponsor newsletter has three packs, and the thing those three
+# must not drift apart on is what members were promised. Without this tier, a member's protection is
+# only as strong as the folder a fork started from.
+#
+# What this file can and cannot do — the half that is usually get wrong:
+#
+#   - it can REFUSE a pack whose declared value is weaker than the floor here (`pack_invalid`, and the
+#     pack is not silently rounded — see `runtime/src/settings.ts`);
+#   - it can FILL a blank a pack never wrote, and the provenance then reads `org`;
+#   - it can NARROW an action class (`autonomy_ceiling`, spec §1.7 narrowing);
+#   - it cannot change a number the pack chose, cannot widen a class, and cannot make one `never` —
+#     absence is the pack's to declare, and a reviewer greps the pack's toolset (invariant #1).
+#
+# So an org is a floor and a roster, not a remote control. That is deliberate: the moment a central
+# manifest can edit a community's settings, this repo is a hosted product with extra steps, and the
+# fork promise in `packs/kopdar-ops/README.md` is a sentence the code no longer holds.
+
+schema: kinship-org/v1
+key: kinshipai
+name: Kinship
+
+# The closed set of names the runtime accepts as the human in spec §2.7 — the actor allowed to decide
+# a card, issue or revoke a grant, and release a shatter freeze. ONE seat, and the reason it is one is
+# not technical: PRD §12-Q12 ("does the organiser get a delegate?") is the owner's unanswered question,
+# so a second name here is refused rather than half-supported. Rename it if your community's human is
+# called something else — the seat is a role, not a password.
+human_seats:
+  - organiser
+
+# Roles this organisation recognises, for reporting and audit ("which seat, which agent, which
+# community"). NOT a whitelist: a community may add an agent without asking. The one hard rule is that
+# a role name may not also be a human seat — that is how an agent acquires the veto over its own output.
+agent_roles:
+  - event-ops
+  - engagement
+  - moderator
+
+# The floors every pack under this org must clear. Both directions are per key, and they are not the
+# same direction: for a cadence cap the *smaller* number is the stricter one; for an aggregation floor
+# the *larger* number is. A pack may always be stricter than what is here.
+#
+# These sit inside the validator's generic bounds (`BOUNDED_GUARDRAILS`: cap 1–5, floor 5–1000) and
+# that is the point — a fork that stays inside the schema's range can still breach the operator's
+# number, and only this file catches it.
+floors:
+  member_message_cap_per_24h: 4          # no community gets to promise a member 5 messages a day
+  report_aggregation_floor: 5            # the schema's minimum; below it a named report is refused
+  identity_disclosure: required          # spec §2.8 — outside the escalation path, unconfigurable
+  defaults: deny                         # spec §1.1 — an unset class is `never`, in every pack
+
+# Per action class, the most autonomous the class may be anywhere in this org. Exact class names only:
+# no wildcards, because the ladder has none and a glob would widen reach without anyone writing the
+# class down (§1.1). `commit.channel-post` is the class phase 1 exists to earn, so the org holds it at
+# draft until the shadow-mode data says otherwise (D9) — a ceiling is where a future decision lands,
+# not a decision already made.
+autonomy_ceiling:
+  commit.channel-post: draft
+  promote.cross-community: draft

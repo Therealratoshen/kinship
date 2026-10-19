@@ -11,8 +11,11 @@
  *
  * WHAT THIS CAN AND CANNOT PROVE, stated because a green validator is easy to over-read:
  * it checks the *shape* of the pack — files, namespaced keys, declared invariants, absent
- * capabilities, the install gate. It does not and cannot check *enforcement*, because there is
- * no Kinship runtime yet (DECISIONS.md D10: phase 1 runs inside an existing Paperclip instance).
+ * capabilities, the install gate, and the organisation manifest the pack names (`organisation:`,
+ * resolved from `<cwd>/orgs/<key>.yaml`, overridable via `validatePack(dir, { orgsRoot })`). It does
+ * not check *enforcement*; that is `runtime/`'s job, and `runtime/src/pack.ts` boots through this same
+ * script so a folder that fails here fails there too. Neither of them proves a *deployed* system
+ * honours the shape — no transport ships (D21), so that proof waits behind the shadow-mode gate (D9).
  * A rule like "the moderator has no delete tool" is verified here as *absent from the declared
  * toolset*; the runtime assertion is promptfoo territory, and promptfoo is not yet wired.
  *
@@ -24,6 +27,9 @@ import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCHEMA = 'kinship/v1';
+// The organisation tier's schema (D35). Distinct from the pack's on purpose: a file read as the wrong
+// tier is a shape collision, and the two ids make that impossible to mistake for a typo.
+const ORG_SCHEMA = 'kinship-org/v1';
 const KEY_RE = /^kinshipai\/(bundled|community)\/[a-z0-9-]+\/[a-z0-9-]+(\/[a-z0-9-]+)*$/;
 const AUTONOMY = new Set(['draft', 'opt-in-auto', 'never']);
 const REQUIRED_GUARDRAILS = {
@@ -146,11 +152,56 @@ const block = (lines, startIdx, indent) => {
   return out;
 };
 
-export function validatePack(dir) {
+/**
+ * Validate a pack folder, and the organisation manifest it names.
+ *
+ * `opts.orgsRoot` exists because the org file lives *outside* the pack folder: the tamper tests copy
+ * a pack into a temp dir and must not copy (or edit) the repo's own `orgs/`, and a pack checked from a
+ * different working directory needs to say where its operator's manifests are. Default is
+ * `<cwd>/orgs`, the repo layout.
+ */
+// Extract a top-level YAML-subset *list* (`key:` then `  - item`, or the inline `[a, b]` form).
+// Returns null when the key is absent — "absent" and "empty" are different failures, and the org
+// tier's rules say so separately.
+const machList = (text, key) => {
+  const lines = text.split('\n');
+  const idx = lines.findIndex((l) => new RegExp(`^${key}:`).test(l));
+  if (idx === -1) return null;
+  const head = stripComment(lines[idx].slice(key.length + 1)).trim();
+  if (head.startsWith('[')) return head.replace(/[\[\]]/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+  const out = [];
+  for (let i = idx + 1; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.trim() === '') continue;
+    if (l.length - l.trimStart().length === 0) break;
+    const item = stripComment(l).trim().replace(/^-\s+/, '');
+    if (item) out.push(item);
+  }
+  return out;
+};
+
+// Extract a top-level block as ordered `key: value` pairs (the `floors:` / `autonomy_ceiling:` shapes).
+const machPairs = (text, key) => {
+  const lines = text.split('\n');
+  const idx = lines.findIndex((l) => new RegExp(`^${key}:`).test(l));
+  if (idx === -1) return [];
+  const out = [];
+  for (let i = idx + 1; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.trim() === '') continue;
+    if (l.length - l.trimStart().length === 0) break;
+    const kv = /^([^:]+):\s*(.*)$/.exec(stripComment(l).trim());
+    if (kv) out.push([kv[1].trim().replace(/^["']|["']$/g, ''), kv[2].trim().replace(/^["']|["']$/g, '')]);
+  }
+  return out;
+};
+
+export function validatePack(dir, opts = {}) {
   const errors = [];
   const notices = [];
   const add = (rule, msg) => errors.push(`${rule}  ${msg}`);
   const read = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
+  const ORGS_ROOT = opts.orgsRoot ?? join(process.cwd(), 'orgs');
 
   const packText = read(join(dir, 'PACK.md'));
   const machText = read(join(dir, '.kinship.yaml'));
@@ -323,8 +374,95 @@ export function validatePack(dir) {
     }
   }
 
-  // --- 8. structure, not state ------------------------------------------------------------
-  const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml')];
+  // --- 8. the organisation tier (D35 / PRD FR-1.18) -----------------------------------------
+  // The pack is one community; `orgs/<key>.yaml` is the operator who runs several of them. Four rules,
+  // and the reason each one is here rather than in a review comment:
+  //
+  //   PKG-58  the named org resolves to exactly one readable manifest — a missing org file is worse
+  //           than no org at all, because the operator would believe a floor was holding;
+  //   PKG-59  the human seat set is one seat, and no seat name is also an agent role (§2.7);
+  //   PKG-60  every floor the org holds is met or beaten by this pack — per key, because a cadence cap
+  //           and an aggregation floor are not strict in the same direction;
+  //   PKG-61  no ceiling says `never` — absence is the pack's to declare (invariant #1).
+  //
+  // Resolution lives here and in `runtime/src/settings.ts`, and the two are not duplicates by
+  // accident: this gate is what a fork's CI runs before anything boots, and the runtime is what
+  // refuses a pack someone booted without CI. Same rule, two doors, both tested.
+  const machLines = machText.split('\n').map(stripComment).join('\n');
+  const orgRefRaw = /^organisation:[ \t]*(.*)$/m.exec(machLines)?.[1]?.trim() ?? null;
+  const orgRef = orgRefRaw === null || orgRefRaw === '' || orgRefRaw === 'null' ? null : orgRefRaw;
+  let orgPath = null;
+  let orgText = null;
+  if (orgRef === null) {
+    notices.push(`PKG-N4  no \`organisation:\` — this pack is its own top tier, so NO org floor was applied to it and no org holds its member protections. Legal for an unaffiliated fork; a gap for a bundled pack`);
+  } else {
+    orgPath = join(ORGS_ROOT, `${orgRef}.yaml`);
+    orgText = read(orgPath);
+    if (!orgText) {
+      add('PKG-58', `\`organisation: ${orgRef}\` names a manifest that does not exist (looked for \`${orgPath}\`) — booting floorless is not a fallback: the operator wrote this pack into an org because they thought its floors were in force`);
+    } else {
+      const orgLines = orgText.split('\n').map(stripComment).join('\n');
+      const oSchema = /^schema:[ \t]*(.*)$/m.exec(orgLines)?.[1]?.trim();
+      if (oSchema !== ORG_SCHEMA) add('PKG-58', `${orgPath} declares schema \`${oSchema ?? '(absent)'}\`, expected \`${ORG_SCHEMA}\` — a pack manifest read as an org manifest is a tier collision, not a typo`);
+      const oKey = /^key:[ \t]*(.*)$/m.exec(orgLines)?.[1]?.trim();
+      if (oKey !== orgRef) add('PKG-58', `${orgPath} declares key \`${oKey ?? '(absent)'}\` but is filed as \`${orgRef}.yaml\` — two names for one org is how a pack resolves the wrong floor`);
+
+      // --- PKG-59: the seats and the roster -----------------------------------------------------
+      const seats = machList(orgText, 'human_seats');
+      if (seats === null) add('PKG-59', `${orgPath} declares no \`human_seats:\` — spec §2.7 puts approval and veto with a named human, and an org with no seat is an unattended fleet`);
+      else if (seats.length === 0) add('PKG-59', `${orgPath} has an empty \`human_seats:\` — same failure in the other direction: a list that names nobody`);
+      else if (seats.length > 1) add('PKG-59', `${orgPath} declares ${seats.length} human seats (${seats.join(', ')}) and only one is supported — a second seat is delegation, which is PRD §12-Q12, the owner's open question; until it is answered the runtime has no delegation path to gate`);
+      const roster = machList(orgText, 'agent_roles');
+      if (roster === null) add('PKG-59', `${orgPath} declares no \`agent_roles:\` — the org states the roster it recognises; an empty roster is a deliberate \`[]\``);
+      else for (const r of seats ?? []) {
+        if (roster.includes(r)) add('PKG-59', `${orgPath} lists \`${r}\` as both a human seat and an agent role — a pack could then give an agent the name that decideCard/issueGrant/revokeGrant/releaseShatter accept (§2.7)`);
+      }
+
+      // --- PKG-60: the floors, per key, in the right direction ------------------------------------
+      const floors = new Map(machPairs(orgText, 'floors'));
+      const packValue = (name) => {
+        const m = new RegExp(`^\\s+${name}:[ \\t]*(.*)$`, 'm').exec(machText);
+        return m ? stripComment(m[1]).trim() : null;
+      };
+      const capFloor = floors.get('member_message_cap_per_24h');
+      if (capFloor !== undefined) {
+        const packCap = Number(packValue('member_message_cap_per_24h'));
+        if (Number.isFinite(packCap) && packCap > Number(capFloor)) {
+          add('PKG-60', `\`member_message_cap_per_24h\` is ${packCap}, above org \`${orgRef}\`'s floor of ${capFloor} — for a cadence cap the SMALLER number is the stricter one, so this pack sends the member more than the operator holds (spec §2.9 / FR-5.5). The pack is refused, not clamped: a value silently rounded down is a file that lies`);
+        }
+      }
+      const aggFloor = floors.get('report_aggregation_floor');
+      if (aggFloor !== undefined) {
+        const packAgg = Number(packValue('report_aggregation_floor'));
+        if (Number.isFinite(packAgg) && packAgg < Number(aggFloor)) {
+          add('PKG-60', `\`report_aggregation_floor\` is ${packAgg}, below org \`${orgRef}\`'s floor of ${aggFloor} — for an aggregation floor the LARGER number is the stricter one (spec §2.9 / FR-5.3). Refused, not clamped`);
+        }
+      }
+      const orgDisclosure = floors.get('identity_disclosure');
+      if (orgDisclosure === 'required' && packValue('identity_disclosure') !== 'required') {
+        add('PKG-60', `\`identity_disclosure\` is \`${packValue('identity_disclosure') ?? '(absent)'}\` but org \`${orgRef}\` requires it — disclosure is outside the escalation path (spec §2.8), so no pack opts out of it`);
+      }
+      const orgDefaults = floors.get('defaults');
+      if (orgDefaults === 'deny' && packValue('defaults') !== 'deny') {
+        add('PKG-60', `\`defaults\` is \`${packValue('defaults') ?? '(absent)'}\` but org \`${orgRef}\` holds \`deny\` — an unset class may not become an open one (spec §1.1, invariant #1)`);
+      }
+      for (const [k] of floors) {
+        if (!['member_message_cap_per_24h', 'report_aggregation_floor', 'identity_disclosure', 'defaults'].includes(k)) {
+          add('PKG-60', `${orgPath} holds a floor named \`${k}\`, which this runtime cannot enforce — a typo'd floor that silently does not apply is the decorative-rule class this repo keeps recording (D24, D28, D29)`);
+        }
+      }
+
+      // --- PKG-61: ceilings ---------------------------------------------------------------------
+      const LADDER_VALUES = ['draft', 'opt-in-auto', 'never'];
+      for (const [cls, val] of machPairs(orgText, 'autonomy_ceiling')) {
+        if (!LADDER_VALUES.includes(val)) add('PKG-61', `autonomy_ceiling \`${cls}\` is \`${val}\` in \`${orgPath}\`, which is not on the ladder (draft | opt-in-auto | never)`);
+        else if (val === 'never') add('PKG-61', `autonomy_ceiling \`${cls}\` is \`never\` — \`never\` means the tool is ABSENT from the pack and a reviewer greps for it (invariant #1); a central \`never\` would be a denial wearing absence's clothes, so absence stays the pack's to declare`);
+      }
+    }
+  }
+
+  // --- 9. structure, not state ------------------------------------------------------------
+  const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml'), ...(orgPath ? [orgPath] : [])];
   const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.(md|ya?ml|json)$/.test(e.name)) files.push(p); } };
   for (const sub of ['agents', 'skills']) if (existsSync(join(dir, sub))) walk(join(dir, sub));
   for (const f of files) {
@@ -352,7 +490,7 @@ export function validatePack(dir) {
     }
   }
 
-  return { ok: errors.length === 0, errors, notices, checked: { agents: machRoles.length, skills: skillKeys.length } };
+  return { ok: errors.length === 0, errors, notices, checked: { agents: machRoles.length, skills: skillKeys.length, org: orgRef } };
 }
 
 const invokedDirectly = process.argv[1] && basename(fileURLToPath(import.meta.url)) === basename(process.argv[1]);
@@ -360,7 +498,7 @@ if (invokedDirectly) {
   const dir = process.argv[2] || 'packs/kopdar-ops';
   const r = validatePack(dir);
   console.log(`\nvalidate-pack — ${dir}`);
-  console.log(`  schema ${SCHEMA} · ${r.checked ? `${r.checked.agents} agents, ${r.checked.skills} skills` : ''}`);
+  console.log(`  schema ${SCHEMA} · ${r.checked ? `${r.checked.agents} agents, ${r.checked.skills} skills · org ${r.checked.org ?? '(none)'}` : ''}`);
   for (const n of r.notices) console.log(`  notice  ${n}`);
   for (const e of r.errors) console.log(`  FAIL    ${e}`);
   console.log(r.ok ? '\n  PASS — pack shape and invariants hold (enforcement is not proved by this script; see header)\n' : `\n  ${r.errors.length} rule(s) violated\n`);

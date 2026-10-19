@@ -32,8 +32,9 @@ import { releaseShatter, tripShatter } from './shatter.ts';
 import { setBudget, recordSpend } from './budget.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
+import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
 import type {
-  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, WakeRow,
+  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, WakeRow,
 } from './types.ts';
 
 export interface AttemptArgs {
@@ -73,12 +74,19 @@ export interface CommitArgs {
 export class Fleet {
   readonly pack: Packed;
   readonly answers: NeedAnswers;
+  /**
+   * The resolved tier stack, built once at construction (D35). Every enforcement read goes through
+   * this — an engine that re-resolved per call would let a mid-run edit to the pack change a member
+   * protection between two sends of the same approved card.
+   */
+  readonly resolved: ResolvedSettings;
   private st: FleetState;
   private t: number;
 
   constructor(pack: Packed, answers: NeedAnswers = {}, startAt = 1_000) {
     this.pack = pack;
     this.answers = answers;
+    this.resolved = resolveSettings({ pack });
     this.st = freshState();
     this.t = startAt;
   }
@@ -131,6 +139,7 @@ export class Fleet {
       now: () => this.t,
       pack: this.pack,
       answers: this.answers,
+      settings: this.resolved,
     };
   }
 
@@ -146,7 +155,7 @@ export class Fleet {
 
   attempt(args: AttemptArgs): AttemptResult {
     try {
-      let level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, channel: args.channel });
+      let level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, settings: this.resolved, channel: args.channel });
       if (args.triggerInput !== undefined) level = narrowForMemberTrigger(level);
       if (level === 'never') {
         refuse('class_unavailable', 'spec §1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — not denied, absent`);
@@ -169,7 +178,7 @@ export class Fleet {
 
   commit(args: CommitArgs): void {
     try {
-      const level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, channel: args.channel });
+      const level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, settings: this.resolved, channel: args.channel });
       if (level === 'never') {
         refuse('class_unavailable', 'spec §1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — a grant cannot resurrect it`);
       }
@@ -384,6 +393,17 @@ export class Fleet {
    */
   inbox(): InboxReport {
     return deriveInbox(this.st, this.t);
+  }
+
+  /**
+   * The settings artefact (D35, third §1.2 read side): what is in force and which file put it there.
+   * Same contract as `health()` and `inbox()` — a pure fold of the log plus the tier stack, so it
+   * appends nothing, dates itself, and replays identically — and it carries the tier limits in its
+   * own words, because a report that omits what it does not cover is how an unread field becomes a
+   * believed guarantee.
+   */
+  settings(): SettingsReport {
+    return deriveSettings(this.st, this.resolved, this.t);
   }
 }
 

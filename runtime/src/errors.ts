@@ -30,9 +30,10 @@ export const REFUSAL_CODES = [
   'unsourced_number', // §2.11 — a partner claim with no source the organiser named
   'partner_data_leak', // §2.11 — no member identifier travels toward a partner
   'cross_promo_cap', // §2.11 — partner reach is bounded per event
-  'no_transport', // this runtime ships no channel adapter — a commit must be wired to one
+  'no_transport', // D21 / D11 — this runtime ships no channel adapter; a commit must be wired to one
   'need_unanswered', // §2.7 — the pack refuses to boot with invented content
-  'pack_invalid', // §2.7/D15 — a pack that fails the validator never instantiates
+  'pack_invalid', // §2.7/D15/FR-1.18 — a pack that fails the validator, or goes below its org's floor, never instantiates
+  'org_invalid', // FR-1.18/D35 — an organisation manifest that is not shaped right cannot hold a floor for anyone
   'idempotent_hit', // §1.5 — same idempotencyKey returned the existing card
 ] as const;
 

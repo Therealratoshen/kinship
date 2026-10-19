@@ -223,14 +223,73 @@ export interface Packed {
   guardrails: PackedGuardrails;
   budgets: PackedBudgets;
   needs: string[];
+  /** The org tier this pack names, if any. `null` means the pack is its own top tier (§1.7). */
+  organisation?: string | null;
+  /** The manifest `loadPack` resolved for that key — present only when `organisation` is set. */
+  org?: PackedOrg;
+  /**
+   * The guardrail keys the pack file actually spelled out. Absence of a key is not a choice, so it
+   * inherits the org's floor; a key the file *did* write is a decision, and the org may only refuse
+   * it (see `settings.ts` — refuse, never clamp). Optional: a pack built in memory is treated as
+   * having decided everything it carries, which is the conservative reading.
+   */
+  declared?: string[];
 }
 
 /** Answers to the `needs:` gate — supplied by the organiser at boot, never invented (§2.7). */
 export type NeedAnswers = Record<string, string>;
 
+// --- the organisation tier (PRD FR-1.18, DECISIONS.md D35/D36) ------------------------------------
+/**
+ * A parsed, shape-checked `orgs/<key>.yaml`: the manifest above the pack. A pack is one community;
+ * an org is the operator who runs several of them and does not want their member protections to
+ * depend on which folder a fork started from. `floors` holds only the keys the file names — an org
+ * holds what it declares, no more.
+ */
+export interface PackedOrg {
+  schema: string; // 'kinship-org/v1'
+  key: string;
+  name?: string;
+  /** The closed set of names the runtime accepts as the human in §2.7. Exactly one while §12-Q12 stands. */
+  humanSeats: string[];
+  /** Roles the org recognises, for reporting. Not a whitelist: a community may add an agent. */
+  agentRoles: string[];
+  floors: Partial<PackedGuardrails>;
+  /** Per action class, exact keys only, and never `never` — absence is the pack's to declare. */
+  autonomyCeiling: Record<string, Autonomy>;
+}
+
+/** Which file the effective value came from. `default` means neither file named it. */
+export type SettingSource = 'pack' | 'org' | 'default';
+
+/** One row of "who set this, and what it beat" — §1.2 says why is part of the product. */
+export interface ProvenanceRow {
+  key: string;
+  tier: 'guardrail' | 'seat' | 'ceiling';
+  effective: string | number | boolean;
+  source: SettingSource;
+  note: string;
+}
+
+/** The output of resolution: the values enforcement actually reads, plus their provenance. */
+export interface ResolvedSettings {
+  orgKey: string | null;
+  packKey: string;
+  guardrails: PackedGuardrails;
+  humanSeats: string[];
+  agentRoles: string[];
+  autonomyCeiling: Record<string, Autonomy>;
+  provenance: ProvenanceRow[];
+  limits: string[];
+}
+
 /**
  * The context every domain operation runs in. `commit` is append + apply — the only way state
  * changes — so live runs and replays traverse the identical reducer (§1.2).
+ *
+ * `settings` is the resolved tier stack, built once at construction. Enforcement reads *this* and
+ * never `pack.guardrails` directly: two read paths to one number is how a fork ends up with a
+ * reported protection it does not have.
  */
 export interface Ctx {
   state: FleetState;
@@ -240,6 +299,7 @@ export interface Ctx {
   advance?: (ms: number) => void;
   pack: Packed;
   answers: NeedAnswers;
+  settings: ResolvedSettings;
 }
 
 // --- state -------------------------------------------------------------------------------------------------------
