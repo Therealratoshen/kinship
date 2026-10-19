@@ -40,10 +40,10 @@ test('the per-24h cap counts the member, not the lane (§2.9 / FR-5.5, pack cap 
   const c = ctx();
   const t0 = AT(7);
   const commits: number[] = [t0 - 3 * 3600_000];
-  assert.doesNotThrow(() => assertWithinCap(c.pack, 'm1', t0, commits)); // 1 in window + this one = 2
+  assert.doesNotThrow(() => assertWithinCap(c, 'm1', t0, commits)); // 1 in window + this one = 2
   commits.push(t0 - 1 * 3600_000);
-  assert.throws(() => assertWithinCap(c.pack, 'm1', t0, commits), /member_cap_exceeded/); // 2 + 1 = 3 > 2
-  assert.doesNotThrow(() => assertWithinCap(c.pack, 'm1', t0, [t0 - 25 * 3600_000, t0 - 24.5 * 3600_000]),
+  assert.throws(() => assertWithinCap(c, 'm1', t0, commits), /member_cap_exceeded/); // 2 + 1 = 3 > 2
+  assert.doesNotThrow(() => assertWithinCap(c, 'm1', t0, [t0 - 25 * 3600_000, t0 - 24.5 * 3600_000]),
     'the window is rolling 24h, not a daily batch — outside it does not count');
 });
 
@@ -58,11 +58,11 @@ test('quiet hours are the member local time, not the organiser (§2.9 / FR-5.5)'
 test('nothing leaves the community under the aggregation floor — refuse, never truncate (§2.9 / FR-5.3)', () => {
   const c = ctx();
   assert.throws(
-    () => assertAggregateOnly(c.pack, 9, ['bu-dewi', 'pak-anton']),
+    () => assertAggregateOnly(c, 9, ['bu-dewi', 'pak-anton']),
     /report_below_floor/,
     'a named-attendee report under the floor is refused at assembly, not redacted after',
   );
-  assert.doesNotThrow(() => assertAggregateOnly(c.pack, 10, ['bu-dewi']));
-  assert.equal(renderBracket(c.pack, 9), '[fewer than 10 attendees]',
+  assert.doesNotThrow(() => assertAggregateOnly(c, 10, ['bu-dewi']));
+  assert.equal(renderBracket(c, 9), '[fewer than 10 attendees]',
     'below the floor renders a bracket, not a number');
 });

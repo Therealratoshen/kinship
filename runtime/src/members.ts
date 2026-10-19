@@ -12,7 +12,7 @@
  * - nothing leaves the community under the aggregation floor — refuse, never truncate.
  */
 import { refuse } from './errors.ts';
-import type { Ctx, FleetEvent, FleetState, Packed, SuppressionRow } from './types.ts';
+import type { Ctx, FleetEvent, FleetState, SuppressionRow } from './types.ts';
 
 export function registerMember(ctx: Ctx, ref: string, tz: string): void {
   if (ctx.state.members.has(ref)) return; // idempotent
@@ -52,8 +52,8 @@ export function listSuppressions(state: FleetState, memberRef: string): Suppress
 const DAY_MS = 24 * 3600_000;
 
 /** FR-5.5 — the cap counts commits *to the member* in a rolling 24h, across every lane. */
-export function assertWithinCap(pack: Packed, _memberRef: string, at: number, recentCommitTimes: number[]): void {
-  const cap = pack.guardrails.memberMessageCapPer24h;
+export function assertWithinCap(ctx: Ctx, _memberRef: string, at: number, recentCommitTimes: number[]): void {
+  const cap = ctx.pack.guardrails.memberMessageCapPer24h;
   const inWindow = recentCommitTimes.filter((t) => at - t < DAY_MS).length;
   if (inWindow >= cap) {
     refuse('member_cap_exceeded', 'spec §2.9 / FR-5.5',
@@ -76,18 +76,18 @@ export function assertSendHour(memberTz: string, at: number): void {
  * FR-5.3 — an external artefact naming anyone below the floor is refused at assembly. The only
  * acceptable failure mode is refusing to assemble; redaction after assembly is too late.
  */
-export function assertAggregateOnly(pack: Packed, cohortSize: number, namedRefs: string[]): void {
-  if (cohortSize < pack.guardrails.reportAggregationFloor && namedRefs.length > 0) {
+export function assertAggregateOnly(ctx: Ctx, cohortSize: number, namedRefs: string[]): void {
+  const floor = ctx.pack.guardrails.reportAggregationFloor;
+  if (cohortSize < floor && namedRefs.length > 0) {
     refuse('report_below_floor', 'spec §2.9 / FR-5.3',
-      `cohort of ${cohortSize} is under the floor (${pack.guardrails.reportAggregationFloor}) and ${namedRefs.length} member(s) are named — refuse to assemble`);
+      `cohort of ${cohortSize} is under the floor (${floor}) and ${namedRefs.length} member(s) are named — refuse to assemble`);
   }
 }
 
 /** Below the floor, a count renders as a bracket, not a number. */
-export function renderBracket(pack: Packed, cohortSize: number): string {
-  return cohortSize < pack.guardrails.reportAggregationFloor
-    ? `[fewer than ${pack.guardrails.reportAggregationFloor} attendees]`
-    : String(cohortSize);
+export function renderBracket(ctx: Ctx, cohortSize: number): string {
+  const floor = ctx.pack.guardrails.reportAggregationFloor;
+  return cohortSize < floor ? `[fewer than ${floor} attendees]` : String(cohortSize);
 }
 
 // --- the applier ---------------------------------------------------------------------------------

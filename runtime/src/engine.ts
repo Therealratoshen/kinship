@@ -222,7 +222,7 @@ export class Fleet {
         assertContactable(this.st, ref);
         const m = this.st.members.get(ref);
         if (m) assertSendHour(m.tz, this.t);
-        assertWithinCap(this.pack, ref, this.t, this.st.commitsByMember.get(ref) ?? []);
+        assertWithinCap(this.ctx(), ref, this.t, this.st.commitsByMember.get(ref) ?? []);
       }
 
       // --- the partner-reach bound (§2.11 / FR-6.5) ---------------------------------------------------
