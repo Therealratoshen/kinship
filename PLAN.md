@@ -227,6 +227,29 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    part of the documented corpse shape. The phase-1 gate text above is unchanged, and `D9` is still the only
    thing that starts the measurement.
 
+*(2026-10-19 ninth addendum, still not a rewrite: the management pass, and the one item in it that was only
+   ever a click. The owner asked what else needs managing, then said **"do it"**, which named a single
+   recommendation — **merge or close Dependabot PR #4**. It is merged (`e637466`, squash), so `main`'s own CI
+   now runs `actions/checkout@v7` and `actions/setup-node@v7`: the two Actions are this repo's only
+   third-party dependencies, because the runtime is zero-dependency (**D21**), and both matrix jobs are green
+   at that SHA — verified by `headSha` and `git ls-remote`, not by a command banner. It could not merge
+   itself (`REVIEW_REQUIRED`, `mergeStateStatus: BLOCKED`), and both exits from that — approve, or bypass as
+   admin — post under the owner's token, so the approving review states out loud that the agent submitted it
+   on his one word and that the gate result, not the review, is what makes the bump safe. The bypass was
+   available and went unused: a repo that sells "every logged act names the human seat that owns it" (**D36**)
+   should not launder its own trail to save a click. Recorded as **D39**, reversibility 🟢 — revert the one
+   commit and a single run re-proves it. **Two facts the pass turned up, both still his:** every
+   human-authored commit on `main` reads `verification.verified: false / reason: unsigned`, while the bot's
+   merge commit reads `verified: true / reason: valid` with **`signature: none`** — the platform vouching for
+   an agent's identity with no key involved, which is the pattern the runtime refuses for member-facing acts;
+   and `enforce_admins` is still `false` with `required_status_checks` still `null`, so the review rule binds
+   future contributors and not the owner, which is **D26**'s undecided question with one more datum. The D37b
+   drift class showed up in a new noun on this pass: this file's own ratification cell in `DECISIONS.md`
+   had stopped at D30 while nine rows piled up above it — a *range* claim, not a count, still policed by no
+   test. It now reads **D10–D39**, and the ratification sentence is still unwritten; **D9** remains the only
+   true blocker and is unset, §5(a)/§5(c) are unbuilt, issue #3 is open, `v0.1.0` is still a draft with no
+   tags, and nothing member-facing sends.)*
+
 **Nothing in the phase-1 gate moves.** Shadow mode still needs one dated event (D9), still sends nothing,
 and is still the cheapest conversion of assumption to evidence available.
 
