@@ -271,6 +271,34 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    **D9** is still unset and remains the only thing that starts the measurement; the review's own honest verdict
    on what this repo is today is one sentence in `ROADMAP.md` — a governance library, a spec, and a demo.)*
 
+*(2026-10-19 eleventh addendum, still not a rewrite: the plan gets a proposal about its own first blocker,
+   and the pass is one file. Asked **"what next"**, the answer was the mechanism plus one recommendation rather
+   than a menu — a menu is what went unchosen twice — and **"go"** covered exactly that: write the persisted-log
+   format and the first reference host **as a document**. The result is `PERSISTED-LOG-MEMO-2026-10-19.md`
+   (**D41**), shaped like `LICENSE-MEMO-2026-10-18.md`: constraint first — *"persisting the log is the moment
+   member identifiers stop being memory and start being a file someone can copy"* — then twelve facts, each
+   re-provable by a command or a `file:line`, then three consequences, the format, the host, and four one-line
+   questions. Two of the facts are the reason the memo exists at all. `runtime/src/apply.ts:60-63` and `:93-95`
+   fold `CommitRefused` and `EscalationRaised` to nothing, so deleting every refusal row from a restored file
+   leaves the replayed state identical: `spec/HOST-CONTRACT.md` seam 3's promise that restore-and-replay finds
+   a corrupt store **over-claims**, and the re-wording is written in the memo and deliberately not applied.
+   And `Fleet.replay(events, answers, pack?)` needs the eight `needs:` answers, one of which is
+   `escalation_contact` — a named human — so a self-contained log file is not a portable one, which is the
+   privacy question `PLAN.md` has been carrying as **Q3** arriving in the file format rather than in the legal
+   review. No code, no gate, no schema, no `logs/` directory, no PRD §14 row and no version bump: the product
+   promises exactly what it promised before this file was written. Tests unchanged at **239 across 25 files**,
+   22 guarantees, all four gates green on Node v25.6.1 — recount, do not restate. **Two defects came out of the
+   pass and stayed out of the diff:** `runtime/src/inbox.ts:174` tells an organiser that the raw member input
+   text lives in the audit log, and it does not (the log holds a 16-hex hash; two tests pin it), and the repo's
+   own prose-count claim is not reproducible — `ROADMAP.md` quotes six and eleven, this pass's commands returned
+   nine and thirteen with different search terms, so the number is a property of the pattern. Both are named in
+   the D41 row and in memo §6 because a source string and a contributor-facing gap row are the owner's calls, not
+   an agent's. The pass also caught three wrong line citations inside the memo's own "verified today" table —
+   `Card`, the engine constructor, and the "first persisted format" phrase attributed to **D32** — fixed before
+   commit and recorded, which is the **D37b/M1** drift class arriving inside a document whose whole point is
+   re-checkable line numbers. **D9** is still unset, is still the only thing that starts the measurement, and
+   nothing in §5 of the memo is adopted by it.)*
+
 **Nothing in the phase-1 gate moves.** Shadow mode still needs one dated event (D9), still sends nothing,
 and is still the cheapest conversion of assumption to evidence available.
 
