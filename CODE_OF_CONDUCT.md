@@ -92,7 +92,9 @@ one Community Moderator — the sole maintainer — so a report about the mainta
 here, and no response time is promised. That is a known incompleteness, listed in
 [ROADMAP.md](ROADMAP.md) under *not complete for contributors*, and it is the same open question the product
 carries for the people it serves: whether any authority may be delegated, and to whom
-(`DECISIONS.md` D26, PRD §12-Q12). An agent may never hold a moderation seat for a human (spec §1.8, §2.7), and
+(PRD §12-Q12 — recorded as the human-roles row in `DECISIONS.md`'s *Not yet decided* table; the seat set
+the project has already built is **D36**, and whether the maintainer can be *bound* by the repo's own rules
+is **D26**). An agent may never hold a moderation seat for a human (spec §1.8, §2.7), and
 this file does not create one.
 
 ## Addressing and Repairing Harm
