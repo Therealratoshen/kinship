@@ -141,6 +141,22 @@ function runStory() {
   whatsappFork.cleanup();
   floorFork.cleanup();
 
+  // 5c) The sanction ladder (D37): the community may write down the rungs a member climbs before they are
+  //     gone, and the fleet may not act on one line of it. Two shapes of the same refusal, both through
+  //     the real boot gate: a rung handed to an agent instead of the human seat (PKG-62), and a rung
+  //     carried by a tool some agent declares (PKG-63) — the second is invariant #1 seen from below,
+  //     because an executable rung is a moderation lane wearing a community document.
+  const ladderSeatFork = tamperPack((yaml) => yaml.replace('  - rung: private-word\n    by: organiser', '  - rung: private-word\n    by: moderator'));
+  const ladderToolFork = tamperPack((yaml) => yaml.replace('    member_told: \'a reminder of the rule in the thread, naming the rule and not the person\'\n    via: organiser-in-channel', '    member_told: \'a reminder of the rule in the thread\'\n    via: telegram | send'));
+  const seatLadderObs = ladderSeatFork.obs;
+  const toolLadderObs = ladderToolFork.obs;
+  ladderSeatFork.cleanup();
+  ladderToolFork.cleanup();
+  // The shipped pack's own overlap: rungs whose `via` is a tool some agent declares. Empty is the
+  // promise; a non-empty list is printed rather than hidden, so a fork that wires one up sees it here.
+  const declaredTools = Object.values(pack.agents).flatMap((a) => a.tools.map((t) => t.replace(/\s+/g, ' ').trim().toLowerCase()));
+  const ladderReach = (pack.sanctionLadder ?? []).filter((r) => declaredTools.includes(r.via.replace(/\s+/g, ' ').trim().toLowerCase()));
+
   // 6) The runner (§1.6): a run owns its own meter, stops at the pack's cap, keeps its partial results.
   //    The cap is tightened to 3 for the demo — the real pack says 15; the rule being shown is the same.
   const tight = { ...pack, budgets: { ...pack.budgets, maxActionsPerRun: 3 } };
@@ -194,6 +210,7 @@ function runStory() {
 
   return {
     pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, leak, health, inbox,
+    ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     mainFleetHealth: fleet.health(),
     mainFleetInbox: fleet.inbox(),
@@ -238,6 +255,21 @@ function guarantees(s: ReturnType<typeof runStory>) {
     fork_cannot_lower_an_org_floor: s.orgFloor.threw && /PKG-60/.test(s.orgFloor.message)
       && /member_message_cap_per_24h/.test(s.orgFloor.message) && /refused, not clamped/.test(s.orgFloor.message),
     pack_cannot_add_a_human_seat: s.seatFork.threw && /pack_invalid/.test(s.seatFork.code) && /seat collision/.test(s.seatFork.message),
+    // The sanction ladder (D37), checked as the two halves of one promise: the rungs are actually written
+    // down, and none of them is something the fleet can do — so writing them down granted it no hand.
+    // Reachability is checked against the pack's own `tools:` lists, not against a list of banned verbs:
+    // a rung carried by a capability nobody declares stays legal, which is the whole point.
+    // The `length >= 2` conjunct guards the guarantee against passing vacuously (an empty ladder satisfies
+    // `every`), NOT against a community choosing no ladder — absence is legal, and `pack.test.ts` is what
+    // pins that the shipped pack wrote its rungs down.
+    sanction_ladder_is_declared_and_out_of_reach: s.ladder.length >= 2
+      && s.ladder.every((r) => r.by !== '' && s.settings.humanSeats.includes(r.by))
+      && s.ladder.every((r) => r.memberTold !== '')
+      && Boolean(s.ladder[s.ladder.length - 1]?.appeal)
+      && s.ladderReach.length === 0,
+    fork_cannot_hand_a_rung_to_an_agent_or_a_tool: s.seatLadderObs.threw && /PKG-62/.test(s.seatLadderObs.message)
+      && /private-word/.test(s.seatLadderObs.message) && /moderator/.test(s.seatLadderObs.message)
+      && s.toolLadderObs.threw && /PKG-63/.test(s.toolLadderObs.message) && /engagement/.test(s.toolLadderObs.message),
     org_floor_is_visible_in_the_effective_number: s.settings.guardrails.memberMessageCapPer24h === 2
       && s.capRow?.source === 'pack' && /4/.test(s.capRow?.note ?? ''),
     settings_report_is_a_pure_read: s.settingsIsPureRead,
@@ -300,6 +332,13 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  fork adds 'whatsapp | send' → boot ${s.tamper.threw ? `refused by ${/PKG-\d+/.exec(s.tamper.message)?.[0] ?? s.tamper.code}` : 'ACCEPTED (invariant broken!)'}`);
   console.log(`  fork raises the member cap 2 → 5, above its org's floor of 4 → boot ${s.orgFloor.threw ? `refused by ${/PKG-\d+/.exec(s.orgFloor.message)?.[0] ?? s.orgFloor.code}: ${/refused, not clamped/.test(s.orgFloor.message) ? 'refused, not clamped' : '(said nothing about clamping)'}` : 'ACCEPTED (the org tier is decorative!)'}`);
   console.log(`  pack names an agent after the human seat → ${s.seatFork.threw ? `refused: ${s.seatFork.code}` : 'ACCEPTED (an agent would hold the veto)'}`);
+
+  hr('4b. The sanction ladder (D37) — the community writes its rungs down; the fleet cannot climb them');
+  console.log(`  declared ladder: ${s.ladder.map((r) => `${r.rung}→${r.by}`).join(' → ') || '(none — a community that does not moderate writes no ladder, and nothing hands it one)'}`);
+  console.log(`  every rung says what the member is told; the last one (${s.ladder[s.ladder.length - 1]?.rung ?? '—'}) names the appeal: ${Boolean(s.ladder[s.ladder.length - 1]?.appeal)}`);
+  console.log(`  rungs carried by a tool some agent declares: ${s.ladderReach.length === 0 ? 'none — the ladder is a promise, not a lane (invariant #1)' : `LEAK: ${s.ladderReach.map((r) => r.rung).join(', ')}`}`);
+  console.log(`  fork hands the private-word rung to \`moderator\` (an agent) → boot ${s.seatLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.seatLadderObs.message)?.[0] ?? s.seatLadderObs.code}` : 'ACCEPTED (a fleet could sanction!)'}`);
+  console.log(`  fork wires the nudge rung to \`telegram | send\` (a declared tool) → boot ${s.toolLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.toolLadderObs.message)?.[0] ?? s.toolLadderObs.code}` : 'ACCEPTED (the ladder became a send lane!)'}`);
 
   hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
@@ -381,6 +420,16 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       },
     },
     guarantees: g,
+    sanctionLadder: {
+      whatItIs: 'packs/kopdar-ops/.kinship.yaml (`sanction_ladder:`), parsed by runtime/src/pack.ts and gated again by runtime/src/settings.ts. A community\'s graduated response — nudge, private word, public correction, removal — written as data: each rung names the human who acts, what the member is told, and (on the last) how to appeal.',
+      note: 'It is a promise, not a capability. Nothing in `runtime/` reads these rungs to DO anything: no rung may appear in an agent\'s `tools:` list (PKG-63 / `settings.ts`), every rung must name a human seat (PKG-62 / §2.7), and the fleet has no sanction class to execute. The gap this closes is that a normal community has rungs and tells the member, and this pack previously had a flag and a freeze and no vocabulary in between — while the ladder staying unreachable is what keeps it out of invariant #1\'s way (a sanction the fleet can execute is a moderation lane, not a ladder). Absence is legal: a community that does not moderate declares nothing, and the runtime will not hand it a ladder it did not write down.',
+      declared: s.ladder,
+      declared_reachable_by_a_declared_tool: s.ladderReach.map((r) => r.rung),
+      proof: {
+        rung_handed_to_an_agent: s.seatLadderObs.threw ? s.seatLadderObs.message : 'ACCEPTED — a fleet could sanction',
+        rung_wired_to_a_declared_tool: s.toolLadderObs.threw ? s.toolLadderObs.message : 'ACCEPTED — the ladder became a send lane',
+      },
+    },
     fleetCondition: {
       whatItIs: 'runtime/src/health.ts (`Fleet.health()`) — a read-only snapshot derived from rows already in the log: live lane freezes and their age, queue depth plus the age of the oldest pending card and escalation, budget state per event, overdue wakes, refusals counted by code, idle agents (FR-1.11), and `unmeasured`.',
       note: 'It reports the fleet\'s condition, not the community\'s feelings: PRD §5 puts member-intelligence / churn scoring out of v0, and phase 1 ships no transport (D21/D9), so there is no member traffic to read. The `unmeasured` array is part of the artefact, not a disclaimer bolted on. No member identifier rides in it (§2.9/FR-5.3): a free-text field naming a registered member is substituted with a fixed sentence.',
@@ -411,6 +460,7 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         { id: 'host-adapter-inside-runtime', where: 'spec/HOST-CONTRACT.md (D33) · runtime/test/boundary.test.ts (D32)', note: 'An adapter — a provider SDK, a channel socket, a scheduler, a key — belongs in a sibling package (`adapters/<host>/`), never under `runtime/src`: the boundary gate fails the build on it there, on purpose. Do NOT open a PR adding one inside runtime/ before D9.' },
         { id: 'second-human-seat', where: 'PRD §12-Q12 · runtime/src/roles.ts · orgs/*.yaml (`human_seats`)', note: 'The seat SHAPE is a set; the SIZE is one, and that is the owner\'s open question about delegation, not a runtime limitation to "fix" by adding a `delegate`. A second seat means deciding who can veto a member-facing send on someone else\'s behalf — a decision log entry before it is code.' },
         { id: 'org-tier-clamp', where: 'runtime/src/settings.ts · spec §1.7 / PRD FR-1.18', note: 'A pack weaker than its org\'s floor is REFUSED, never silently rounded to the floor. Do NOT open a PR "simplifying" this into strictest-wins-with-a-warning: a value edited to 20 and enforced at 4 is a file that lies about the system it configures.' },
+        { id: 'fleet-executed-sanction', where: 'packs/kopdar-ops/.kinship.yaml (`sanction_ladder:`) · PKG-62 / PKG-63 · DECISIONS.md D37', note: 'The ladder is what a community promises its members; it is deliberately not something the fleet can do. Do NOT open a PR adding a `moderate.sanction` class, a ban/mute/remove tool, or a rung whose `via` names a declared tool — a rung the fleet can execute stops being a graduated response and becomes an autonomous moderation lane (invariant #1). The human acts.' },
       ],
       readFirst: [
         'spec/GOVERNANCE-SPEC-OUTLINE.md — Part 6 maps every rule to its runtime file and holding test',
