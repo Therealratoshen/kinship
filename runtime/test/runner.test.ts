@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet, type CommitArgs } from '../src/engine.ts';
 import { runActions } from '../src/runner.ts';
+import { createRun } from '../src/budget.ts';
 import { KinshipError } from '../src/errors.ts';
 import { makePack } from './helpers.ts';
 import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
@@ -101,6 +102,32 @@ test('a second call is a second run: an exhausted run stops itself, not the proc
   assert.equal(second.executed, 2, 'the second run starts clean — a process-wide counter would have refused it');
   assert.equal(second.truncated, false);
   assert.equal(executedCount(f), 4);
+});
+
+test('a caller may hand ONE run across calls, so a tick can be bounded rather than multiplied (§1.6)', () => {
+  const f = fleetWithGrant(2);
+  const tick = createRun();
+  const first = runActions(f, [internal(1), internal(2)], tick);
+  assert.equal(first.truncated, false);
+  assert.equal(first.executed, 2);
+  const second = runActions(f, [internal(3), internal(4)], tick);
+  assert.equal(second.truncated, true, 'the shared run is already at the pack\'s cap — a new call is not a fresh budget');
+  assert.equal(second.executed, 0);
+  assert.equal(second.dropped, 2, 'both actions of the second call are accounted for as dropped');
+  assert.equal(executedCount(f), 2, 'two agents × one call each did NOT hand the fleet four actions');
+  assert.equal(second.cap, 2, 'and the report still names the same cap, because the cap is the pack\'s, not the handle\'s');
+});
+
+test('the report says what the cap bounds, so "15" is never read as a fleet ceiling (§1.6)', () => {
+  const f = fleetWithGrant(15);
+  assert.equal(runActions(f, [internal(1)]).capScope, 'this_call',
+    'no handle handed in ⇒ the cap is one call\'s, and the reader is told so');
+  assert.equal(runActions(f, [internal(1)], createRun()).capScope, 'this_call',
+    'a handle the caller made and never reuses is still one call\'s run');
+  const shared = createRun();
+  runActions(f, [internal(1)], shared);
+  assert.equal(runActions(f, [internal(2)], shared).capScope, 'shared_run',
+    'the same handle on a second call is a bound that spans calls — the scope must be visible either way');
 });
 
 test('the runner leaves no trace outside the event log: replay still deep-equals (§1.2)', () => {

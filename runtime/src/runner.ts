@@ -14,10 +14,19 @@
  *  2. A `KinshipError` is an outcome, not a crash: the batch continues and the refusal keeps its
  *     code (§1.2 — "why not" is part of the product). Anything else is a bug and propagates; the
  *     runner does not turn garbage arguments into a tidy report.
- *  3. The run's counter is never written to state. It is the runner's memory of one invocation,
- *     so `Fleet.replay` still reproduces the ledger exactly (§1.2).
+ *  3. The run's counter is never written to state. It lives in a handle the caller may hold, but the
+ *     fold never sees it, so `Fleet.replay` still reproduces the ledger exactly (§1.2).
+ *
+ * A fourth is now explicit rather than implicit: **a run is the caller's handle, not this function's
+ * invocation.** `runActions` makes its own handle when none is handed in, which means one call bounds
+ * itself and a scheduler that ticks once per agent gets `agents × max_actions_per_run` attempted
+ * actions with nothing refusing it. That is a legitimate shape — per-agent fairness is what §1.6's
+ * "per-agent, per-run" wording asks for — but it is only legitimate when the reader can tell which
+ * bound they are looking at, so the report says so in `capScope`, and a host that wants one cap per
+ * tick hands in one handle. `D38` records why the trap was worth naming in the type rather than only
+ * in a comment.
  */
-import { createRun, recordRunAction, runState } from './budget.ts';
+import { createRun, recordRunAction, runState, type RunState } from './budget.ts';
 import { KinshipError } from './errors.ts';
 import type { CommitArgs, Fleet } from './engine.ts';
 
@@ -44,6 +53,13 @@ export interface RunReport {
   dropped: number;
   truncated: boolean;
   cap: number;
+  /**
+   * What `cap` actually bounded, stated because "15" is otherwise read as a fleet ceiling. This is the
+   * runner reporting what it can *observe*: a handle that already counts actions has by definition been
+   * handed in before, so the bound spans calls; a fresh or internal handle bounds this call alone. It
+   * cannot see whether the caller intends to reuse the handle next tick — only whether they did.
+   */
+  capScope: 'this_call' | 'shared_run';
   outcomes: ActionOutcome[];
   /** Handed in, never gated: the run ended before reaching them, and nothing will retry them. */
   notAttempted: CommitArgs[];
@@ -51,8 +67,14 @@ export interface RunReport {
 
 const summary = (a: CommitArgs) => ({ index: 0, actionClass: a.actionClass, agent: a.agent, origin: a.origin });
 
-export function runActions(fleet: Fleet, actions: readonly CommitArgs[]): RunReport {
-  const run = createRun(); // one call, one run — never a shared counter
+/**
+ * `run` is the caller's, and its absence is a decision: omit it and the cap bounds *this call*, which is
+ * what a scheduler that ticks once per agent wants per agent. Hand in one handle across calls and the same
+ * cap bounds the tick instead of multiplying by the number of agents — §1.6's "per-run" has always meant
+ * "per run the caller declares", never "per call the runner happens to make".
+ */
+export function runActions(fleet: Fleet, actions: readonly CommitArgs[], run: RunState = createRun()): RunReport {
+  const shared = run.actions > 0; // observed reuse, not a claim about the caller's intent
   const cap = fleet.pack.budgets.maxActionsPerRun;
   const outcomes: ActionOutcome[] = [];
   let next = 0;
@@ -88,6 +110,7 @@ export function runActions(fleet: Fleet, actions: readonly CommitArgs[]): RunRep
     dropped: count('dropped') + notAttempted.length,
     truncated: state.truncated,
     cap,
+    capScope: shared ? 'shared_run' : 'this_call',
     outcomes,
     notAttempted,
   };

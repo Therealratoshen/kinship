@@ -24,6 +24,7 @@
 import { loadPack } from './src/pack.ts';
 import { Fleet } from './src/engine.ts';
 import { runActions } from './src/runner.ts';
+import { createRun } from './src/budget.ts';
 import { UNIMPLEMENTED_REFUSAL_CODES } from './src/errors.ts';
 import { HEALTH_WITHHELD_MEMBER_REF } from './src/health.ts';
 import type { CommitArgs } from './src/engine.ts';
@@ -168,6 +169,18 @@ function runStory() {
   });
   const runner = runActions(runnerFleet, [action('kopdar-1'), action('kopdar-2'), action('kopdar-3'), action('kopdar-4'), action('kopdar-5')]);
 
+  // 6b) The same cap, one handle handed in across two calls (D38). §1.6 says "per-run", and a run is the
+  //     handle the caller holds — so a host that ticks once per agent can bound the *tick* instead of
+  //     multiplying the cap by the number of agents. Two calls of two actions under a cap of 3 is the
+  //     difference between 3 executed and 4: the handle is what decides which one the fleet gets.
+  const tickFleet = Fleet.boot(tight, ANSWERS, DAY);
+  tickFleet.issueGrant({ actionClass: 'draft.reminder', kind: 'allow_always', scope: 'the tour demo', by: 'organiser' });
+  const tick = createRun();
+  const sharedRun = {
+    first: runActions(tickFleet, [action('kopdar-a'), action('kopdar-b')], tick),
+    second: runActions(tickFleet, [action('kopdar-c'), action('kopdar-d')], tick),
+  };
+
   // 7) §2.11: copy travelling toward a partner may not carry a member identifier — the refusal names
   //    the member, never the sentence around it, because the timeline is member-readable (§2.3).
   const leakyId = `Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi wa:62811.\n\n${DISCLOSURE_ID}`;
@@ -209,7 +222,7 @@ function runStory() {
   const capRow = settings.provenance.find((p) => p.key === 'member_message_cap_per_24h');
 
   return {
-    pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, leak, health, inbox,
+    pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, sharedRun, leak, health, inbox,
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     mainFleetHealth: fleet.health(),
@@ -274,7 +287,16 @@ function guarantees(s: ReturnType<typeof runStory>) {
       && s.capRow?.source === 'pack' && /4/.test(s.capRow?.note ?? ''),
     settings_report_is_a_pure_read: s.settingsIsPureRead,
     run_cap_truncates_and_keeps_partial: s.runner.truncated === true && s.runner.executed === 3 && s.runner.dropped === 2
-      && s.runner.outcomes.every((o) => o.result !== 'refused'),
+      && s.runner.outcomes.every((o) => o.result !== 'refused')
+      && s.runner.capScope === 'this_call',
+    // The cap means "per run", and a run is the handle the caller holds. Two calls that hand in one
+    // handle must be bounded *together* — otherwise a host ticking per agent gets cap × agents and the
+    // number in the pack is a lie about the fleet.
+    one_handle_bounds_the_tick_across_calls: s.sharedRun.first.capScope === 'this_call'
+      && s.sharedRun.second.capScope === 'shared_run'
+      && s.sharedRun.first.executed === 2
+      && s.sharedRun.second.executed === 1
+      && s.sharedRun.second.truncated === true,
     partner_copy_cannot_carry_a_member_ref: s.leak.threw && /partner_data_leak/.test(s.leak.code),
     authorization_survives_refusal: s.authorizationLeftIntact,
     // The snapshot must be non-empty for the privacy check to mean anything: a report over an empty
@@ -343,6 +365,8 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
   console.log(`  metered attempts: ${s.runner.actions} · actions never attempted: ${s.runner.notAttempted.length} — partial results kept, no retry storm`);
+  console.log(`  this run\'s cap bounded: ${s.runner.capScope} (a call with no handle bounds only itself, so a per-agent tick is cap × agents)`);
+  console.log(`  one handle, two calls of 2 under the same cap of ${s.sharedRun.second.cap} → executed ${s.sharedRun.first.executed} then ${s.sharedRun.second.executed} (${s.sharedRun.second.capScope}): the second call is bounded by the first — ${s.sharedRun.second.truncated ? 'truncated, not restarted' : 'NOT bounded'}`);
 
   hr('6. Cross-promotion (spec §2.11) — copy travels, people do not');
   console.log(`  partner promo carrying a member ref → refused: ${s.leak.code || '(IT PASSED — a member number reached a partner!)'}`);
@@ -451,7 +475,7 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
           id: 'per-run-action-cap',
           spec: '§1.6 / budgets.max_actions_per_run',
           where: 'runtime/src/runner.ts (`runActions`) · runtime/src/engine.ts (header)',
-          status: 'The engine is still not a scheduler on purpose (D10 — phase 1 schedules inside the organiser\'s own instance), and the cap is not wired into `Fleet.commit`. The run side does now ship: `runActions()` owns one run\'s meter, stops at the first crossing with partial results kept, drops the tail without attempting it, and returns a report. Wiring it into a real scheduler is the open contribution, not writing the meter.',
+          status: 'The engine is still not a scheduler on purpose (D10 — phase 1 schedules inside the organiser\'s own instance), and the cap is not wired into `Fleet.commit`. The run side does now ship: `runActions()` meters a run, stops at the first crossing with partial results kept, drops the tail without attempting it, and returns a report. Since D38 the run is **the handle the caller hands in**: omit it and the cap bounds one call, pass one `createRun()` across calls and it bounds a tick — and `report.capScope` says which one the reader is looking at. Wiring it into a real scheduler is the open contribution, not writing the meter.',
         },
       ],
       gatedByDesign: [
