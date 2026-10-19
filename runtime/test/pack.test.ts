@@ -65,6 +65,69 @@ test('the partner gate holds on the real pack: cross-promo is unreachable until 
   assert.equal(r.disposition, 'card', 'partner_policy answered → the class resolves to its declared draft');
 });
 
+// --- the sanction ladder (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §5, DECISIONS.md D37) ----
+// A normal community does not have a refusal code. It has a set of rungs a person climbs before they are
+// gone, and every rung comes with an explanation. This pack had the flag and the freeze and nothing else,
+// so the norms the community actually runs on lived in nobody's file. Writing them down is the addition —
+// and they are written down as DATA, because the moment the fleet can execute a sanction it is a
+// moderation bot with a governance manual parked next to it.
+//
+// `loadPack` is the gate for both halves: the ladder's shape (a human on every rung, an appeal on the
+// last), and its unreachability (no rung may be a tool some agent declares).
+
+/**
+ * Edit one string inside the pack's declared ladder, and fail loudly if the string is gone.
+ * A tamper that silently matches nothing does not test the rule — it tests that the file still says what
+ * the test thinks it says, which is the trap the `organisation:` case above had to be written around.
+ */
+function mutateLadder(yaml: string, search: string, replace: string): string {
+  assert.ok(yaml.includes(search), `fixture drifted: \`${search}\` is no longer in packs/kopdar-ops/.kinship.yaml — update the test, do not delete it`);
+  return yaml.replace(search, replace);
+}
+
+test('the shipped pack declares its sanction ladder, and the ladder comes back as ordered data', () => {
+  const p = loadPack(PACK_DIR);
+  assert.deepEqual(p.sanctionLadder?.map((r) => r.rung), ['nudge', 'private-word', 'public-correction', 'removal'],
+    'the rungs keep their order — a ladder is a sequence, and a set of sanctions is not');
+  assert.deepEqual([...new Set(p.sanctionLadder?.map((r) => r.by))], ['organiser'], 'every rung is an act a human performs');
+  assert.ok(p.sanctionLadder?.every((r) => r.memberTold), 'every rung says what the member is told');
+  assert.ok(p.sanctionLadder?.[3]!.appeal, 'the last rung names the way back in');
+});
+
+test('a ladder block carrying a key the parser does not know refuses to boot — the parser does not guess (D37)', () => {
+  const fork = forkCopy();
+  try {
+    // An invented `tool:` under a rung is the sneaky wiring: it is not in any agent's `tools:` list, so
+    // no reachability rule sees it, and a parser that ignored unknown keys would read the rung as clean
+    // and drop the line. `block()` would then be a filter, and a filter is not a trust boundary.
+    fork.mutate((yaml) => mutateLadder(yaml, '    via: organiser-in-channel\n  - rung: private-word', '    via: organiser-in-channel\n    tool: telegram | send\n  - rung: private-word'));
+    assert.throws(() => loadPack(fork.dir), (e: unknown) => {
+      const msg = String(e);
+      assert.match(msg, /pack_invalid/);
+      assert.match(msg, /tool/, 'names the key it could not read');
+      assert.match(msg, /ladder parse gate/, 'and says which gate fired, so a reader does not hunt for a PKG rule that never existed');
+      return true;
+    });
+  } finally {
+    fork.cleanup();
+  }
+});
+
+test('a rung with no name refuses to boot — an unreadable rung is not a skipped rung', () => {
+  const fork = forkCopy();
+  try {
+    fork.mutate((yaml) => mutateLadder(yaml, '  - rung: nudge\n', '  -\n'));
+    assert.throws(() => loadPack(fork.dir), (e: unknown) => {
+      const msg = String(e);
+      assert.match(msg, /pack_invalid/);
+      assert.match(msg, /ladder parse gate/);
+      return true;
+    });
+  } finally {
+    fork.cleanup();
+  }
+});
+
 test('the real pack runs the draft-only story end to end, with its own guardrails (§1.1, D21)', () => {
   const fleet = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');

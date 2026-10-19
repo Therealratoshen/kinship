@@ -19,7 +19,7 @@ import { join } from 'node:path';
 import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
 import { parseOrg } from './org.ts';
-import type { Autonomy, Packed, PackedAgent, PackedOrg } from './types.ts';
+import type { Autonomy, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
 
@@ -67,6 +67,56 @@ function numberOr(v: string | undefined, fallback: number): number {
   if (v === undefined) return fallback;
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
+}
+
+/** The five keys a `sanction_ladder:` rung may carry, in the spelling the file uses. */
+const LADDER_KEYS: Record<string, keyof SanctionRung> = {
+  rung: 'rung', by: 'by', member_told: 'memberTold', via: 'via', appeal: 'appeal',
+};
+
+/**
+ * The `sanction_ladder:` block, in file order — a sequence of `- key: value` maps.
+ *
+ * Strict in the same way the rest of this parser is, and for the same reason: a line that is skipped is
+ * a line no gate ever saw. `tool: telegram | send` inside a rung would read as a clean ladder to every
+ * shape check (the reachability rule compares `via`, not an invented key), and a `-` with no `rung:`
+ * would drop a rung the community thought it had. Both are refused at the read, so a pack that parses
+ * has been read in full.
+ */
+function refuseLadderLine(packKey: string, what: string): never {
+  return refuse('pack_invalid', 'ladder parse gate (D37)',
+    `pack \`${packKey}\` has a \`sanction_ladder:\` entry ${what} — the runtime reads \`rung\`, \`by\`, \`member_told\`, \`via\` and \`appeal\` and nothing else, so a line it cannot read is not skipped: a ladder whose file and whose parsed shape disagree is exactly the document this repo refuses to boot`);
+}
+
+function parseSanctionLadder(yaml: string, packKey: string): SanctionRung[] {
+  const out: SanctionRung[] = [];
+  let current: Record<string, string> | null = null;
+  const flush = (): void => {
+    const entry = current;
+    current = null;
+    if (entry === null) return;
+    const unknown = Object.keys(entry).filter((k) => LADDER_KEYS[k] === undefined);
+    if (unknown.length) refuseLadderLine(packKey, `that writes \`${unknown[0]}\`, a key it does not have`);
+    if (entry.rung === undefined) refuseLadderLine(packKey, 'with no `rung:` name');
+    out.push({
+      rung: entry.rung,
+      by: entry.by ?? '',
+      memberTold: entry.member_told ?? '',
+      via: entry.via ?? '',
+      ...(entry.appeal !== undefined ? { appeal: entry.appeal } : {}),
+    });
+  };
+  for (const raw of block(yaml, 'sanction_ladder')) {
+    const t = raw.trim();
+    const isItem = t === '-' || t.startsWith('- ');
+    if (isItem) flush();
+    if (current === null) current = {};
+    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(isItem ? t.slice(1).trim() : t);
+    if (kv === null) refuseLadderLine(packKey, `this parser cannot read: \`${t}\``);
+    current[kv[1]!] = kv[2]!.trim().replace(/^['"]|['"]$/g, '');
+  }
+  flush();
+  return out;
 }
 
 function parseAgents(yaml: string): Record<string, PackedAgent> {
@@ -186,6 +236,11 @@ export function loadPack(dir: string): Packed {
     }
   }
 
+  // --- the sanction ladder (D37) -------------------------------------------------------------------
+  // Parsed here because this file is the only reader of a pack folder, and refused here because the
+  // gate that matters is the one a fork cannot skip by not running CI.
+  const sanctionLadder = parseSanctionLadder(yaml, key);
+
   return {
     schema: 'kinship/v1',
     key,
@@ -208,6 +263,9 @@ export function loadPack(dir: string): Packed {
     needs,
     organisation,
     ...(org !== undefined ? { org } : {}),
+    // A pack that declared no ladder reads back as `undefined`, not as `[]` and not as a default ladder:
+    // the runtime has no business supplying norms a community never wrote down (D37).
+    ...(sanctionLadder.length > 0 ? { sanctionLadder } : {}),
     declared: FLOOR_NAMES.filter((name) => guard.has(name)),
   };
 }

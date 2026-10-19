@@ -132,6 +132,35 @@ needs:
   - rsvp_source_of_truth                 # the named export rsvp-chase reconciles against
   - partner_policy                       # named allowed partners + required disclosure line; unset = the class never fires
 
+# --- The ladder a member climbs before they are gone (DECISIONS.md D37) ------------------
+# Declared, never executed. The fleet holds no sanction tool: **PKG-63** refuses a pack whose `tools:`
+# list names a rung, and `runtime/src/pack.ts` refuses it again at boot, so these lines are a promise the
+# community makes to its members rather than a capability. Every rung names the human who acts and what
+# the member is told; the last one names the way back in.
+#
+# Two things this block is NOT. It is not send-ready copy — the words are the organiser's own, in both
+# languages, at the moment they act (that is `needs.member_notice_text`'s job for the fleet's copy, and
+# nothing here is the fleet's). And it is not required: a community that does not moderate may delete it,
+# and the runtime will not hand a community a ladder it did not write down.
+sanction_ladder:
+  - rung: nudge
+    by: organiser
+    member_told: 'a reminder of the rule in the thread, naming the rule and not the person'
+    via: organiser-in-channel
+  - rung: private-word
+    by: organiser
+    member_told: 'a direct message from the organiser: what was broken, and what would fix it'
+    via: organiser-in-dm
+  - rung: public-correction
+    by: organiser
+    member_told: 'a correction posted where the claim was made, so the thread keeps the right version'
+    via: organiser-in-channel
+  - rung: removal
+    by: organiser
+    member_told: 'that you were removed, by whom, on which rung, and how to appeal it'
+    via: host-ui                                 # the platform's own control, used by a human in the platform's UI
+    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec §2.9.4)'
+
 attribution:
   author: filbert (@handle)              # immutable in the pack hash
   powered: auto-counted                  # every real event run increments a public usage trail
