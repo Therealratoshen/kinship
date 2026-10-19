@@ -250,6 +250,27 @@ Two research layers landed (`research/`), and the plan absorbed them without mov
    true blocker and is unset, §5(a)/§5(c) are unbuilt, issue #3 is open, `v0.1.0` is still a draft with no
    tags, and nothing member-facing sends.)*
 
+*(2026-10-19 tenth addendum, still not a rewrite: the plan gains a public gap list, and the owner set a
+   standing behaviour on the same day. He wrote: **"i think you should always do POV for opensource like
+   what is not complete yet"** — an outside-in completeness review on every pass, which is now recorded as a
+   rule to follow rather than a favour. The first such review is `community/OSS-COMPLETENESS-POV-2026-10-19.md`:
+   three casts (contributor, adopter, maintainer), each with its own question, threshold, and refusals, every
+   finding checked against a live command or a file rather than remembered. A review is a review, so it was
+   executed as one — read-only — and only its single top recommendation went to him. He said **"do it"**, and
+   that produced **D40**: `ROADMAP.md` (what is not complete, with **no dates** and **no restated lists**, so
+   the file adds a gap inventory without adding a fourth place for the same numbers to drift), `CODE_OF_CONDUCT.md`
+   (Contributor Covenant 3.0, reporting via the repo's only private path — the security-advisory form — and
+   stating plainly that a conduct report about the sole maintainer has no independent arbiter), a CI badge on
+   the README, and pointers in README, CONTRIBUTING and `AGENTS.md`. Tests unchanged at **239 across 25 files**,
+   22 guarantees, 7,435 lines, all four gates green on Node v25.6.1 — this is a docs pass, so no FR moved and no
+   PRD §14 row. **What it does not do is the point for this file:** it publishes the gaps rather than closing
+   any of them. No host, no persisted log format, no install path, no tag, no release; the review rule and
+   `enforce_admins` (**D26**), the unstaffed security SLA, issue #3's `good first issue` label, the prose-count
+   gate, §5(a) and §5(c) are all still his, and four of the review's five shortlist items are deliberately
+   *listed in ROADMAP instead of built*, because "do it" covered one recommendation and nothing wider.
+   **D9** is still unset and remains the only thing that starts the measurement; the review's own honest verdict
+   on what this repo is today is one sentence in `ROADMAP.md` — a governance library, a spec, and a demo.)*
+
 **Nothing in the phase-1 gate moves.** Shadow mode still needs one dated event (D9), still sends nothing,
 and is still the cheapest conversion of assumption to evidence available.
 

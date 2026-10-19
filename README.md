@@ -2,6 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Governance Gates](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml?query=branch%3Amain)
 
 > **The fleet proposes. The organiser approves. Every action is logged and replayable.**
 
@@ -78,6 +79,12 @@ The gating mechanism is real: every member-facing commit refuses with `no_transp
 ## For community operators
 
 The [PRD](PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md) and [execution plan](PLAN.md) cover the full product case. The [design-thinking folder](design-thinking/) documents the research that produced the spec. The [CONTRIBUTING.md](CONTRIBUTING.md) explains the append-only decision rule and how to contribute.
+
+Read **[ROADMAP.md](ROADMAP.md) before opening a feature PR**: it lists what is *not* complete, and for each
+gap says whether a contributor can close it or it is an owner decision. Contributor behaviour is governed by
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) (Contributor Covenant 3.0, adopted 2026-10-19); its reporting channel
+is the private security-advisory form, because this repo has one maintainer and no other private path yet —
+that limitation is written into the file rather than papered over.
 
 ## Product surface
 

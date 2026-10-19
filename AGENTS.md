@@ -53,6 +53,7 @@ calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either
 | `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
 | `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec §1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
 | `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
+| `ROADMAP.md` | What is **not** complete, and for each gap whether a contributor may close it or it is the owner's call. Read it before proposing a capability — several refusals are enforced by the validator, so the wrong PR fails a gate, not a review. |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
 | `SECURITY.md` | How to report a vulnerability. Not a public issue. |
 

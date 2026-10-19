@@ -89,7 +89,9 @@ what it is. Each carries a positive control — a scanner that cannot fail is de
 
 ## Reporting issues
 
-Please report security issues via `SECURITY.md` — do not open a public issue. For bugs and feature requests, open an issue describing what the code *does* vs what the spec *requires*.
+Please report security issues via `SECURITY.md` — do not open a public issue. For bugs and feature requests, open an issue describing what the code *does* vs what the spec *requires*. For a conduct report, use [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — and note what it says plainly: this repo has one maintainer, so a report about the maintainer has no independent arbiter here.
+
+Before proposing a capability, check [ROADMAP.md](ROADMAP.md). It lists what is not complete *and* who is allowed to decide it; several refusals are enforced by the validator, so a PR against an undecided spec question fails a gate rather than a preference.
 
 ## What is not open for contribution (yet)
 
