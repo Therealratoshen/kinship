@@ -221,10 +221,17 @@ function runStory() {
   // The org floor the pack beat, read out of the provenance row rather than restated here.
   const capRow = settings.provenance.find((p) => p.key === 'member_message_cap_per_24h');
 
+  // 11) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
+  //     it holds — and the same rows with one deleted, which must NOT verify. The verification is a
+  //     pure read in the runtime; the writing is the host's (D41's memo §3).
+  const soundLog = Fleet.verifyLog(fleet.events, ANSWERS, pack, { state: fleet.state });
+  const tamperedLog = Fleet.verifyLog(fleet.events.filter((e) => e.seq !== 2), ANSWERS, pack, { state: fleet.state });
+
   return {
     pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, sharedRun, leak, health, inbox,
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
+    soundLog, tamperedLog,
     mainFleetHealth: fleet.health(),
     mainFleetInbox: fleet.inbox(),
     timeline: fleet.auditTimeline(),
@@ -258,6 +265,12 @@ function contributionMap() {
 
 function guarantees(s: ReturnType<typeof runStory>) {
   return {
+    // The audit trail is a file now (seam 3, D41's memo): the rows verify against the state the fleet
+    // holds, and a row pulled out of the middle does not — a gap in `seq` is visible without any crypto.
+    // Both halves, because a check that cannot fail is worth exactly nothing (D24).
+    a_written_log_verifies_and_a_tampered_one_does_not: s.soundLog.ok && !s.tamperedLog.ok
+      && s.tamperedLog.problems.some((p) => p.kind === 'seq_missing'),
+
     boot_requires_all_needs: s.bootGate.threw && /need_unanswered/.test(s.bootGate.code),
     member_action_starts_as_draft: s.draft.disposition === 'card',
     commit_refuses_no_transport: s.commit.threw && /no_transport/.test(s.commit.code),

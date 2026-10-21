@@ -1,0 +1,39 @@
+# pack.local.example.yaml — the answers a community supplies.
+#
+# Copy this to `pack.local.yaml` next to it (`packs/kopdar-ops/pack.local.yaml`) and fill it in.
+# That file is gitignored: a community's real names, channels and contacts never enter the
+# repository. Nothing in `runtime/` reads it — the host does, and it hands the answers to the
+# runtime in memory. See `adapters/reference/README.md`.
+#
+# Every key below is one of the pack's `needs:` — the eight answers the fleet refuses to invent.
+# The pack will not boot without all eight, and this host refuses an answer the pack did not ask
+# for, so a typo here is a loud failure rather than a silent no-op.
+#
+# A value may be quoted; the quotes come off. A `#` starts a comment when it follows whitespace,
+# so a value may contain one.
+
+# The community's name, as members know it. It appears in the canonical disclosure line every
+# member-facing message carries, in both languages.
+community_name: "AI Builders ID"
+
+# The recurring cadence, not a single date. The fleet's phases are derived from this.
+schedule: "every other Saturday"
+
+# Where the venue comes from: `gcal`, `luma` (Plus only), or `manual`.
+venue_source: "manual"
+
+# The sponsors, or the words `none yet`. Never fabricated — an empty list is an honest answer.
+sponsor_list: "none yet"
+
+# LOAD-BEARING: `escalate-to-human` has no target without this. It is a named human.
+escalation_contact: "organiser"
+
+# The disclosure copy for the group, in both languages. Required, not optional.
+member_notice_text: "bot ini asisten organiser, bukan manusia"
+
+# The named export `rsvp-chase` reconciles against. Name it, or the lane has nothing to read.
+rsvp_source_of_truth: "google form"
+
+# The named allowed partners and the disclosure line they require. UNSET means the
+# cross-promotion class never fires at all — absence, not denial.
+partner_policy: "Kopdar Sebelah saja; wajib baris disclosure"

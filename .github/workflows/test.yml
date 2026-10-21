@@ -43,3 +43,35 @@ jobs:
       # four commands. CI re-typing the list would be the copy nobody checks.
       - name: Governance gates (shape, contracts, semantics, tour)
         run: node scripts/gates.mjs
+
+  # The reference host's own tests. This is NOT a fifth gate: the gate list stays four, and a gate
+  # list that grows is a doc that drifts (D24). It is a package's own test suite, like any package's
+  # — the host is a sibling package with its own manifest (spec/HOST-CONTRACT.md), and its one
+  # dependency is a local path, so `npm install` here creates a symlink and fetches nothing.
+  host:
+    name: Reference host
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['23', '24']
+
+    defaults:
+      run:
+        working-directory: adapters/reference
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Install (a local symlink, no registry)
+        run: npm install --no-audit --no-fund
+
+      - name: Reference host tests
+        run: npm test

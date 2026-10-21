@@ -66,6 +66,13 @@ Node ≥ 23. No npm. No build step.
 - The tier above the pack (`orgs/kinshipai.yaml`) — org **floors** and an **autonomy ceiling** resolved org →
   pack with **refuse, never clamp**: an operator can reject a pack that goes below a floor or fill a blank the
   pack left, and cannot rewrite a number a community declared (spec §1.10 / PRD FR-1.18)
+- **A reference host** (`adapters/reference/`) — it owns the clock, the store and the printing, and it **sends
+  nothing**: no transport, so every member-facing commit still refuses `no_transport` (D21). It boots the pack
+  (or continues its own log on restart), writes `events.jsonl` + `manifest.json`, and verifies what it wrote
+- **A persisted log that can be verified** — `Fleet.verifyLog` (pure read, in `runtime/`): the rows must be dense
+  in `seq`, they must fold, and the state they fold to must be the state the fleet holds. The file carries a
+  **digest** of the `needs:` answers, never their values — one of them is a named human (spec/HOST-CONTRACT.md
+  seam 3; PRD FR-4.4, `DECISIONS.md` D48)
 - The claim ceiling (PRD §2.3, FR-4.4) — the banned strings are code (`scripts/claim-scan.mjs`) rather than a
   comment, the sweep reaches the copy that actually ships (the root `README.md` and a pack's own `README.md`
   included), and `scripts/claims.test.mjs` fails if a forbidden cell in the PRD is neither enforced nor named as

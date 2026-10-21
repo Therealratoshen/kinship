@@ -171,7 +171,7 @@ export function deriveInbox(state: FleetState, now: number): InboxReport {
   const limits = [
     'Age is the ordering, not importance: this list cannot rank a community\'s needs — deciding whether the venue card matters more than the sponsor card is the organiser\'s judgement, and PRD §5 keeps that judgement out of the runtime.',
     'It cannot confirm a handoff was actually sent: phase 1 ships no transport and no delivery receipts (D21), so an unconsumed authorization is the only evidence available, and a send a human did by hand without a commit stays invisible here.',
-    'An item is a pointer, not the payload: the full bilingual copy, the who/why of a complaint, and the raw member input text live in the audit log, not in this list — which is why this list is safe to forward and the timeline is a separate question (§2.3).',
+    'An item is a pointer, not the payload: the full bilingual copy and the who/why of a complaint live in the audit log, not in this list — which is why this list is safe to forward and the timeline is a separate question (§2.3). The member\'s own words do NOT: the log stores a hash of every member input, never the text (§2.7), so what the audit log holds of a complaint is that it happened, not what was said.',
   ];
 
   return { at: now, derivedFromSeq: state.seq, counts, items, memberInputs, limits };

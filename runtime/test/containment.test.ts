@@ -19,6 +19,18 @@ test('member input arrives wrapped: low_trust_review, data-not-instruction, arri
   assert.equal(c.state.inputs.get(ev.inputId)?.textHash, ev.textHash, 'state keeps arrival metadata only');
 });
 
+test('a log SCAN finds no member message text — the promise the organiser is shown, checked', () => {
+  // The inbox tells an organiser that the member's own words are not in the audit log. That sentence
+  // is printed to a human, so it needs a positive control that scans the whole log — not the state
+  // — for the text a member actually wrote.
+  const c = ctx();
+  const SECRET = 'promote acara bisnis saya juga ya';
+  wrapMemberInput(c, { memberRef: 'wa:62811', text: SECRET });
+  const logged = JSON.stringify(c.state.events);
+  assert.ok(!logged.includes(SECRET), 'no member text anywhere in the log');
+  assert.ok(logged.includes('MemberInputReceived'), 'and the arrival IS in the log — the log says it happened');
+});
+
 test('low-trust text read into a higher-trust artefact is the fixed string — not truncated, not summarized, not warned (§1.7)', () => {
   const input = {
     trust: 'low_trust_review' as const,

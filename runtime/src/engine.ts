@@ -30,6 +30,7 @@ import {
 } from './lifecycle.ts';
 import { releaseShatter, tripShatter } from './shatter.ts';
 import { setBudget, recordSpend } from './budget.ts';
+import { answersDigest, deepEqualState, seqProblems, type LogExpectation, type LogVerification } from './log.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
 import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
@@ -114,6 +115,51 @@ export class Fleet {
     }, needs: [] } as Packed), answers, last);
     fleet.st = st;
     return fleet;
+  }
+
+  /**
+   * §1.2 — verify a persisted log, as a pure read. Seam 3, tier 1: the rows must be dense in `seq`,
+   * they must fold, and (when the caller says what it expects) the state they fold to must be the
+   * state the caller already holds.
+   *
+   * The verification lives here because verification is control-plane semantics — invariant #2 says
+   * Kinship owns the replayable audit trail — and writing the file is seam 3 and belongs to the host.
+   *
+   * @param rows           the rows read back from the file
+   * @param answers        the `needs:` answers the file was written under
+   * @param pack           the pack the log was written under
+   * @param expectation    what the caller expects — a live state to compare against, a digest to check
+   */
+  static verifyLog(
+    rows: LoggedEvent[],
+    answers: NeedAnswers = {},
+    pack?: Packed,
+    expectation?: LogExpectation,
+  ): LogVerification {
+    const problems = seqProblems(rows);
+    let state: FleetState | null = null;
+    try {
+      state = Fleet.replay(rows, answers, pack).state;
+    } catch (e) {
+      problems.push({ kind: 'replay_failed', detail: `these rows do not fold: ${e instanceof Error ? e.message : String(e)}` });
+    }
+    if (state !== null && expectation?.state !== undefined && !deepEqualState(state, expectation.state)) {
+      problems.push({ kind: 'state_mismatch', detail: 'these rows fold to a state that is not the state the caller holds — the file and the fleet disagree' });
+    }
+    if (expectation?.answersDigest !== undefined) {
+      const digest = answersDigest(answers);
+      if (digest !== expectation.answersDigest) {
+        problems.push({ kind: 'answers_digest_mismatch', detail: `the answers under this log digest to ${digest}, not the ${expectation.answersDigest} its manifest carries — the config changed under the log` });
+      }
+    }
+    return {
+      ok: problems.length === 0,
+      problems,
+      rows: rows.length,
+      firstSeq: rows.length > 0 ? rows[0]!.seq : null,
+      lastSeq: rows.length > 0 ? rows[rows.length - 1]!.seq : null,
+      state,
+    };
   }
 
   get state(): FleetState {

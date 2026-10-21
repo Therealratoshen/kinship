@@ -1,0 +1,20 @@
+{
+  "name": "kinship-adapter-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A reference host for Kinship: it owns the clock, the store and the printing, and it sends nothing. There is no transport here on purpose — see README.md.",
+  "scripts": {
+    "start": "node src/host.ts run",
+    "tick": "node src/host.ts tick",
+    "verify": "node src/host.ts verify",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "kinship-runtime": "file:../../runtime"
+  },
+  "engines": {
+    "node": ">=23"
+  },
+  "license": "MIT"
+}
