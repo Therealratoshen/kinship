@@ -154,3 +154,24 @@ test('POSITIVE CONTROL: the orphan scanner catches a header-less row, ignores a 
   const fenced = ['```', '| a | b |', '```'].join('\n');
   assert.deepEqual(orphanedTableRows(fenced), [], 'a pipe line inside a code fence is code, not a table');
 });
+
+test('the two table scanners agree with each other, and with GFM, on the awkward shapes', () => {
+  // Leading and trailing pipes are optional in GFM, and an empty header row is not a delimiter
+  // row — the repo has three tables that open with `| | |`, and a scanner that called those
+  // broken would be a scanner nobody trusts.
+  const cases = [
+    ['a table with no trailing pipe', ['| a | b |', '|---|---|', '| 1 | 2 | 3'].join('\n'), { overfull: 1, orphaned: 0 }],
+    ['a row with no trailing pipe', ['| a | b', '|---|---|', '| 1 | 2 |'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['a delimiter with no trailing pipe', ['| a | b |', '|---|---|', '| 1 | 2 | 3 |'].join('\n'), { overfull: 1, orphaned: 0 }],
+    ['a table inside a code fence', ['```', '| a | b |', '|---|---|', '| 1 | 2 | 3 |', '```'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['a table inside a tilde fence', ['~~~', '| a | b |', '| 1 | 2 |', '~~~'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['an aligned delimiter row', ['| a | b |', '|:---|---:|', '| 1 | 2 |'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['an empty header row', ['| | |', '|---|---|', '| 1 | 2 |'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['a row with fewer cells than the header', ['| a | b |', '|---|---|', '| 1 |'].join('\n'), { overfull: 0, orphaned: 0 }],
+    ['a pipe line before a table', ['| x |', '| a | b |', '|---|---|', '| 1 | 2 |'].join('\n'), { overfull: 0, orphaned: 1 }],
+  ];
+  for (const [label, text, want] of cases) {
+    assert.equal(overfullTableRows(text).length, want.overfull, `overfull: ${label}`);
+    assert.equal(orphanedTableRows(text).length, want.orphaned, `orphaned: ${label}`);
+  }
+});

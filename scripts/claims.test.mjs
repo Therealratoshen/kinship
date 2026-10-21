@@ -68,6 +68,24 @@ function invariantThree() {
   return para.join(' ');
 }
 
+/**
+ * AGENTS.md invariant 3's forbidden list, item by item. This is the half of the drift check the
+ * PRD-only version missed: three of the bans — hours-saved, TAM, community size — are written
+ * only here, so a list that kept them in step with §2.3 could still have lost them without a
+ * single test failing.
+ */
+function invariantThreeItems() {
+  const para = invariantThree();
+  // The list is indented and hard-wrapped in AGENTS.md, so the marker does not sit on one line —
+  // and the list ends at the first sentence end, which is the price rule.
+  const match = para.match(/Forbidden in\s+any copy:\s*(.*?\.)\s/);
+  assert.ok(match, 'AGENTS.md invariant 3 no longer lists what is forbidden — update this test');
+  return match[1]
+    .split(',')
+    .map((s) => s.replace(/^\s*and\s+/, '').replace(/\s+/g, ' ').trim().replace(/^"|"$/g, '').replace(/\.$/, ''))
+    .filter(Boolean);
+}
+
 /** The quoted spans of a cell. A cell with none is a rule, not a string. */
 const quoted = (cell) => [...cell.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
 
@@ -130,6 +148,39 @@ test('a citation that wraps inside one paragraph is still a citation', () =>
       "the pack's own PACK.md wraps its citation across two lines — a span confined to one paragraph must still read as a citation, or the rule would fire on the repo's own text",
     );
   }));
+
+test('a phrase split across a hard-wrapped line is still the phrase', () =>
+  inCopy((dir) => {
+    const f = join(dir, 'README.md');
+    writeFileSync(f, `We offer replace your community\nmanager to every member.\n`);
+    assert.ok(
+      codes(validatePack(dir)).includes('PKG-46'),
+      'a paragraph the author merely re-wrapped must not be a way to ship the claim — a word break may fall on a hyphen or any run of whitespace',
+    );
+  }));
+
+test('every banned string has a pattern that can actually fire', () => {
+  for (const claim of BANNED_CLAIMS) {
+    assert.ok(
+      claim.re.test(claim.phrase),
+      `\`${claim.phrase}\` (${claim.source}) carries a pattern that cannot match its own phrase — a ban nothing enforces is decoration, and the repo has a name for that class`,
+    );
+  }
+});
+
+test('every ban AGENTS.md states is in the list, not only the ones PRD §2.3 states', () => {
+  const items = invariantThreeItems();
+  assert.ok(items.length >= 4, 'AGENTS.md invariant 3 lost items — update this test, do not delete it');
+  for (const item of items) {
+    const n = normalise(item);
+    const enforced = BANNED_CLAIMS.some((c) => c.traces.some((t) => n.includes(normalise(t))));
+    const named = CLAIM_RULES.some((r) => n.includes(normalise(r.phrase)) || normalise(r.phrase).includes(n));
+    assert.ok(
+      enforced || named,
+      `AGENTS.md invariant 3 forbids "${item}" and nothing in scripts/claim-scan.mjs catches it — deleting an entry has to fail the build, not pass it quietly`,
+    );
+  }
+});
 
 test('the copy this repo ships asserts no banned claim', () => {
   for (const rel of ['README.md', 'packs/kopdar-ops/README.md', 'packs/kopdar-ops/PACK.md']) {

@@ -91,21 +91,73 @@ export function checkGateDocs(root = join(import.meta.dirname, '..')) {
  * a gate list.
  * ------------------------------------------------------------------------------------------- */
 
-/** A markdown table's cells, counted the way GFM counts them: an escaped pipe is not a separator. */
-const tableCells = (line) => line.replace(/\\\|/g, '').split('|').length - 2;
+/**
+ * A markdown table's cells, counted the way GFM counts them: the leading and trailing pipes are
+ * optional, and an escaped pipe is not a separator.
+ */
+const tableCells = (line) => {
+  let s = line.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  return s.replace(/\\\|/g, '').split('|').length;
+};
 
-/** A delimiter row: cells whose only content is hyphens, colons and pipes. */
-const isDelimiterRow = (line) => /^\s*\|[\s:|-]+\|\s*$/.test(line);
+/**
+ * A delimiter row: cells whose only content are hyphens, and optionally a leading or trailing
+ * colon. An EMPTY header row (`| | |`) is not one of these — its cells hold no hyphens — and
+ * treating it as one made this scanner call three of the repo's own tables broken.
+ */
+const isDelimiterRow = (line) => {
+  let s = line.trim();
+  if (!s.startsWith('|')) return false;
+  if (s.endsWith('|')) s = s.slice(0, -1);
+  s = s.slice(1);
+  const cells = s.split('|');
+  return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c.trim()));
+};
+
+/**
+ * The delimiter row that would make this line a table header, or null. GFM also requires the
+ * delimiter to match the header in the number of cells; if it does not, there is no table.
+ */
+const delimiterFor = (line, next) => {
+  if (!next || !isDelimiterRow(next)) return null;
+  return tableCells(next) === tableCells(line) ? next : null;
+};
+
+/**
+ * The lines of a document that are not inside a fenced code block, with their line numbers. A
+ * pipe-led line inside a fence is code, not a table — and a repository whose documents are about
+ * tables is exactly where a fence will hold one.
+ *
+ * Both ``` and ~~~ fences are honoured, and a fence that never closes hides the rest of the file
+ * rather than making the scan lie about it.
+ */
+function unfencedLines(text) {
+  const out = [];
+  let fence = null;
+  text.split('\n').forEach((line, i) => {
+    const marker = line.match(/^\s*(`{3,}|~{3,})/);
+    if (marker) {
+      const kind = marker[1][0];
+      if (fence === null) fence = kind;
+      else if (fence === kind) fence = null;
+      return;
+    }
+    if (fence === null) out.push({ text: line, line: i + 1 });
+  });
+  return out;
+}
 
 /** Every table row in this text that carries more cells than its header. */
 export function overfullTableRows(text) {
-  const lines = text.split('\n');
+  const lines = unfencedLines(text);
   const rows = [];
   let header = null;
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const line = lines[i].text;
     if (header === null) {
-      if (line.trim().startsWith('|') && isDelimiterRow(lines[i + 1] ?? '')) {
+      if (line.trim().startsWith('|') && delimiterFor(line, lines[i + 1]?.text)) {
         header = tableCells(line);
         i++; // the delimiter row itself
       }
@@ -116,7 +168,7 @@ export function overfullTableRows(text) {
       continue;
     }
     const count = tableCells(line);
-    if (count > header) rows.push({ line: i + 1, cells: count, header });
+    if (count > header) rows.push({ line: lines[i].line, cells: count, header });
   }
   return rows;
 }
@@ -143,27 +195,28 @@ export function markdownFiles(root, found = []) {
  * a table ends the table; that is the rule, and nothing in the repo noticed.
  */
 export function orphanedTableRows(text) {
-  const lines = text.split('\n');
+  const lines = unfencedLines(text);
+  // A table starts wherever a pipe-led line is followed by a delimiter row, and it covers that
+  // line, the delimiter, and the pipe-led lines after it. Every pipe-led line no table covers is
+  // a row that renders as literal text.
+  const covered = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].text.trim().startsWith('|')) continue;
+    if (isDelimiterRow(lines[i].text)) continue;
+    if (delimiterFor(lines[i].text, lines[i + 1]?.text)) {
+      for (let j = i; j < lines.length && lines[j].text.trim().startsWith('|'); j++) covered.add(j);
+    }
+  }
   const orphans = [];
-  let inFence = false;
   let i = 0;
   while (i < lines.length) {
-    const line = lines[i];
-    if (/^\s*```/.test(line)) {
-      inFence = !inFence;
-      i++;
-      continue;
-    }
-    if (inFence || !line.trim().startsWith('|')) {
+    if (!lines[i].text.trim().startsWith('|') || covered.has(i)) {
       i++;
       continue;
     }
     const start = i;
-    while (i < lines.length && lines[i].trim().startsWith('|') && !/^\s*```/.test(lines[i])) i++;
-    const run = lines.slice(start, i);
-    if (!(run.length > 1 && isDelimiterRow(run[1]))) {
-      orphans.push({ line: start + 1, rows: run.length });
-    }
+    while (i < lines.length && lines[i].text.trim().startsWith('|') && !covered.has(i)) i++;
+    orphans.push({ line: lines[start].line, rows: i - start });
   }
   return orphans;
 }

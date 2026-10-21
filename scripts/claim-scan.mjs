@@ -49,6 +49,15 @@
  * repo's own ban list gets switched off, and "a decorative rule is worse than none because it
  * claims a boundary it does not hold" (the reasoning PKG-57 states for its own design). The
  * honest form of the rule is therefore narrow, and the limit ships inside the artefact.
+ *
+ * AND THE SCOPE OF THE SWEEP ITSELF, which is a decision and not an accident: PKG-46 runs only
+ * for a **bundled** pack. A community pack (`bundled: false`) is a stranger's copy, and this
+ * ceiling is a rule about the copy *we* ship — applying it to a fork would fire on a fork's
+ * ordinary prose ("our community size", "10 hours saved per week") and make the rule unusable for
+ * exactly the people it was not written about. That is the reasoning, and the reasoning is
+ * arguable: a registry that lists community packs would want the ceiling applied to what it
+ * lists, and no registry exists yet. So the limit is stated here, and it is an open question for
+ * the owner rather than a settled thing — `DECISIONS.md` D44 and the "Not yet decided" table.
  */
 
 /**
@@ -56,7 +65,10 @@
  * written, so a reviewer can check this list against the documents rather than trust it.
  *
  * Every pattern is word-bounded on purpose: `tam` must not match "tamper", and "community size"
- * must match "community sizes" without matching a larger word.
+ * must match "community sizes" without matching a larger word. And every pattern lets a word
+ * break fall on a hyphen or any run of whitespace, so a phrase split across a hard-wrapped
+ * markdown line is still the phrase — otherwise a paragraph the author merely re-wrapped would
+ * be a way to ship the claim.
  *
  * `traces` is how an entry proves it belongs: the forms in which it appears in PRD §2.3 or
  * AGENTS.md. It is usually the phrase itself, but §2.3 row 4 writes one span with a shared
@@ -64,17 +76,17 @@
  * its halves rather than through a phrase the PRD never wrote.
  */
 export const BANNED_CLAIMS = [
-  { phrase: 'replace your community manager', re: /\b(replace your community manager)\b/i, traces: ['replace your community manager'], source: 'PRD §2.3 row 1' },
-  { phrase: 'fully autonomous', re: /\b(fully autonomous)\b/i, traces: ['fully autonomous'], source: 'PRD §2.3 row 2' },
-  { phrase: 'autonomous 24/7', re: /\b(autonomous 24\/7)\b/i, traces: ['autonomous 24/7'], source: 'PRD §2.3 row 2' },
-  { phrase: '24/7 management', re: /\b(24\/7 management)\b/i, traces: ['24/7 management'], source: 'PRD §2.3 row 2' },
-  { phrase: 'we run your events', re: /\b(we run your events)\b/i, traces: ['we run your events'], source: 'PRD §2.3 row 2' },
-  { phrase: 'we send your reminders', re: /\b(we send your reminders)\b/i, traces: ['we send your reminders'], source: 'PRD §2.3 row 2' },
+  { phrase: 'replace your community manager', re: /\b(replace your[- \s]+community[- \s]+manager)\b/i, traces: ['replace your community manager'], source: 'PRD §2.3 row 1' },
+  { phrase: 'fully autonomous', re: /\b(fully[- \s]+autonomous)\b/i, traces: ['fully autonomous'], source: 'PRD §2.3 row 2' },
+  { phrase: 'autonomous 24/7', re: /\b(autonomous[- \s]+24\/7)\b/i, traces: ['autonomous 24/7'], source: 'PRD §2.3 row 2' },
+  { phrase: '24/7 management', re: /\b(24\/7[- \s]+management)\b/i, traces: ['24/7 management'], source: 'PRD §2.3 row 2' },
+  { phrase: 'we run your events', re: /\b(we[- \s]+run[- \s]+your[- \s]+events)\b/i, traces: ['we run your events'], source: 'PRD §2.3 row 2' },
+  { phrase: 'we send your reminders', re: /\b(we[- \s]+send[- \s]+your[- \s]+reminders)\b/i, traces: ['we send your reminders'], source: 'PRD §2.3 row 2' },
   {
     // §2.3 row 4 writes one span with a shared prefix — "Members will feel more valued / more
     // engaged" — so the entry is one claim with two readings, not two claims.
     phrase: 'members will feel more valued / more engaged',
-    re: /\b(members will feel more (?:valued|engaged))\b/i,
+    re: /\b(members[- \s]+will[- \s]+feel[- \s]+more[- \s]+(?:valued|engaged))\b/i,
     traces: ['members will feel more valued / more engaged'],
     source: 'PRD §2.3 row 4',
   },
@@ -82,13 +94,13 @@ export const BANNED_CLAIMS = [
     // §2.3 row 5 is one sentence with a shared prefix: "We invented approvals / budgets /
     // heartbeats / audit trails." Four mechanisms, one way of claiming them.
     phrase: 'we invented approvals / budgets / heartbeats / audit trails',
-    re: /\b(we invented (?:approvals|budgets|heartbeats|audit trails))\b/i,
-    traces: ['we invented approvals / budgets / heartbeats / audit trails'],
+    re: /\b(we[- \s]+invented[- \s]+(?:approvals|budgets|heartbeats|audit[- \s]+trails))\b/i,
+    traces: ['we invented approvals / budgets / heartbeats / audit trails', 'we invented approvals'],
     source: 'PRD §2.3 row 5',
   },
-  { phrase: 'runs itself', re: /\b(runs itself)\b/i, traces: ['runs itself'], source: 'AGENTS.md invariant 3' },
-  { phrase: 'hours saved', re: /\b(hours[-\s]saved)\b/i, traces: ['hours saved'], source: 'AGENTS.md invariant 3' },
-  { phrase: 'community size', re: /\b(community sizes?)\b/i, traces: ['community size'], source: 'AGENTS.md invariant 3' },
+  { phrase: 'runs itself', re: /\b(runs[- \s]+itself)\b/i, traces: ['runs itself'], source: 'AGENTS.md invariant 3' },
+  { phrase: 'hours saved', re: /\b(hours[- \s]+saved)\b/i, traces: ['hours saved'], source: 'AGENTS.md invariant 3' },
+  { phrase: 'community size', re: /\b(community[- \s]+sizes?)\b/i, traces: ['community size'], source: 'AGENTS.md invariant 3' },
   { phrase: 'tam', re: /\b(tam)\b/i, traces: ['tam'], source: 'AGENTS.md invariant 3' },
 ];
 
