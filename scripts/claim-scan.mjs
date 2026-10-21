@@ -27,6 +27,15 @@
  * phrase inside a code span, or inside a double-quoted span in prose, is a citation: it is removed
  * before the scan.
  *
+ * A CITATION IS A SPAN WITHIN ONE PARAGRAPH, and it must be opened like a quotation. The first
+ * version of this rule paired quote marks across the whole document, which meant a quotation that
+ * opened in one paragraph and closed in another swallowed everything between — including a claim,
+ * and including prose the author never quoted. One stray quote mark was enough to hide a paragraph.
+ * The span is now confined to its paragraph, and an opening quote must follow whitespace or an
+ * opening bracket, so `5"` (a measurement, a typo) cannot open one. The pack's own citation wraps
+ * across two lines *inside* one paragraph, and it is still a citation — the fix is the scope, not
+ * the exemption.
+ *
  * That rule is a **prose convention and does not travel into a data file**. In YAML and JSON a
  * double quote is a delimiter, not a quotation, so `notes: "fully autonomous community
  * management"` is a value the pack declares, and a declared value is an assertion. Hence
@@ -108,8 +117,39 @@ export const isProse = (rel) => /\.md$/i.test(rel);
 
 /** Remove the spans that count as citations: code spans everywhere, double-quoted spans in prose. */
 export function stripCitations(text, { prose = true } = {}) {
-  const withoutCode = text.replace(/`[^`]*`/g, ' ');
-  return prose ? withoutCode.replace(/"[^"]*"/g, ' ') : withoutCode;
+  // Paragraph by paragraph, and never across a paragraph break. A quotation in copy is a phrase
+  // inside one paragraph — the pack's own PACK.md wraps "we run your events / we send your
+  // reminders" across two lines, and that must stay a citation. A span that reached further
+  // would hide every paragraph between two quotes, including a claim, and including text the
+  // author never quoted.
+  const parts = text.split(/(\n\s*\n+)/);
+  return parts
+    .map((part, i) => (i % 2 === 1 ? part : stripParagraphCitations(part, prose)))
+    .join('');
+}
+
+function stripParagraphCitations(paragraph, prose) {
+  const withoutCode = paragraph.replace(/`[^`]*`/g, ' ');
+  if (!prose) return withoutCode;
+  let out = '';
+  let i = 0;
+  while (i < withoutCode.length) {
+    const ch = withoutCode[i];
+    // An opening quote is preceded by whitespace, the start of the paragraph, or an opening
+    // bracket. Otherwise `5"` — a measurement, a typo — would open a span and hide the rest of
+    // the paragraph, which is a way to say anything without saying it.
+    if (ch === '"' && (i === 0 || /[\s([{]/.test(withoutCode[i - 1]))) {
+      const close = withoutCode.indexOf('"', i + 1);
+      if (close !== -1) {
+        out += ' ';
+        i = close + 1;
+        continue;
+      }
+    }
+    out += ch;
+    i++;
+  }
+  return out;
 }
 
 /**

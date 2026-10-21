@@ -101,6 +101,36 @@ test('a quoted phrase in prose is a citation, not an assertion', () =>
     );
   }));
 
+test('a quotation may not reach across a paragraph to hide a claim', () =>
+  inCopy((dir) => {
+    const f = join(dir, 'README.md');
+    writeFileSync(f, `He said "look at this\n\nWe offer ${PHRASE} to every member.\n\nThen "left".\n`);
+    assert.ok(
+      codes(validatePack(dir)).includes('PKG-46'),
+      'a span that crosses a paragraph break hides every paragraph between two quotes — including a claim, and including text the author never quoted',
+    );
+  }));
+
+test('a stray quotation mark cannot open a span and hide the rest of the paragraph', () =>
+  inCopy((dir) => {
+    const f = join(dir, 'README.md');
+    writeFileSync(f, `The cap is 5" wide. We offer ${PHRASE}. The "spec" says so.\n`);
+    assert.ok(
+      codes(validatePack(dir)).includes('PKG-46'),
+      'an opening quote must follow whitespace or an opening bracket, or a stray measurement mark is a way to say anything without saying it',
+    );
+  }));
+
+test('a citation that wraps inside one paragraph is still a citation', () =>
+  inCopy((dir) => {
+    const f = join(dir, 'README.md');
+    writeFileSync(f, `per **D16**, "we run your\nevents / we send your reminders" is banned copy.\n`);
+    assert.ok(
+      !codes(validatePack(dir)).includes('PKG-46'),
+      "the pack's own PACK.md wraps its citation across two lines — a span confined to one paragraph must still read as a citation, or the rule would fire on the repo's own text",
+    );
+  }));
+
 test('the copy this repo ships asserts no banned claim', () => {
   for (const rel of ['README.md', 'packs/kopdar-ops/README.md', 'packs/kopdar-ops/PACK.md']) {
     const text = readFileSync(join(ROOT, rel), 'utf8');
