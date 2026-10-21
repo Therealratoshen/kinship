@@ -11,7 +11,7 @@
 #   .kinship.yaml      schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs
 #   agents/*/AGENTS.md per-agent instructions (named for the AGENTS.md convention, not the
 #                      donor's AGENT.md — see ../../rules/pack-format.mdc, rule 1)
-#   skills/*/SKILL.md  twelve skills, each carrying one falsifiable assertion
+#   skills/*/SKILL.md  sixteen skills, each carrying one falsifiable assertion
 #
 # The one rule from this file that is still load-bearing where it is cited
 # (`DECISIONS.md` D11, D13): `whatsapp | send` is ABSENT from the pack, not set to `draft`.
