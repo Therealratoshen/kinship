@@ -25,6 +25,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { scanForClaims, isProse } from './claim-scan.mjs';
 
 const SCHEMA = 'kinship/v1';
 // The organisation tier's schema (D35). Distinct from the pack's on purpose: a file read as the wrong
@@ -85,10 +86,8 @@ const FORBIDDEN_CHANNEL_ACTION = [
 // Copy rules (PRD §2.3 claim ceiling) enforced inside the repo, not just in the pitch.
 // The member-side entries are here because the temptation is symmetric: after a good event, the easiest
 // next sentence is a felt claim about members ("they feel more valued") that no member was asked about.
-const BANNED_PHRASES = [
-  'runs itself', 'fully autonomous', 'autonomous 24/7', 'replace your community manager', '24/7 management',
-  'we run your events', 'we send your reminders', 'members will feel more valued',
-];
+// The list itself lives in scripts/claim-scan.mjs, so the validator and the contract test read one
+// copy of it and the contract test can check it against PRD §2.3 rather than against a comment.
 
 // The BYOD credential line (spec/HOST-CONTRACT.md seam 1, PRD FR-1.17): the owner brings the model key
 // and it never enters Kinship — so it must never enter a pack folder either, because a pack is the one
@@ -549,7 +548,7 @@ export function validatePack(dir, opts = {}) {
   }
 
   // --- 9. structure, not state ------------------------------------------------------------
-  const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml'), ...(orgPath ? [orgPath] : [])];
+  const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml'), join(dir, 'README.md'), ...(orgPath ? [orgPath] : [])];
   const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.(md|ya?ml|json)$/.test(e.name)) files.push(p); } };
   for (const sub of ['agents', 'skills']) if (existsSync(join(dir, sub))) walk(join(dir, sub));
   for (const f of files) {
@@ -569,11 +568,14 @@ export function validatePack(dir, opts = {}) {
       if (shape) add('PKG-57', `${rel}:${i + 1} carries the shape of ${shape.name} — a credential never enters a pack: the host holds it (BYOD, spec/HOST-CONTRACT.md seam 1) and a pack is a folder strangers fork`);
     }
     if (isBundled) {
-      // The claim ceiling is checked against *assertions*, not citations: quoted and code-spanned
-      // occurrences are the repo naming a banned phrase in order to forbid it. Strip both before scanning.
-      const asserted = t.replace(/`[^`]*`/g, ' ').replace(/"[^"]*"/g, ' ').toLowerCase();
-      const hit = BANNED_PHRASES.find((p) => asserted.includes(p));
-      if (hit) add('PKG-46', `${rel} asserts the banned claim "${hit}" outside a quote (PRD §2.3 claim ceiling) — the fleet proposes, the organiser approves`);
+      // The claim ceiling is checked against *assertions*, not citations: a phrase inside a code
+      // span — or inside a double-quoted span in prose — is the repo naming a banned phrase in
+      // order to forbid it. A double quote in a data file is a delimiter, not a quotation, so
+      // `isProse` decides which rule applies; scripts/claim-scan.mjs carries the reasoning and the
+      // limit it cannot catch.
+      for (const claim of scanForClaims(t, { prose: isProse(rel) })) {
+        add('PKG-46', `${rel} asserts the banned claim "${claim}" (PRD §2.3 claim ceiling) — the fleet proposes, the organiser approves`);
+      }
     }
   }
 

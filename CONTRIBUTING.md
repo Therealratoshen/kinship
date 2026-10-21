@@ -65,12 +65,16 @@ The tour drives the real `kopdar-ops` pack and self-checks every governance
 guarantee it demonstrates; it exits non-zero if one stops holding, and CI fails on that exit code. A
 change that passes the tests and breaks the tour is a change that broke a promise the README makes.
 
-Two `scripts/` files do the same job one level up — over the repo's claims about itself rather than
+Three `scripts/` files do the same job one level up — over the repo's claims about itself rather than
 over the runtime's behaviour: `validate-pack.test.mjs` proves the validator can actually reject a
 tampered pack (51 cases, the newest eight of them the sanction-ladder cases — each with a passing *and* a
-failing control), and `gates.test.mjs` proves the four
+failing control), `gates.test.mjs` proves the four
 commands above are the commands CI runs *and* the commands these docs, `README.md`, `AGENTS.md`, and
-the tour's own `--json` map print.
+the tour's own `--json` map print — and, since the decision log was found rendering as literal text
+after its eighteenth row, also proves that every markdown table in the repository has its header
+attached to its rows, and `claims.test.mjs` proves the claim ceiling (PRD §2.3, FR-4.4)
+is enforced where the copy actually is — the root `README.md` and a pack's own `README.md` included —
+and that the banned list still matches the documents it claims to enforce.
 
 Inside the runtime suite, three files are gates over the repo's own claims rather than over
 behaviour: `imports.test.ts` (every `src` module imports the `types.ts` names it actually uses — the

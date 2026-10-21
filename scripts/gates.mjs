@@ -12,7 +12,7 @@
  * docs must print verbatim, because the gate compares strings, not intentions.
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const GATES = [
@@ -74,6 +74,98 @@ export function checkGateDocs(root = join(import.meta.dirname, '..')) {
     if (stale.length) failures.push(`${rel}: still says "${stale.join('", "')}" — the list is four; fix the sentence, do not delete the history row that said it`);
   }
   return failures;
+}
+
+/* -------------------------------------------------------------------------------------------
+ * A second gate over the repo's own claims: do the tables render as written?
+ *
+ * The defect class is specific and has happened twice in this repo — an unescaped `|` inside a
+ * code span. GitHub counts a pipe as a cell separator unless it is escaped, so one stray pipe
+ * turns a three-cell requirement row into five and the reader sees a different sentence from the
+ * one written. D36's row in `DECISIONS.md` and the **v0.8** row in the PRD's changelog both had
+ * one; both were repaired without changing a word, because a rendering repair is not a decision.
+ *
+ * A row with FEWER cells than its header is legal — GFM pads it — so only overfull rows are
+ * defects. And the scan covers every markdown file in the repository, history files included: a
+ * broken table in `DECISIONS.md` or the PRD is still a broken table, even though neither file is
+ * a gate list.
+ * ------------------------------------------------------------------------------------------- */
+
+/** A markdown table's cells, counted the way GFM counts them: an escaped pipe is not a separator. */
+const tableCells = (line) => line.replace(/\\\|/g, '').split('|').length - 2;
+
+/** A delimiter row: cells whose only content is hyphens, colons and pipes. */
+const isDelimiterRow = (line) => /^\s*\|[\s:|-]+\|\s*$/.test(line);
+
+/** Every table row in this text that carries more cells than its header. */
+export function overfullTableRows(text) {
+  const lines = text.split('\n');
+  const rows = [];
+  let header = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (header === null) {
+      if (line.trim().startsWith('|') && isDelimiterRow(lines[i + 1] ?? '')) {
+        header = tableCells(line);
+        i++; // the delimiter row itself
+      }
+      continue;
+    }
+    if (!line.trim().startsWith('|')) {
+      header = null;
+      continue;
+    }
+    const count = tableCells(line);
+    if (count > header) rows.push({ line: i + 1, cells: count, header });
+  }
+  return rows;
+}
+
+/** Every markdown file under a root, skipping `.git` and `node_modules`. */
+export function markdownFiles(root, found = []) {
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (entry.name === '.git' || entry.name === 'node_modules') continue;
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) markdownFiles(path, found);
+    else if (entry.name.endsWith('.md')) found.push(path);
+  }
+  return found;
+}
+
+/**
+ * Rows that will not render as table rows: a maximal run of pipe-led lines that does not begin
+ * with a header and a delimiter. Without that pair GFM has no table, and the run renders as
+ * literal text — the pipes and all.
+ *
+ * This is not a hypothetical: `DECISIONS.md` carried a blank line between its decision rows, so on
+ * github.com the register rendered as a table for D1–D18 and as raw pipe-text for every decision
+ * after it — verified against the rendered page, not inferred from the spec. A blank line inside
+ * a table ends the table; that is the rule, and nothing in the repo noticed.
+ */
+export function orphanedTableRows(text) {
+  const lines = text.split('\n');
+  const orphans = [];
+  let inFence = false;
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      i++;
+      continue;
+    }
+    if (inFence || !line.trim().startsWith('|')) {
+      i++;
+      continue;
+    }
+    const start = i;
+    while (i < lines.length && lines[i].trim().startsWith('|') && !/^\s*```/.test(lines[i])) i++;
+    const run = lines.slice(start, i);
+    if (!(run.length > 1 && isDelimiterRow(run[1]))) {
+      orphans.push({ line: start + 1, rows: run.length });
+    }
+  }
+  return orphans;
 }
 
 /** Run the four gates in order from the repo root. Returns a report; throws nothing. */

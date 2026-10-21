@@ -81,10 +81,7 @@ conversation window for the outsider.
 | Run | Disclosure needed / possible | `on_behalf_of` named | Suppression changed a card | Unknown-consent held | Names dropped at the floor | S/U/D |
 |---|---|---|---|---|---|---|
 | | | | | | | |
-
-
-|---|---|---|---|---|---|---|---|
-| | *(no runs yet — as of 2026-10-17 this row is empty, and that is the honest state)* | | | | | | |
+| | *(no runs yet — as of 2026-10-17 this row is empty, and that is the honest state)* | | | | | |
 
 **Iteration decision** (CONTINUE / REPOSITION / KILL, per §4, with the number that produced it):
 

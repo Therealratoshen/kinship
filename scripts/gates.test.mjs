@@ -13,7 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { GATES, GATE_DOCS, checkGateDocs, missingGateCommands, staleGateClaims } from './gates.mjs';
+import { GATES, GATE_DOCS, checkGateDocs, missingGateCommands, staleGateClaims, markdownFiles, orphanedTableRows, overfullTableRows } from './gates.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -102,4 +102,55 @@ test('the gate docs this checks are the ones contributors actually read', () => 
   for (const history of ['DECISIONS.md', 'PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md']) {
     assert.ok(!GATE_DOCS.includes(history), `${history} is append-only history — it is not a gate list`);
   }
+});
+
+test('no markdown table in the repository renders with more cells than its header', () => {
+  const offenders = [];
+  for (const file of markdownFiles(ROOT)) {
+    const rel = file.replace(`${ROOT}/`, '');
+    for (const row of overfullTableRows(readFileSync(file, 'utf8'))) {
+      offenders.push(`${rel}:${row.line} — ${row.cells} cells against a ${row.header}-cell header`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `a table row with more cells than its header renders shifted and truncated — the reader sees a different sentence from the one written:\n  ${offenders.join('\n  ')}`,
+  );
+});
+
+test('POSITIVE CONTROL: the table-row scanner catches an overfull row, ignores a short one, and ignores an escaped pipe', () => {
+  const overfull = ['| a | b |', '|---|---|', '| 1 | 2 | 3 |'].join('\n');
+  assert.deepEqual(overfullTableRows(overfull), [{ line: 3, cells: 3, header: 2 }], 'a stray pipe in a cell must be reported');
+  const sound = ['| a | b |', '|---|---|', '| 1 | 2 |'].join('\n');
+  assert.deepEqual(overfullTableRows(sound), [], 'a row with fewer cells than its header is legal — GFM pads it');
+  const escaped = ['| a | b |', '|---|---|', '| 1 | `x \\| y` |'].join('\n');
+  assert.deepEqual(overfullTableRows(escaped), [], 'an escaped pipe is not a separator');
+});
+
+test('no table row in the repository is orphaned from the header that gives it meaning', () => {
+  // A blank line inside a table ends the table. The rows after it render as literal pipe-text,
+  // so the register stops looking like a register. This is the defect the decision log actually
+  // had: ten blank lines between its rows, and D19 onward invisible as table rows.
+  const offenders = [];
+  for (const file of markdownFiles(ROOT)) {
+    const rel = file.replace(`${ROOT}/`, '');
+    for (const row of orphanedTableRows(readFileSync(file, 'utf8'))) {
+      offenders.push(`${rel}:${row.line} — ${row.rows} row(s) with no header above them`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `these rows render as literal text, not as table rows:\n  ${offenders.join('\n  ')}`,
+  );
+});
+
+test('POSITIVE CONTROL: the orphan scanner catches a header-less row, ignores a whole table, and ignores a code fence', () => {
+  const orphan = ['| a | b |', '|---|---|', '| 1 | 2 |', '', '| 3 | 4 |'].join('\n');
+  assert.deepEqual(orphanedTableRows(orphan), [{ line: 5, rows: 1 }], 'a row run with no header above it must be reported');
+  const whole = ['| a | b |', '|---|---|', '| 1 | 2 |'].join('\n');
+  assert.deepEqual(orphanedTableRows(whole), [], 'a table with its header is not orphaned');
+  const fenced = ['```', '| a | b |', '```'].join('\n');
+  assert.deepEqual(orphanedTableRows(fenced), [], 'a pipe line inside a code fence is code, not a table');
 });
