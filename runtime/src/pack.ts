@@ -193,7 +193,13 @@ function findOrgsRoot(dir: string): { root: string | null; checked: string[] } {
  * refuses before anything is parsed, so the parser is only ever trusted on a gated folder.
  */
 export function loadPack(dir: string): Packed {
-  const result = validatePack(dir);
+  // The org tier is found by walking UP from the pack folder, not by looking in the working
+  // directory — a host that installs this pack anywhere but the repo root, which is every host,
+  // would otherwise fail the validator on a path it has never heard of. The loader's resolution
+  // and the validator's have to be the SAME resolution, or the gate checks one file and the
+  // loader reads another. So the root is found once, here, and handed down.
+  const { root: orgsRoot, checked } = findOrgsRoot(dir);
+  const result = validatePack(dir, orgsRoot === null ? {} : { orgsRoot });
   if (!result.ok) {
     refuse('pack_invalid', 'pack format gate (validator)', `${result.errors.length} shape violation(s): ${result.errors.join(' | ')}`);
   }
@@ -223,8 +229,7 @@ export function loadPack(dir: string): Packed {
   const organisation = organisationRaw === null || organisationRaw === '' || organisationRaw === 'null' ? null : organisationRaw;
   let org: PackedOrg | undefined;
   if (organisation !== null) {
-    const { root, checked } = findOrgsRoot(dir);
-    const file = root === null ? null : join(root, `${organisation}.yaml`);
+    const file = orgsRoot === null ? null : join(orgsRoot, `${organisation}.yaml`);
     if (file === null || !existsSync(file)) {
       refuse('pack_invalid', 'org tier gate (FR-1.18)',
         `pack \`${key}\` names organisation \`${organisation}\` and no manifest was found — checked ${checked.map((c) => `\`${join(c, `${organisation}.yaml`)}\``).join(', ')} — booting floorless is not a fallback here, it is the failure this gate exists to catch`);

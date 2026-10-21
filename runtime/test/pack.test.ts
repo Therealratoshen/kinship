@@ -22,6 +22,25 @@ const ANSWERS = {
   partner_policy: 'Kopdar Sebelah saja; wajib baris disclosure',
 };
 
+test('a pack loads from any working directory, not only the repo root', () => {
+  // A host installs this pack wherever it likes and runs from its own directory. The org tier is
+  // found by walking UP from the pack folder, so the validator and the loader must resolve the
+  // SAME file — the loader's answer has to be handed down, or the gate checks one manifest and
+  // the loader reads another.
+  const cwd = process.cwd();
+  const elsewhere = mkdtempSync(join(tmpdir(), 'kinship-cwd-'));
+  try {
+    process.chdir(elsewhere);
+    const p = loadPack(PACK_DIR);
+    assert.equal(p.key, 'kinshipai/bundled/event-ops/kopdar');
+    assert.ok(p.org, 'the org floor is still found from outside the repo — booting floorless is not a fallback');
+    assert.equal(p.org?.key, 'kinshipai');
+  } finally {
+    process.chdir(cwd);
+    rmSync(elsewhere, { recursive: true, force: true });
+  }
+});
+
 test('the real pack loads through the validator + parser, and the parsed numbers are the file\'s numbers', () => {
   const p = loadPack(PACK_DIR);
   assert.equal(p.schema, 'kinship/v1');
