@@ -101,4 +101,6 @@ Before proposing a capability, check [ROADMAP.md](ROADMAP.md). It lists what is 
 
 - The `design-thinking/`, `research/`, and `community/` directories are evidence layers. They are corrected by new rows in `DECISIONS.md`, not by edits.
 - The `pilots/shadow-mode/` kit is for the owner's own use until the phase-2 gate opens.
-- The `evals/promptfoo/` cases are written and unrun. They belong to the eval harness that does not exist yet.
+- The `evals/promptfoo/` cases are written and unrun **by promptfoo** — no provider is wired to it. The
+  harness that runs them now is `node evals/harness.mjs`: node-only, install-free, and deliberately
+  not one of the four gates (a gate list that grows is a doc that drifts — D24).

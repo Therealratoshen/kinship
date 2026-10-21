@@ -34,7 +34,7 @@ self-hostable product.** Everything below follows from that sentence.
 
 | Gap | What it means | Who decides |
 |---|---|---|
-| **Contribution intake is one issue, and it needs a paid API key.** | The only open issue is the eval harness (#3), labelled `good first issue` while requiring a provider credential a newcomer does not have. The machine-readable list of real gaps already exists: `node runtime/tour.ts --json`. Seeding issues from it — so the queue and the map cannot drift apart — is the cheapest fix in this file. | contributor-able, with the owner's labels |
+| **Contribution intake is an empty queue.** | The eval harness (#3) was built and merged — `node evals/harness.mjs` runs the five written cases through the real `Fleet` with a fake provider, so it needs **no paid API key** — and it closed the issue. That leaves this repo with **zero open issues and zero open PRs**, while the machine-readable list of real gaps still exists: `node runtime/tour.ts --json`. Seeding issues from it — so the queue and the map cannot drift apart — is the cheapest fix in this file, and it is now the *whole* fix rather than one issue among several. | contributor-able, with the owner's labels |
 | **One moderator, no independent arbiter.** | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) is adopted (2026-10-19, D40) and its reporting channel is borrowed from `SECURITY.md`, because this repo has no other private path and no personal address has been published for reports. A conduct report about the maintainer therefore has no appeal route. | **owner** (same open question the product carries: PRD §12-Q12) |
 | **The review rule binds contributors and not the owner.** | `enforce_admins` is `false` and `required_status_checks` is `null`, so CI is advisory for him and blocking for everyone else, and every merge needs one approving review from the same person who writes the code. Dependabot PR #4 sat blocked on exactly this until it was approved under his token (D26, D39). Whether the rule should bind him is undecided. | **owner** |
 | **Commits are unsigned; no DCO.** | Human commits read `unsigned` while a bot's merge commit reads `verified: true` with `signature: none` — the platform vouching for an identity with no key. On a repo selling a replayable trail, that asymmetry is the interesting defect (D39). | **owner** |
@@ -71,7 +71,8 @@ These are gaps the product's own claims run into, not packaging problems.
    `spec/HOST-CONTRACT.md` decides where the code may live — adapter code is a sibling package, never
    inside `runtime/`.
 4. `CONTRIBUTING.md` §"What is not open for contribution (yet)" — three directories are evidence layers
-   and the eval cases are written but unrun.
+   and the `evals/promptfoo/` cases are still unrun *by promptfoo* (no provider is wired to it; the
+   harness that runs them is `node evals/harness.mjs`).
 
 A PR that closes a row above is welcome. A PR that adds a capability the spec has not decided — a
 moderation tool, a transport, a second human seat, a per-agent cap — will be refused by a gate, not by
