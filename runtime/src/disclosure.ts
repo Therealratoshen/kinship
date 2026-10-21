@@ -12,6 +12,23 @@
  */
 import { refuse } from './errors.ts';
 
+/**
+ * The languages this runtime implements, in the order it holds them: Indonesian first, English
+ * paired. Every member-facing artefact carries both, always — the fields are named for them, the
+ * canonical disclosure line exists for each, and PRD FR-5.6 keeps broadcast copy on this pair
+ * (per-recipient language is phase 2).
+ *
+ * This is the single source of truth for the pair. The pack format gate checks a pack's declared
+ * `locale:` against it, so a pack cannot declare a pair the runtime will not honour — and the pair
+ * is written down once, not typed into the validator and the parser separately.
+ */
+export const SUPPORTED_LOCALES = ['id', 'en'] as const;
+
+/** True when a declared locale list is exactly the pair this runtime implements, in its order. */
+export function localeIsSupported(locale: readonly string[]): boolean {
+  return locale.length === SUPPORTED_LOCALES.length && locale.every((l, i) => l === SUPPORTED_LOCALES[i]);
+}
+
 export function disclosureLineId(community: string): string {
   return `pesan ini dikirim oleh asisten otomatis komunitas ${community} — bukan oleh manusia. balas di sini untuk eskalasi ke organiser.`;
 }

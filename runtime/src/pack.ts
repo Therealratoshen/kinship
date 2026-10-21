@@ -18,6 +18,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
+import { SUPPORTED_LOCALES, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
 import type { Autonomy, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
@@ -209,8 +210,17 @@ export function loadPack(dir: string): Packed {
   if (schema !== 'kinship/v1') refuse('pack_invalid', 'pack format gate', `schema is \`${schema}\`, expected \`kinship/v1\``);
   if (!key) refuse('pack_invalid', 'pack format gate', 'pack key missing');
 
-  const localeRaw = topScalar(yaml, 'locale') ?? '[id, en]';
+  const localeRaw = topScalar(yaml, 'locale') ?? SUPPORTED_LOCALES.join(',');
   const locale = localeRaw.replace(/[\[\]]/g, '').split(',').map((s) => s.trim()).filter(Boolean);
+  // A pack may declare the language pair it runs in, but it may only declare the pair this runtime
+  // implements. The member-facing fields are `textId` and `textEn` and the canonical disclosure line
+  // exists for those two languages, so a pack that declares anything else would boot and then fail
+  // at send time with a refusal that names neither the language nor the setting that caused it.
+  // Supporting another language is a runtime change, not a pack edit.
+  if (!localeIsSupported(locale)) {
+    refuse('pack_invalid', 'pack format gate (locale)',
+      `pack \`${key}\` declares \`locale: ${localeRaw}\` but this runtime implements only ${SUPPORTED_LOCALES.join(' and ')} — the member-facing fields are \`textId\` and \`textEn\` and the canonical disclosure line exists for those two languages, so a pack cannot declare a pair the runtime will not honour`);
+  }
 
   const guard = blockMap(block(yaml, 'guardrails'));
   const budgets = blockMap(block(yaml, 'budgets'));

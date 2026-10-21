@@ -548,6 +548,10 @@ export function validatePack(dir, opts = {}) {
   }
 
   // --- 9. structure, not state ------------------------------------------------------------
+  // NOTE: the declared `locale:` is checked by the PARSER, not here — see `runtime/src/pack.ts`.
+  // Reading strictness lives in the parser alone (rules/pack-format.mdc): `loadPack` runs this
+  // validator first, so a refusal here would make the parser's own door unreachable, and a check
+  // that cannot fire is worth exactly nothing (D24).
   const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml'), join(dir, 'README.md'), ...(orgPath ? [orgPath] : [])];
   const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.(md|ya?ml|json)$/.test(e.name)) files.push(p); } };
   for (const sub of ['agents', 'skills']) if (existsSync(join(dir, sub))) walk(join(dir, sub));

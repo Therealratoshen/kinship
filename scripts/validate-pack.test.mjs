@@ -40,6 +40,19 @@ test('the shipped pack passes the contract', () => {
   assert.equal(r.checked.skills, 16, 'sixteen skills — the pack payload');
 });
 
+test('the shape gate does not shadow the parser’s own door on the language pair', () => {
+  // Reading strictness lives in `runtime/src/pack.ts` alone (rules/pack-format.mdc): `loadPack` runs
+  // this validator FIRST, so a locale refusal here would make the parser's own, more precise
+  // refusal unreachable — and a check that cannot fire is worth exactly nothing (D24). This test
+  // holds that line: the validator accepts the shape, and the parser is what refuses.
+  const r = inCopy((dir) => {
+    mutate(machine(dir), 'locale: [id, en]', 'locale: [en]');
+    return validatePack(dir);
+  });
+  assert.equal(r.ok, true, 'the shape gate reads the declaration without judging it — the parser judges it');
+  assert.ok(!codes(r).includes('PKG-64'), 'there is no duplicated locale rule in the shape gate');
+});
+
 test('a moderator that gains a send tool fails by rule, not by review', () =>
   inCopy((dir) => {
     mutate(machine(dir), '      - discord | read\n    # No delete', '      - discord | read\n      - discord | send\n    # No delete');

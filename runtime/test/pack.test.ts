@@ -41,6 +41,29 @@ test('a pack loads from any working directory, not only the repo root', () => {
   }
 });
 
+test('a pack that declares a language pair the runtime does not implement refuses to load', () => {
+  // The runtime implements one pair — Indonesian first, English paired — and the member-facing
+  // fields and the canonical disclosure line are named for it. A pack that declares another pair
+  // must be refused at load, not at send time with a refusal that names neither.
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-locale-'));
+  try {
+    const target = join(dir, 'kopdar-ops');
+    cpSync(PACK_DIR, target, { recursive: true });
+    const f = join(target, '.kinship.yaml');
+    writeFileSync(f, readFileSync(f, 'utf8').replace(/^locale:.*$/m, 'locale: [en]'));
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /locale/, 'the refusal names the setting that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('the real pack loads through the validator + parser, and the parsed numbers are the file\'s numbers', () => {
   const p = loadPack(PACK_DIR);
   assert.equal(p.schema, 'kinship/v1');

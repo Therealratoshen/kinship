@@ -13,7 +13,7 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
        packs/<slug>/
          PACK.md              frontmatter: key, slug, version, bundled, license, manager,
                               agents[], requiredSkills[]; body: what it does, what it refuses
-         .kinship.yaml        schema: kinship/v1 — autonomy_by_class, tools, guardrails,
+         .kinship.yaml        schema: kinship/v1 — locale, autonomy_by_class, tools, guardrails,
                               budgets, needs, attribution, `organisation:`, `sanction_ladder:`
          agents/<role>/AGENTS.md   frontmatter: role, key, reports_to, skills
          skills/<name>/SKILL.md    frontmatter: key, used_by; body carries one **Assertion.**
@@ -116,3 +116,17 @@ donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
    this parser cannot read, and a rung with no name all refuse to boot. Keep it out of the validator,
    because `loadPack` runs the validator first — a duplicated refusal there would make the parser's
    own door unreachable, and a check that cannot fail is worth exactly nothing (the D24 class).
+
+9. **`locale:` is a declaration, and the parser holds it to what the runtime implements.** The
+   member-facing fields are `textId` and `textEn`, the canonical disclosure line exists for those
+   two languages, and PRD **FR-5.6** keeps broadcast copy on the `[id, en]` pair (per-recipient
+   language is phase 2). So a pack may declare the pair it runs in, and only that pair: a pack
+   declaring `[en]`, `[en, id]`, `[id, en, ja]` or nothing at all refuses to boot, naming the
+   setting. Before this was enforced the declaration governed **nothing** — the runtime read the
+   pair and ignored it, so a pack declaring `[en]` booted cleanly and then failed at *send* time with
+   a `disclosure_missing` refusal for a missing **Indonesian** line, naming neither the language nor
+   the setting that caused it. The supported pair is written down once, in
+   `runtime/src/disclosure.ts` (`SUPPORTED_LOCALES`), and read from there. It is checked by the
+   parser alone, like every other reading strictness above: a duplicate in the validator would
+   shadow the parser's own door. Supporting another language is a **runtime change, not a pack
+   edit** — and that is the owner's question, not a pack's.
