@@ -69,6 +69,7 @@ node --test scripts/*.test.mjs                      # validator contracts (incl.
 node --test runtime/test/*.test.ts                  # the governance semantics as tests (count: tour --json)
 node runtime/tour.ts                                # drive the real pack; self-checks every guarantee, exits non-zero if one breaks
 node runtime/tour.ts --json                         # machine-readable contribution map (for agents / first PRs)
+node scripts/runtime-digest.mjs                     # which runtime is this? — one sha256 over the shippable runtime
 ```
 
 `scripts/gates.mjs` is the list; `scripts/gates.test.mjs` fails if a doc drifts from it — so if you
@@ -87,6 +88,11 @@ build if anything under `runtime/src` imports a package, a network builtin or gl
 an adapter belongs in a sibling package per `spec/HOST-CONTRACT.md`. None of the three proves a
 *deployed* system honours any of it — no transport ships (D21), so that proof waits for phase 2, behind
 the shadow-mode gate.
+
+A fourth thing is now a **string**: `scripts/runtime-digest.mjs` prints the digest of the shippable
+runtime, and it is path-independent, so a host that consumed this runtime by copy — the install path —
+can prove which copy it runs instead of asserting it (D54). A digest is not a signature and not an
+attestation: it says two trees are byte-identical, and nothing about who put them there.
 
 ## Changing something
 

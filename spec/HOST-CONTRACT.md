@@ -102,6 +102,16 @@ store rather than a governance bug.
 identifiers out before returning. A host that caches either must recompute it after every write —
 a stale snapshot with a `derivedAt` the reader cannot trust is worse than no snapshot.
 
+**Which runtime, though.** A host that consumes this runtime by **vendoring it** — the install path
+(`DECISIONS.md` D52) — runs a copy, and a copy can be old without anything looking wrong: it still
+boots, still passes its own tests, and still behaves, just not the behaviour this repository
+currently claims. So the host also records **the digest of the runtime it was built from**, next to the
+log it writes: `scripts/runtime-digest.mjs` prints one path-independent `sha256` over the shippable
+runtime, and running it inside the host's own tree answers *"is this copy current?"*. It is a
+comparison of two strings, not an attestation — it says two trees are byte-identical, and nothing
+about who put them there or when. A host that cannot recompute the digest still works; it simply
+cannot make that statement (`DECISIONS.md` D54).
+
 ## Seam 4 — transport: the only thing that may touch a person
 
 **What the host does.** Owns the channel socket, the session, the rate limits, and the moral
@@ -168,3 +178,4 @@ an answer.
 | Version | Date | Change |
 |---|---|---|
 | v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D33: the four seams named in one place, the adapter-location rule made mechanical, the Paperclip mapping written down, and Paperclip's card checkout recorded as declined pending PRD §12-Q12. |
+| v0.2 | 2026-10-23 | Seam 3 gains one sentence: a host records **which runtime it was built from** — the path-independent digest from `scripts/runtime-digest.mjs` — next to the log it writes, so "is this copy current?" is a comparison of two strings rather than a question about anyone's memory. Opened as `DECISIONS.md` D54, on the day the hosted surface at `shortcutsistem.com` began running a vendored copy of this runtime. |

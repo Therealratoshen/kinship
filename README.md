@@ -127,6 +127,11 @@ not to the library.
   in `seq`, they must fold, and the state they fold to must be the state the fleet holds. The file carries a
   **digest** of the `needs:` answers, never their values — one of them is a named human (spec/HOST-CONTRACT.md
   seam 3; PRD FR-4.4, `DECISIONS.md` D48)
+- **A runtime digest** (`scripts/runtime-digest.mjs`) — one deterministic `sha256` over the shippable runtime
+  (`runtime/src/**` and `runtime/package.json`), and a *path-independent* one, so a host that vendored this
+  runtime by copy can **prove** which copy it runs: two digests are either the same string or they are not.
+  It is not a signature and not an attestation — it says two trees are byte-identical, and nothing about who
+  put them there or when (`DECISIONS.md` D54)
 - The claim ceiling (PRD §2.3, FR-4.4) — the banned strings are code (`scripts/claim-scan.mjs`) rather than a
   comment, the sweep reaches the copy that actually ships (the root `README.md` and a pack's own `README.md`
   included), and `scripts/claims.test.mjs` fails if a forbidden cell in the PRD is neither enforced nor named as
@@ -154,13 +159,17 @@ that limitation is written into the file rather than papered over.
 
 ## Product surface
 
-This repository is the whole product today: an open-source, self-hosted control plane under MIT, with no
-paid tier, no hosted instance and no feature held back.
+This repository is the whole **control plane** today: an open-source, self-hosted one under MIT, with no
+paid tier and no part of the governance layer held back. What is hosted elsewhere is a host of it, not a
+version of it.
 
-The plan is for the hosted surface to live under **ShortcutSistem** at
-[shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product. Stated plainly so the sentence
-can't be read as a promise it doesn't keep: **that domain does not describe Kinship today, and nothing is
-hosted there.** What exists is the code in this repo.
+The hosted surface lives under **ShortcutSistem** at
+[shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product. **Since 2026-10-22 that domain
+serves a Kinship product** — a host of this control plane, not a copy of it. Stated plainly so the sentence
+can't be read as a promise it doesn't keep: **what is hosted there is a host of the runtime in this
+repository, and this repository remains the source of that runtime.** The host runs its own copy, because
+vendoring by copy is the install path — so which copy it runs is a matter of record rather than of trust:
+`scripts/runtime-digest.mjs` below, and `DECISIONS.md` **D54** for the boundary as it stands today.
 
 Three commitments make the OSS/hosted boundary survivable (`DECISIONS.md` **D19**, written before the
 product existed because that is the only cheap time to make them):
