@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { GATES, GATE_DOCS, checkGateDocs, missingGateCommands, staleGateClaims, markdownFiles, orphanedTableRows, overfullTableRows } from './gates.mjs';
 
@@ -20,6 +20,42 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 test('the gate list is the four the repo claims, in the order CI runs them', () => {
   assert.deepEqual(GATES.map((g) => g.id), ['shape', 'contract', 'semantics', 'tour']);
+});
+
+test('every rule the durable rules name is enforced by the validator, and exercised by a test', () => {
+  // `rules/*.mdc` are conventions a human or an agent must remember to read — that is the whole
+  // gap this closes. This is what consumes them: a rule id named in the durable rules must be a
+  // rule the validator actually enforces, and something must exercise it. Otherwise the durable
+  // rules describe an invariant nobody holds, and a reader who trusts them is wrong.
+  //
+  // This is a check on *references*, not a keyword lint: it does not ask whether the prose says
+  // something, it asks whether the thing the prose points at exists and is tested — the same shape
+  // as the check that caught the conduct file pointing at the wrong decision row (D40c).
+  const enforced = new Set([...read('scripts/validate-pack.mjs').matchAll(/'(PKG-[0-9N]+)'/g)].map((m) => m[1]));
+  const exercised = [
+    read('scripts/validate-pack.test.mjs'),
+    ...readdirSync(join(ROOT, 'runtime', 'test')).filter((f) => f.endsWith('.test.ts')).map((f) => readFileSync(join(ROOT, 'runtime', 'test', f), 'utf8')),
+  ].join('\n');
+  const offenders = [];
+  for (const file of ['rules/governance-invariants.mdc', 'rules/pack-format.mdc']) {
+    for (const m of read(file).matchAll(/PKG-[0-9N]+/g)) {
+      const id = m[0];
+      if (!enforced.has(id)) offenders.push(`${file}: \`${id}\` is named but the validator does not enforce it`);
+      else if (!exercised.includes(id)) offenders.push(`${file}: \`${id}\` is enforced but no test exercises it`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `the durable rules name rules that are not enforced, or enforced rules nothing exercises:\n  ${offenders.join('\n  ')}`,
+  );
+});
+
+test('POSITIVE CONTROL: the durable-rules check fires on a rule that does not exist', () => {
+  // The scanner above must be able to fail. A rule id that is in neither the validator nor a test
+  // is exactly what it exists to catch.
+  const enforced = new Set([...read('scripts/validate-pack.mjs').matchAll(/'(PKG-[0-9N]+)'/g)].map((m) => m[1]));
+  assert.ok(!enforced.has('PKG-99'), 'the fixture rule id must not exist');
 });
 
 test('every documented gate runs from the repo root, with no npm and no cd', () => {

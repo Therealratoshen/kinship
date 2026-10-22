@@ -8,6 +8,12 @@ globs: packs/**, scripts/**, orgs/**
 Mirror of `research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §5 and `packs/kopdar-ops/`. Format
 donor: Paperclip's teams/skills catalog. Semantics: the governance spec.
 
+> **Part of this file is consumed, not just read.** `scripts/gates.test.mjs` fails the build if a
+> rule id named here is not enforced by the validator, or is enforced but exercised by no test — so
+> an invariant cannot be *named* here with nothing behind it. The prose is still a human's job to
+> apply: a rule with no id behind it (the ladder's shape, the refusal vocabulary) can still drift
+> from the code, and the drift check does not see prose.
+
 1. **The directory is the API — and a pack is not the top tier.**
 
        packs/<slug>/

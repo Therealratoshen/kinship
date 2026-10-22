@@ -8,6 +8,12 @@ globs: spec/**, orgs/**, packs/**/.kinship.yaml, packs/**/PACK.md, pilots/**
 Derive from `spec/GOVERNANCE-SPEC-OUTLINE.md` §1.1–1.11 and §2.7–2.8. If this file and the
 spec disagree, the spec wins and this file gets corrected in the same change.
 
+> **Part of this file is consumed, not just read.** `scripts/gates.test.mjs` fails the build if a
+> rule id named here is not enforced by the validator, or is enforced but exercised by no test — so
+> an invariant cannot be *named* here with nothing behind it. The prose is still a human's job to
+> apply: a rule with no id behind it (the ladder's shape, the refusal vocabulary) can still drift
+> from the code, and the drift check does not see prose.
+
 1. **Autonomy is per action class, never per agent.** An agent may be `draft` for
    `commit.individual-message` and `opt-in-auto` for `observe.read`. A setting that applies one
    level to a whole agent is a bug: it is the shape that produces "the bot sent it" after one
