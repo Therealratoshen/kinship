@@ -16,6 +16,10 @@ pilots/**/*.json
 audit/
 *.log
 
+# The persisted log the reference host writes. It holds member identifiers and the draft copy a
+# card carries — a community's own audit file, never a repository artefact.
+logs/
+
 # OS / editor
 .DS_Store
 node_modules/

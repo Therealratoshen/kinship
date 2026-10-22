@@ -50,6 +50,40 @@ node runtime/tour.ts                              # the pack, driven live: draft
 
 Node ≥ 23. No npm. No build step.
 
+### …and end in a file you can hand a reviewer
+
+The gates above end in printed guarantees. The **reference host** ends in an artefact:
+
+```bash
+# The host is its own package, and its one dependency is a local path — this creates a symlink
+# and fetches nothing (`--offline` works too).
+cd adapters/reference && npm install --no-audit --no-fund && cd ../..
+
+# Copy the answers template and fill in your community's eight answers. The file is gitignored.
+cp packs/kopdar-ops/pack.local.example.yaml packs/kopdar-ops/pack.local.yaml
+$EDITOR packs/kopdar-ops/pack.local.yaml
+
+# Boot, draft something, and read back what was written.
+node adapters/reference/src/host.ts run    --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+node adapters/reference/src/host.ts draft  --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs \
+  --class draft.reminder --agent event-ops \
+  --text-id "Reminder: tomorrow 19:00" --text-en "Reminder: tomorrow 19:00"
+node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+```
+
+Two files appear under `logs/<pack-key>/`:
+
+```
+logs/kinshipai/bundled/event-ops/kopdar/events.jsonl     # one LoggedEvent per line — replay's exact input
+logs/kinshipai/bundled/event-ops/kopdar/manifest.json    # the cover: what a reader needs to know first
+```
+
+The host **sends nothing** — every member-facing commit still refuses `no_transport` (D21). What you
+get is the artefact phase 1 is for: *"here is what the fleet drafted and what it refused, in a file you
+can hand a reviewer."* The cover states the privacy posture in the file itself — member identifiers
+are in it, member **message text** is not, and the draft copy is — and carries a digest of the
+answers rather than their values, so a log that travels carries no second person's name.
+
 ## What ships vs what is gated
 
 **Ships now** (tested, in this repo):
