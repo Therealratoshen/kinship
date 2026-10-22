@@ -41,4 +41,10 @@ The coverage window is what makes this lane honest. `engagement` may only answer
 the pack declares (`coverage:` in `.kinship.yaml`), and the health read says plainly when a question sat
 unanswered past a staffed shift. Outside the window, the right output is a handoff, not a guess.
 
-**Assertion.** `assert every standing-engagement output carries the disclosure line && no message was sent outside the pack's coverage window`.
+**Assertion.** `assert every standing-engagement output carries the disclosure line && every answer it drafts is inside the pack's staffed window`.
+
+**The second half is a rule the lane follows, not a property the runtime checks** — phase 1 sends nothing
+(D21) and the coverage window is a record rather than a gate (D54, `ROADMAP.md`). It is written here as a
+rule for the agent to keep, and it is written as one that would be *false* today if it were read as a
+checked property: no message is sent at all, so "no message was sent outside the window" is true for the
+wrong reason. The wording above is the one that would still be meaningful the day a transport exists.

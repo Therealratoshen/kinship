@@ -170,6 +170,15 @@ const FLOOR_NAMES = ['report_aggregation_floor', 'member_message_cap_per_24h', '
 /** The keys a `coverage:` block may carry, in the spelling the file uses. */
 const COVERAGE_KEYS: ReadonlySet<string> = new Set(['mode', 'timezone', 'days', 'opens', 'closes']);
 
+/**
+ * The `coverage:` key as a file writes it — the key alone, or the key with a trailing comment.
+ *
+ * One pattern, shared by the parser and the validator, because two readers with different ideas of
+ * "what a key looks like" is how a gate ends up checking a file the runtime never sees. Hoisted to a
+ * constant because a fresh `RegExp` per line is a fresh compile per line.
+ */
+const COVERAGE_KEY_LINE = /^coverage:\s*(#.*|)$/;
+
 /** Local weekday names a pack may write, mapped to the number the runtime uses (0 = Sunday). */
 const WEEKDAYS: Record<string, number> = {
   sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
@@ -196,13 +205,20 @@ function localTimeToMinutes(raw: string | undefined): number | null {
  * The refusals here are about *shape*, not about whether the promise is wise — a community may
  * staff any hours it likes. What is refused is a window the runtime cannot read, because a window
  * that silently evaluates to "never on duty" would turn every later number into a quiet lie.
+ *
+ * **Exported, so its own door is testable.** `loadPack` runs the validator FIRST, so a boot-level test
+ * of a malformed window sees **PKG-65's** message, not this one — a test that reads `pack_invalid` and
+ * a field name cannot tell the two apart, and would pass with this parser's refusals deleted. That is
+ * the check-that-cannot-fail class (D24), so this function is exported and called directly by
+ * `runtime/test/pack.test.ts`, the same seam `parseOrg` gives `org.test.ts`. The shape is therefore
+ * proved **twice**: by PKG-65 in CI, and by this parser on its own.
  */
-function parseCoverage(yaml: string, packKey: string): CommunityCoverage | undefined {
+export function parseCoverage(yaml: string, packKey: string): CommunityCoverage | undefined {
   // The same trap the sanction ladder guards against (D37 / PKG-62): a file may not write the
   // block twice. A reader takes the first and ignores the rest, so a second block would be a
   // staffing promise no check ever saw.
   const occurrences = yaml.split('\n').reduce(
-    (acc, l) => (new RegExp(`^${'coverage'}:\\s*(#.*|)$`).test(l) ? acc + 1 : acc),
+    (acc, l) => (COVERAGE_KEY_LINE.test(l) ? acc + 1 : acc),
     0,
   );
   if (occurrences > 1) {
@@ -211,7 +227,18 @@ function parseCoverage(yaml: string, packKey: string): CommunityCoverage | undef
   }
 
   const lines = block(yaml, 'coverage');
-  if (lines.length === 0) return undefined; // an unstated staffing promise is not a promise
+  if (lines.length === 0) {
+    // A `coverage:` key whose value is not empty is a window this reader cannot read — an inline
+    // flow map (`coverage: {mode: always}`) is YAML the pack format does not use, and reading it as
+    // "no window at all" would turn a community's stated promise into an *unknown* duty state. That
+    // is the same quiet lie as reading it as "never on duty", wearing a different hat.
+    const inline = yaml.split('\n').find((l) => /^coverage:\s*\S/.test(l));
+    if (inline !== undefined) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` writes \`${inline.trim()}\` — the coverage window is a block of \`key: value\` lines, and a window this reader cannot evaluate would read as "no window at all", which is a different claim from the one the pack made`);
+    }
+    return undefined; // an unstated staffing promise is not a promise
+  }
 
   const map = new Map<string, string>();
   for (const l of lines) {
@@ -249,7 +276,15 @@ function parseCoverage(yaml: string, packKey: string): CommunityCoverage | undef
           `pack \`${packKey}\` declares \`coverage.mode: always\` and also writes \`coverage.${key}\` — a community staffed around the clock has no shift to open or close, so the file is disagreeing with itself. Drop the \`${key}\` line or declare \`mode: staffed\``);
       }
     }
-    return { mode: 'always', timezone: map.get('timezone') ?? null };
+    const zone = map.get('timezone');
+    if (zone !== undefined) {
+      try { new Intl.DateTimeFormat('en-GB', { timeZone: zone }); }
+      catch {
+        refuse('pack_invalid', 'coverage parse gate',
+          `pack \`${packKey}\` declares \`coverage.timezone: ${zone}\`, which is not an IANA zone — the window is a statement about that zone's local calendar, so an unreadable zone is an unreadable window`);
+      }
+    }
+    return { mode: 'always', timezone: zone ?? null };
   }
 
   const timezone = map.get('timezone');

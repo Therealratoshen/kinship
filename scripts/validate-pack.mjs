@@ -298,7 +298,14 @@ export function validatePack(dir, opts = {}) {
   }
   const coverageIdx = coverageIdxs[0];
   if (coverageIdx !== undefined) {
-    const covLines = block(ml, coverageIdx, 0).filter((l) => l.indent === 2).map((l) => l.text.trim());
+    // The block's base indent is the indent of its FIRST key, and every key is read at that indent.
+    // A hard-coded 2 would make this reader and the parser disagree on a pack that indents its
+    // coverage keys by four spaces — valid YAML — and the gate would report "mode: (absent)" for a
+    // window the runtime reads perfectly well. Two readers must agree on the SHAPE of what they read,
+    // not only on the key that introduces it.
+    const covBlock = block(ml, coverageIdx, 0);
+    const baseIndent = covBlock.length > 0 ? covBlock[0].indent : 2;
+    const covLines = covBlock.filter((l) => l.indent === baseIndent).map((l) => l.text.trim());
     const cov = new Map();
     for (const l of covLines) {
       const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l);

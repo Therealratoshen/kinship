@@ -230,15 +230,20 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
   // `inbox.ts` lists, because "is anyone owed something" is the question both reads answer. The due
   // instant is what the coverage window is compared against: a shift that ended *after* the
   // obligation came due and *before* now is the one that was missed.
+  // Each entry carries ONLY the instant it came due. There is deliberately no `ref` and no `kind`:
+  // the coverage section reports a COUNT, so a card id, a lane name or a wake id would be carried
+  // through a privacy sweep that does not exist for this path, and would be one change away from
+  // reaching a report that gets pasted into a group chat. "Which obligation" is what `inbox()` is
+  // for — and `inbox()` runs the identifier sweep. Two artefacts, two jobs, one sweep.
   const obligations: DueObligation[] = [
-    ...waiting.map((c): DueObligation => ({ kind: 'card', ref: c.id, dueAt: c.createdAt })),
+    ...waiting.map((c): DueObligation => ({ dueAt: c.createdAt })),
     ...[...state.authorizations.values()]
       .filter((a) => a.consumedAt === undefined)
-      .map((a): DueObligation => ({ kind: 'handoff', ref: a.cardId, dueAt: a.issuedAt })),
+      .map((a): DueObligation => ({ dueAt: a.issuedAt })),
     ...[...state.shatter.values()]
       .filter((r) => r.releasedAt === undefined)
-      .map((r): DueObligation => ({ kind: 'freeze', ref: r.channel, dueAt: r.trippedAt })),
-    ...overdue.map((w): DueObligation => ({ kind: 'wake', ref: w.id, dueAt: w.dueAgeMs > 0 ? now - w.dueAgeMs : now })),
+      .map((r): DueObligation => ({ dueAt: r.trippedAt })),
+    ...overdue.map((w): DueObligation => ({ dueAt: w.dueAgeMs > 0 ? now - w.dueAgeMs : now })),
   ];
   const community = deriveCoverageVerdict(pack.coverage ?? null, obligations, now);
 

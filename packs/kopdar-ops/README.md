@@ -149,8 +149,9 @@ than a score:
 
 `PKG-65` refuses a window the runtime cannot read: no `timezone` (business hours without a zone is not a
 commitment), an unknown weekday, hours that are not `HH:MM`, a shift that closes before it opens, a mode that is
-neither `always` nor `staffed`, or a second `coverage:` block in the same file. The pack parser refuses the same
-shapes at boot.
+neither `always` nor `staffed`, a `mode: always` block that also writes a shift, or a second `coverage:` block in the
+same file. The pack parser refuses the same shapes on its own — and because `loadPack` runs the validator first,
+the parser's refusals are proved by calling it **directly** in the runtime tests, not through a boot.
 
 **What it does not do yet.** It does not *stop* the standing-engagement lane from answering outside those hours:
 that refusal needs a transport to refuse against, and phase 1 sends nothing (**D21**). Today the window is a

@@ -37,6 +37,38 @@ interface LocalFields {
 }
 
 /**
+ * The formatters, cached per zone.
+ *
+ * `Intl.DateTimeFormat` is expensive to construct — roughly 0.1 ms each on this runtime — and the
+ * arithmetic below asks for the local calendar of the same zone over and over: once per obligation
+ * when the health read counts missed shifts, and once per candidate day inside one comparison. A
+ * health read over a queue of any size would spend its whole time building formatters.
+ *
+ * The cache is keyed by the zone string, so a pack can only ever hold as many entries as it has
+ * zones, and a `DateTimeFormat` is immutable once built — reusing one is not a shared-state hazard.
+ */
+const dayFormatters = new Map<string, Intl.DateTimeFormat>();
+const minuteFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dayFormatter(timezone: string): Intl.DateTimeFormat {
+  let fmt = dayFormatters.get(timezone);
+  if (fmt === undefined) {
+    fmt = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    dayFormatters.set(timezone, fmt);
+  }
+  return fmt;
+}
+
+function minuteFormatter(timezone: string): Intl.DateTimeFormat {
+  let fmt = minuteFormatters.get(timezone);
+  if (fmt === undefined) {
+    fmt = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    minuteFormatters.set(timezone, fmt);
+  }
+  return fmt;
+}
+
+/**
  * The epoch-day of the *local* calendar date an instant falls on.
  *
  * Computed by asking the zone what date it reads, then measuring that date against the UTC epoch.
@@ -44,8 +76,7 @@ interface LocalFields {
  * calendar, which is what "on Monday" means to the community.
  */
 function localDayIndex(timezone: string, at: number): number {
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const parts = Object.fromEntries(fmt.formatToParts(new Date(at)).map((p) => [p.type, p.value]));
+  const parts = Object.fromEntries(dayFormatter(timezone).formatToParts(new Date(at)).map((p) => [p.type, p.value]));
   return Math.floor(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / 86_400_000);
 }
 
@@ -56,14 +87,21 @@ function weekdayOf(dayIndex: number): number {
 
 /** Minutes from local midnight, in the zone. */
 function localMinuteOfDay(timezone: string, at: number): number {
-  const fmt = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-  const parts = Object.fromEntries(fmt.formatToParts(new Date(at)).map((p) => [p.type, p.value]));
+  const parts = Object.fromEntries(minuteFormatter(timezone).formatToParts(new Date(at)).map((p) => [p.type, p.value]));
   return Number(parts.hour) * 60 + Number(parts.minute);
 }
 
 function localFields(timezone: string, at: number): LocalFields {
-  const dayIndex = localDayIndex(timezone, at);
-  return { dayIndex, weekday: weekdayOf(dayIndex), minuteOfDay: localMinuteOfDay(timezone, at) };
+  // An unknown zone has no calendar, so there is no day and no minute to read. The caller treats the
+  // result as "not on duty"; this function reports it rather than throwing, because a read path that
+  // throws is a read path that can take a fleet down. The parser refuses an unreadable zone, so a
+  // pack file cannot get here; a host building a `Packed` in memory can.
+  try {
+    const dayIndex = localDayIndex(timezone, at);
+    return { dayIndex, weekday: weekdayOf(dayIndex), minuteOfDay: localMinuteOfDay(timezone, at) };
+  } catch {
+    return { dayIndex: Number.NaN, weekday: -1, minuteOfDay: -1 };
+  }
 }
 
 /**
@@ -75,6 +113,11 @@ function localFields(timezone: string, at: number): LocalFields {
 export function isOnDuty(coverage: CommunityCoverage, at: number): boolean {
   if (coverage.mode === 'always') return true;
   const f = localFields(coverage.timezone, at);
+  // `localFields` reads the zone through `Intl`, which throws a `RangeError` for a zone it does not
+  // know. A file cannot reach this — the parser refuses an unreadable zone — but a host that builds a
+  // `Packed` in memory can, and a READ that throws is a read that takes a fleet down. An unknown zone
+  // reads as "not on duty", which is the honest answer: nobody is on duty in a calendar that does
+  // not exist.
   if (!coverage.days.includes(f.weekday)) return false;
   return f.minuteOfDay >= coverage.opens && f.minuteOfDay < coverage.closes;
 }
@@ -97,7 +140,15 @@ export function shiftCompletedBetween(coverage: CommunityCoverage, from: number,
   const endDay = localDayIndex(coverage.timezone, to);
   const endMinute = localMinuteOfDay(coverage.timezone, to);
 
-  for (let d = startDay; d <= endDay; d++) {
+  // The loop walks the calendar days between `from` and `to`, so a host whose clock jumps by years
+  // would make a health read iterate thousands of days. It is bounded here, and the bound is stated
+  // rather than silent: past this many days the answer is the same as it would be for the closest
+  // staffed shift inside the window, because a window that long contains at least one shift either
+  // way, and the first staffed day after `from` is the only one whose END can fall inside the range.
+  const MAX_DAYS = 3660; // ten years
+  const firstDay = endDay - startDay > MAX_DAYS ? endDay - MAX_DAYS : startDay;
+
+  for (let d = firstDay; d <= endDay; d++) {
     if (!coverage.days.includes(weekdayOf(d))) continue;
     const shiftEndMinute = coverage.closes;
     // The shift on date `d` ends at local `closes` on `d`. It ends after `from` when `d` is later
@@ -110,6 +161,7 @@ export function shiftCompletedBetween(coverage: CommunityCoverage, from: number,
       continue;
     }
     // Same date as `from`: the shift ends after `from` only if it closes later in the day.
+    if (d < firstDay) continue; // the range was truncated: this date is outside the bounded window
     if (shiftEndMinute <= localMinuteOfDay(coverage.timezone, from)) continue;
     if (d < endDay) return true;
     if (shiftEndMinute <= endMinute) return true;
@@ -117,10 +169,14 @@ export function shiftCompletedBetween(coverage: CommunityCoverage, from: number,
   return false;
 }
 
-/** The obligations a human currently owes, with the instant each came due. */
+/**
+ * An obligation a human currently owes, with the instant it came due.
+ *
+ * Deliberately only a due instant. The coverage verdict is a **count**, so a reference (a card id, a
+ * lane name, a wake id) would be carried through a path with no identifier sweep — and "which
+ * obligation is this?" is what `inbox()` answers, with the sweep. Two artefacts, two jobs.
+ */
 export interface DueObligation {
-  kind: 'card' | 'handoff' | 'freeze' | 'wake';
-  ref: string;
   dueAt: number;
 }
 
