@@ -12,11 +12,108 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { GATES, GATE_DOCS, checkGateDocs, missingGateCommands, staleGateClaims, markdownFiles, orphanedTableRows, overfullTableRows } from './gates.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
+
+/**
+ * The counts the live documents quote, and how to recompute each one.
+ *
+ * A number in prose is a claim, and a claim nobody recomputes rots. Three of these went stale in
+ * one afternoon — twice because this agent changed them and once because it did not notice — which
+ * is the whole argument for the check. The recomputes use the commands the documents already
+ * print, so "recount with `node runtime/tour.ts --json`" is literally true.
+ */
+function liveCounts() {
+  const tour = spawnSync('node', ['runtime/tour.ts', '--json'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(tour.status, 0, `the tour must hold its guarantees for its own counts to mean anything:\n${tour.stderr}`);
+  const map = JSON.parse(tour.stdout).contributionMap.runtimeTests;
+  const countOf = (text, re) => (text.match(re) ?? []).length;
+  const scripts = readdirSync(join(ROOT, 'scripts')).filter((f) => f.endsWith('.test.mjs')).map((f) => read(`scripts/${f}`)).join('\n');
+  const packDir = join(ROOT, 'packs', 'kopdar-ops');
+  return {
+    runtimeTests: map.reduce((s, r) => s + r.tests, 0),
+    runtimeFiles: map.length,
+    contractCases: countOf(read('scripts/validate-pack.test.mjs'), /^test\(/gm),
+    scriptsCases: countOf(scripts, /^test\(/gm),
+    pkgRules: new Set([...read('scripts/validate-pack.mjs').matchAll(/'(PKG-[0-9N]+)'/g)].map((m) => m[1])).size,
+    packAgents: readdirSync(join(packDir, 'agents'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
+    packSkills: readdirSync(join(packDir, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
+  };
+}
+
+/**
+ * Every count the live documents quote, with the count it must equal. Adding a number to a
+ * document means adding it here too — which is the point: the list and the documents cannot
+ * drift apart silently.
+ */
+const COUNT_CLAIMS = [
+  ['AGENTS.md', /(\d+)\s+tests across\s+(\d+)\s+files/, (c) => [c.runtimeTests, c.runtimeFiles]],
+  ['README.md', /its (\d+)-case tamper-resistant contract test/, (c) => [c.contractCases]],
+  ['README.md', /\((\d+) distinct `PKG-\*` rules/, (c) => [c.pkgRules]],
+  ['CONTRIBUTING.md', /tampered pack \((\d+) cases,/, (c) => [c.contractCases]],
+  ['packs/kopdar-ops/README.md', /(\d+) procedures/, (c) => [c.packSkills]],
+  ['packs/kopdar-ops/README.md', /(\d+)\s+agents over\s+one\s+event lifecycle/, (c) => [c.packAgents]],
+  ['packs/kopdar-ops/README.id.md', /(\d+)\s+prosedur/, (c) => [c.packSkills]],
+  ['packs/kopdar-ops/README.id.md', /(\d+)\s+agent di atas satu/, (c) => [c.packAgents]],
+];
+
+/** The documents whose counts are claims about this tree — history files are excluded on purpose. */
+const COUNTED_DOCS = [
+  'README.md', 'AGENTS.md', 'CONTRIBUTING.md',
+  'packs/kopdar-ops/README.md', 'packs/kopdar-ops/README.id.md',
+  '.github/PULL_REQUEST_TEMPLATE.md',
+];
+
+test('every count the live documents quote is still true', () => {
+  const c = liveCounts();
+  for (const [file, re, expected] of COUNT_CLAIMS) {
+    const m = read(file).match(re);
+    assert.ok(m, `${file}: the claim "${re}" is gone — update this test rather than deleting it`);
+    assert.deepEqual(
+      m.slice(1).map(Number),
+      expected(c),
+      `${file}: the document says ${m.slice(1).join(' / ')} and the tree says ${expected(c).join(' / ')} — a count in prose is a claim, and this one is now false`,
+    );
+  }
+});
+
+test('POSITIVE CONTROL: the count check fires on a number that is wrong', () => {
+  const c = liveCounts();
+  const [, got] = (() => {
+    const m = read('README.md').match(/its (\d+)-case tamper-resistant contract test/);
+    return [null, Number(m[1])];
+  })();
+  assert.equal(got, c.contractCases, 'the fixture claim is the true one');
+  assert.notEqual(got + 1, c.contractCases, 'and one more is not — the comparison can fail');
+});
+
+test('no count claim in the live documents is unchecked', () => {
+  // A claim the checker does not know about is a claim nobody recomputes — the failure this whole
+  // file exists to stop. So every digit-shaped count in a live document must be one of the claims
+  // above.
+  const covered = new Set();
+  for (const [file, re, expected] of COUNT_CLAIMS) {
+    const m = read(file).match(re);
+    if (!m) continue;
+    for (const n of m.slice(1)) covered.add(`${file}:${n}`);
+  }
+  const offenders = [];
+  for (const file of COUNTED_DOCS) {
+    if (!existsSync(join(ROOT, file))) continue;
+    for (const m of read(file).matchAll(/\b(\d+)\s+(tests|cases|files|skills|agents|procedures|prosedur|guarantees)\b/g)) {
+      if (!covered.has(`${file}:${m[1]}`)) offenders.push(`${file}: "${m[0]}"`);
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    `these count claims are in a live document but in no checked list:\n  ${offenders.join('\n  ')}`,
+  );
+});
 
 test('the gate list is the four the repo claims, in the order CI runs them', () => {
   assert.deepEqual(GATES.map((g) => g.id), ['shape', 'contract', 'semantics', 'tour']);

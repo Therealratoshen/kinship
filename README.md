@@ -84,12 +84,29 @@ can hand a reviewer."* The cover states the privacy posture in the file itself �
 are in it, member **message text** is not, and the draft copy is — and carries a digest of the
 answers rather than their values, so a log that travels carries no second person's name.
 
+## Adopting it
+
+**Vendoring by copy is the intended path, and nothing is published to a registry.** There is no root
+`package.json` and `runtime/package.json` is `private: true` — so there is no registry package and
+no `npm install` in the library itself. That is a decision, not an omission:
+
+- copy **`runtime/` and `scripts/` together** into your project — the loader reads a pack's shape
+  through the same validator the gates use, so the two travel as one folder;
+- import the `.ts` files directly (`import { Fleet } from './kinship/runtime/src/engine.ts'`) — node
+  runs them as they are, with no build step and no dependencies;
+- copy `adapters/reference/` alongside if you want a host to start from — it is a sibling package,
+  and its one dependency is the runtime beside it.
+
+The reference host's `npm install` creates a **local symlink** and fetches nothing (`--offline`
+works). That is the only install step anywhere in this repository, and it belongs to the example,
+not to the library.
+
 ## What ships vs what is gated
 
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 51-case tamper-resistant contract test (60 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
+- The validator and its 53-case tamper-resistant contract test (60 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs,
   or if any markdown table in the repository loses the header that gives its rows meaning
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending

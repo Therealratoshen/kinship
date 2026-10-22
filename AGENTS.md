@@ -12,7 +12,7 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(239 tests across 25 files as of 2026-10-19 — recount with `node runtime/tour.ts --json`; zero
+(252 tests across 26 files as of 2026-10-22 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 

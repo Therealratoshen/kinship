@@ -5,7 +5,7 @@
 > rujukan. Nama berkas, kunci, id aturan, dan perintah terminal **tidak** diterjemahkan: itu
 > identifier, bukan kalimat.
 
-Sebuah **contoh yang bisa di-fork**, bukan produk. Ini adalah bentuk acuan untuk `kinship/v1`: tiga
+Sebuah **contoh yang bisa di-fork**, bukan produk. Ini adalah bentuk acuan untuk `kinship/v1`: 3
 agent di atas satu siklus hidup acara, satu antrean persetujuan, dan sekumpulan invarian yang tidak
 boleh dihapus oleh fork. Baca [`PACK.md`](PACK.md) untuk apa yang dikerjakan skuad ini dan mengapa
 setiap penolakan ada; berkas ini hanya on-ramp-nya.

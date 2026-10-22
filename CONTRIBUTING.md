@@ -67,7 +67,7 @@ change that passes the tests and breaks the tour is a change that broke a promis
 
 Three `scripts/` files do the same job one level up — over the repo's claims about itself rather than
 over the runtime's behaviour: `validate-pack.test.mjs` proves the validator can actually reject a
-tampered pack (51 cases, the newest eight of them the sanction-ladder cases — each with a passing *and* a
+tampered pack (53 cases, the newest of them the sanction-ladder cases — each with a passing *and* a
 failing control), `gates.test.mjs` proves the four
 commands above are the commands CI runs *and* the commands these docs, `README.md`, `AGENTS.md`, and
 the tour's own `--json` map print — and, since the decision log was found rendering as literal text
@@ -78,7 +78,7 @@ and that the banned list still matches the documents it claims to enforce.
 
 Inside the runtime suite, three files are gates over the repo's own claims rather than over
 behaviour: `imports.test.ts` (every `src` module imports the `types.ts` names it actually uses — the
-hole that let `shatter.ts` ship an unimported `Ctx` past 73 tests), `types.test.ts` (the phase
+hole that let `shatter.ts` ship an unimported `Ctx` past a green suite), `types.test.ts` (the phase
 sequence, the erasable-syntax rule that lets the runtime run without a compiler, and the import
 specifier gate — node's type stripping never *checks* types, so this is the stand-in for `tsc`), and
 `errors.test.ts` (every refusal code is either raised in `src/` or declared as debt in
