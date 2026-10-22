@@ -84,8 +84,10 @@ export function supersedeGrant(ctx: Ctx, grantId: string, reason: string): void 
 
 export interface LiveGrantQuery {
   actionClass: string;
-  channel?: string;
-  partner?: string;
+  // `| undefined` is deliberate: with `exactOptionalPropertyTypes`, a caller that may not have a
+  // channel or a partner passes `undefined`, and `?: string` would refuse exactly that.
+  channel?: string | undefined;
+  partner?: string | undefined;
   templateHash?: string;
 }
 

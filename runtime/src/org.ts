@@ -49,7 +49,7 @@ const stripComment = (line: string): string => line.replace(/\s+#.*$/, '');
 const unquote = (v: string): string => v.trim().replace(/^["']|["']$/g, '');
 const topScalar = (yaml: string, key: string): string | null => {
   const m = new RegExp(`^${key}:[ \\t]*(.*)$`, 'm').exec(yaml);
-  return m ? unquote(stripComment(m[1])) : null;
+  return m ? unquote(stripComment(m[1]!)) : null;
 };
 
 /** `- item` entries under a top-level list key, or the inline `[a, b]` form. `[]` is an empty list. */
@@ -85,7 +85,7 @@ function topBlock(yaml: string, key: string): Array<{ k: string; v: string; line
     if (!kv) {
       refuse('org_invalid', 'org shape gate', `${key} has a line (${i + 1}) that is not ` + '`k: v` — this parser does not guess at a floor it cannot read');
     }
-    out.push({ k: unquote(kv[1]!), v: unquote(stripComment(kv[2])), line: i + 1 });
+    out.push({ k: unquote(kv[1]!), v: unquote(stripComment(kv[2]!)), line: i + 1 });
   }
   return out;
 }
@@ -100,7 +100,7 @@ const dupes = (list: string[]): string[] => [...new Set(list.filter((x, i) => li
 export function parseOrg(yaml: string, origin = 'the manifest'): PackedOrg {
   const schema = topScalar(yaml, 'schema');
   const key = topScalar(yaml, 'key');
-  const at = (msg: string): never => refuse('org_invalid', 'org shape gate',
+  const at: (msg: string) => never = (msg) => refuse('org_invalid', 'org shape gate',
     `org \`${key ?? '(key unreadable)'}\` (${origin}): ${msg}`);
 
   if (schema !== ORG_SCHEMA) at(`schema is \`${schema ?? '(absent)'}\`, expected \`${ORG_SCHEMA}\` — a pack manifest read as an org manifest is a tier collision, not a typo`);

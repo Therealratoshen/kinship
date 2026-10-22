@@ -1,7 +1,7 @@
 import { freshState } from '../src/store.ts';
 import { commitEvent } from '../src/apply.ts';
 import { resolveSettings } from '../src/settings.ts';
-import type { Ctx, FleetEvent, Packed } from '../src/types.ts';
+import type { Autonomy, Ctx, FleetEvent, Packed } from '../src/types.ts';
 
 /** A pack with the default guardrails; per-agent class maps are the test's input. */
 export function makePack(classes: Record<string, Record<string, string>>): Packed {
@@ -12,7 +12,7 @@ export function makePack(classes: Record<string, Record<string, string>>): Packe
     agents: Object.fromEntries(
       Object.entries(classes).map(([role, autonomyByClass]) => [
         role,
-        { role, autonomyByClass, tools: [] },
+        { role, autonomyByClass: autonomyByClass as Record<string, Autonomy>, tools: [] as string[] },
       ]),
     ),
     guardrails: {

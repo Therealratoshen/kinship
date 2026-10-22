@@ -29,7 +29,7 @@ const stripComment = (line: string): string => line.replace(/\s+#.*$/, '');
 /** Top-level `key: value` scalars. */
 function topScalar(yaml: string, key: string): string | null {
   const m = new RegExp(`^${key}:\\s*(.*)$`, 'm').exec(yaml);
-  return m ? stripComment(m[1]).trim() : null;
+  return m ? stripComment(m[1]!).trim() : null;
 }
 
 /** The indent-scoped block under a top-level key, comments stripped, blank lines dropped. */

@@ -259,7 +259,7 @@ test('the shipped pack names its organisation, and boot loads that manifest thro
   assert.deepEqual(p.org.humanSeats, ['organiser']);
   assert.equal(p.org.floors.memberMessageCapPer24h, 4, 'the cap no kopdar pack may exceed');
   assert.equal(p.guardrails.memberMessageCapPer24h, 2, 'the bundled pack is stricter than its own org floor, and keeps its number');
-  assert.deepEqual(p.declared.sort().includes('member_message_cap_per_24h'), true, 'the pack wrote that key, so provenance says pack, not default');
+  assert.deepEqual(p.declared!.sort().includes('member_message_cap_per_24h'), true, 'the pack wrote that key, so provenance says pack, not default');
 });
 
 test('a pack that declares no organisation boots exactly as it did before the tier existed', () => {

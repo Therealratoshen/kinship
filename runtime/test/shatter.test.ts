@@ -40,7 +40,7 @@ test('tripping twice while frozen is one event, one record, one trippedAt (idemp
   const c = ctx();
   tripShatter(c, 'telegram', 'wa:62899');
   const first = c.state.shatter.get('telegram')!;
-  c.advance(500);
+  c.advance!(500);
   tripShatter(c, 'telegram', 'wa:62900'); // a second complaint during the freeze
   assert.equal(c.state.events.filter((e) => e.type === 'ShatterTripped').length, 1,
     'the log says the guard tripped once — a second row would read as a second incident');
@@ -61,7 +61,7 @@ test('release is an organiser act: an agent release refuses, and the freeze stay
 test('the organiser releases with an event; the freeze is reversible, not a dismissal', () => {
   const c = ctx();
   tripShatter(c, 'telegram', 'wa:62899');
-  c.advance(1000);
+  c.advance!(1000);
   releaseShatter(c, 'telegram', 'organiser');
   assert.equal(isShattered(c.state, 'telegram'), false);
   assert.equal(resolveAutonomy(ladderArgs(c)), 'opt-in-auto', 'the lane comes back to exactly what it was granted');
@@ -75,7 +75,7 @@ test('releasing an unfrozen channel is a no-op, and a released channel can freez
   assert.equal(c.state.events.length, 0, 'and no phantom event is logged');
   tripShatter(c, 'telegram', 'wa:62899');
   releaseShatter(c, 'telegram', 'organiser');
-  c.advance(1000);
+  c.advance!(1000);
   tripShatter(c, 'telegram', 'wa:62901');
   assert.equal(isShattered(c.state, 'telegram'), true, 'a released guard is still armed — it does not burn out');
   assert.equal(c.state.events.filter((e) => e.type === 'ShatterTripped').length, 2);

@@ -25,7 +25,9 @@ export interface ResolveArgs {
   actionClass: string;
   state: FleetState;
   answers: NeedAnswers;
-  channel?: string;
+  // `| undefined` is deliberate: with `exactOptionalPropertyTypes`, a caller that may not have a
+  // channel passes `undefined`, and `channel?: string` would refuse exactly that.
+  channel?: string | undefined;
   /**
    * The resolved tier stack (D35). Optional so a caller that has no org tier can still resolve the
    * pack's own ladder — but every engine path supplies it, because an absent `settings` is the one

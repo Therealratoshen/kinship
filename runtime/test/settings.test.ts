@@ -145,7 +145,7 @@ test('THE PROPERTY: a declared pack value is never replaced by the org — it su
     const pack = packWith(over);
     const r = resolve({ pack, org: ORG });
     for (const [k, v] of Object.entries(over)) {
-      assert.equal((r.guardrails as Record<string, unknown>)[k], v, `${k}=${String(v)} was declared, so ${k} must not become something else`);
+      assert.equal((r.guardrails as unknown as Record<string, unknown>)[k], v, `${k}=${String(v)} was declared, so ${k} must not become something else`);
     }
   }
 });

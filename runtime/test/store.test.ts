@@ -43,9 +43,9 @@ test('append freezes the logged event: a nested value mutated after commit does 
   const s = freshState();
   // The shape that actually reaches the log today: CommitExecuted carries `recipients: string[]`,
   // and an array is an object — so a shallow spread shares it with the caller.
-  const payload = refusal({ at: 9, recipients: ['wa:62811'] });
-  const logged = append(s, payload);
-  payload.recipients!.push('wa:62899'); // a caller reusing its own array after the commit
+  const payload = refusal({ at: 9, recipients: ['wa:62811'] }) as Omit<LoggedEvent, 'seq'> & { recipients: string[] };
+  const logged = append(s, payload) as LoggedEvent & { recipients: string[] };
+  payload.recipients.push('wa:62899'); // a caller reusing its own array after the commit
   assert.deepEqual(logged.recipients, ['wa:62811'],
     'the audit record must say who was on the list AT COMMIT TIME, not whatever the caller\'s array became');
 });

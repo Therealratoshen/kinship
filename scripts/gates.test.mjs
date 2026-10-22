@@ -32,6 +32,8 @@ function liveCounts() {
   assert.equal(tour.status, 0, `the tour must hold its guarantees for its own counts to mean anything:\n${tour.stderr}`);
   const map = JSON.parse(tour.stdout).contributionMap.runtimeTests;
   const countOf = (text, re) => (text.match(re) ?? []).length;
+  const lineCount = (text) => (text.match(/\n/g) ?? []).length;   // wc -l semantics: newline characters
+  const dirLines = (dir) => readdirSync(dir).filter((f) => f.endsWith('.ts')).reduce((s, f) => s + lineCount(readFileSync(join(dir, f), 'utf8')), 0);
   const scripts = readdirSync(join(ROOT, 'scripts')).filter((f) => f.endsWith('.test.mjs')).map((f) => read(`scripts/${f}`)).join('\n');
   const packDir = join(ROOT, 'packs', 'kopdar-ops');
   return {
@@ -42,6 +44,10 @@ function liveCounts() {
     pkgRules: new Set([...read('scripts/validate-pack.mjs').matchAll(/'(PKG-[0-9N]+)'/g)].map((m) => m[1])).size,
     packAgents: readdirSync(join(packDir, 'agents'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
     packSkills: readdirSync(join(packDir, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
+    runtimeLines: dirLines(join(ROOT, 'runtime', 'src')) + dirLines(join(ROOT, 'runtime', 'test')) + lineCount(read('runtime/tour.ts')),
+    domainLines: dirLines(join(ROOT, 'runtime', 'src')),
+    testLines: dirLines(join(ROOT, 'runtime', 'test')),
+    tourLines: lineCount(read('runtime/tour.ts')),
   };
 }
 
@@ -51,14 +57,16 @@ function liveCounts() {
  * drift apart silently.
  */
 const COUNT_CLAIMS = [
-  ['AGENTS.md', /(\d+)\s+tests across\s+(\d+)\s+files/, (c) => [c.runtimeTests, c.runtimeFiles]],
-  ['README.md', /its (\d+)-case tamper-resistant contract test/, (c) => [c.contractCases]],
-  ['README.md', /\((\d+) distinct `PKG-\*` rules/, (c) => [c.pkgRules]],
-  ['CONTRIBUTING.md', /tampered pack \((\d+) cases,/, (c) => [c.contractCases]],
-  ['packs/kopdar-ops/README.md', /(\d+) procedures/, (c) => [c.packSkills]],
-  ['packs/kopdar-ops/README.md', /(\d+)\s+agents over\s+one\s+event lifecycle/, (c) => [c.packAgents]],
-  ['packs/kopdar-ops/README.id.md', /(\d+)\s+prosedur/, (c) => [c.packSkills]],
-  ['packs/kopdar-ops/README.id.md', /(\d+)\s+agent di atas satu/, (c) => [c.packAgents]],
+  ['AGENTS.md', /\d+\s+tests across\s+\d+\s+files/, (c) => `${c.runtimeTests} tests across ${c.runtimeFiles} files`],
+  ['README.md', /its \d+-case tamper-resistant contract test/, (c) => `its ${c.contractCases}-case tamper-resistant contract test`],
+  ['README.md', /\(\d+ distinct `PKG-\*` rules/, (c) => `(${c.pkgRules} distinct ` + '`PKG-*` rules'],
+  ['CONTRIBUTING.md', /tampered pack \(\d+ cases,/, (c) => `tampered pack (${c.contractCases} cases,`],
+  ['packs/kopdar-ops/README.md', /\d+ procedures/, (c) => `${c.packSkills} procedures`],
+  ['packs/kopdar-ops/README.md', /\d+\s+agents over\s+one\s+event lifecycle/, (c) => `${c.packAgents} agents over one event lifecycle`],
+  ['packs/kopdar-ops/README.id.md', /\d+\s+prosedur/, (c) => `${c.packSkills} prosedur`],
+  ['packs/kopdar-ops/README.id.md', /\d+\s+agent di atas satu/, (c) => `${c.packAgents} agent di atas satu`],
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /prints [\d,]+ as of/, (c) => `prints ${c.runtimeLines.toLocaleString('en-US')} as of`],
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /split [\d,]+ domain code \/ [\d,]+ tests \/ [\d,]+ tour/, (c) => `split ${c.domainLines.toLocaleString('en-US')} domain code / ${c.testLines.toLocaleString('en-US')} tests / ${c.tourLines.toLocaleString('en-US')} tour`],
 ];
 
 /** The documents whose counts are claims about this tree — history files are excluded on purpose. */
@@ -73,10 +81,11 @@ test('every count the live documents quote is still true', () => {
   for (const [file, re, expected] of COUNT_CLAIMS) {
     const m = read(file).match(re);
     assert.ok(m, `${file}: the claim "${re}" is gone — update this test rather than deleting it`);
-    assert.deepEqual(
-      m.slice(1).map(Number),
-      expected(c),
-      `${file}: the document says ${m.slice(1).join(' / ')} and the tree says ${expected(c).join(' / ')} — a count in prose is a claim, and this one is now false`,
+    const squash = (s) => s.replace(/\s+/g, ' ');
+    assert.equal(
+      squash(m[0]),
+      squash(expected(c)),
+      `${file}: the document says "${squash(m[0])}" and the tree says "${squash(expected(c))}" — a count in prose is a claim, and this one is now false`,
     );
   }
 });
@@ -96,10 +105,10 @@ test('no count claim in the live documents is unchecked', () => {
   // file exists to stop. So every digit-shaped count in a live document must be one of the claims
   // above.
   const covered = new Set();
-  for (const [file, re, expected] of COUNT_CLAIMS) {
+  for (const [file, re] of COUNT_CLAIMS) {
     const m = read(file).match(re);
     if (!m) continue;
-    for (const n of m.slice(1)) covered.add(`${file}:${n}`);
+    for (const n of m[0].match(/\d+/g) ?? []) covered.add(`${file}:${n}`);
   }
   const offenders = [];
   for (const file of COUNTED_DOCS) {

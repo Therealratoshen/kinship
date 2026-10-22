@@ -321,6 +321,7 @@ export interface Ctx {
   commit: (e: FleetEvent) => void;
   now: () => number;
   /** Test-only hook from the harness — not part of the domain contract. */
+  /** The clock seam (spec §2.7 / HOST-CONTRACT seam 2). Optional because the engine advances its own clock; a host that owns one supplies it. */
   advance?: (ms: number) => void;
   pack: Packed;
   answers: NeedAnswers;
