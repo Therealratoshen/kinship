@@ -552,7 +552,15 @@ export function validatePack(dir, opts = {}) {
   // Reading strictness lives in the parser alone (rules/pack-format.mdc): `loadPack` runs this
   // validator first, so a refusal here would make the parser's own door unreachable, and a check
   // that cannot fire is worth exactly nothing (D24).
-  const files = [join(dir, 'PACK.md'), join(dir, '.kinship.yaml'), join(dir, 'README.md'), ...(orgPath ? [orgPath] : [])];
+  // Every markdown file at the pack's root is pack prose, and every one of them is swept — a pack
+  // that adds a README in another language, or a NOTES.md, must not get a quieter copy of the
+  // rules. `pack.local.yaml` is deliberately not swept: it is the operator's own file, it holds
+  // their real names and contacts, and "packs carry structure, never state" is the rule it lives
+  // outside of.
+  const rootProse = readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.md'))
+    .map((e) => join(dir, e.name));
+  const files = [join(dir, '.kinship.yaml'), ...rootProse, ...(orgPath ? [orgPath] : [])];
   const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) walk(p); else if (/\.(md|ya?ml|json)$/.test(e.name)) files.push(p); } };
   for (const sub of ['agents', 'skills']) if (existsSync(join(dir, sub))) walk(join(dir, sub));
   for (const f of files) {

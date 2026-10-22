@@ -1,5 +1,8 @@
 # `packs/kopdar-ops/` — the seed pack
 
+> **Bahasa Indonesia:** [README.id.md](README.id.md) — terjemahan on-ramp ini (2026-10-22). This
+> file stays the source of truth; a translation is a copy, and a copy needs a pointer and a date.
+
 A **forkable example**, not a product. It is the reference shape for `kinship/v1`: three agents over one
 event lifecycle, one approval queue, and a set of invariants a fork is not allowed to delete. Read
 [`PACK.md`](PACK.md) for what the squad does and why each refusal exists; this file is only the on-ramp.

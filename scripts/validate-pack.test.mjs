@@ -40,6 +40,20 @@ test('the shipped pack passes the contract', () => {
   assert.equal(r.checked.skills, 16, 'sixteen skills — the pack payload');
 });
 
+test('every markdown file at the pack root is swept — a second README does not get quieter rules', () => {
+  // A pack that ships its on-ramp in two languages must not get a copy of the rules with a hole in
+  // it. The sweep covers every root markdown file, so a translated README is held to the same
+  // claim ceiling as the original.
+  const r = inCopy((dir) => {
+    writeFileSync(join(dir, 'README.id.md'), '# Terjemahan\n\nLayanan kami fully autonomous untuk Anda.\n');
+    return validatePack(dir);
+  });
+  assert.ok(
+    codes(r).includes('PKG-46'),
+    'a banned claim in any root markdown file must be refused — the copy rules travel with the copy',
+  );
+});
+
 test('the shape gate does not shadow the parser’s own door on the language pair', () => {
   // Reading strictness lives in `runtime/src/pack.ts` alone (rules/pack-format.mdc): `loadPack` runs
   // this validator FIRST, so a locale refusal here would make the parser's own, more precise

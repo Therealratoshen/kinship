@@ -195,12 +195,28 @@ test('the copy this repo ships asserts no banned claim', () => {
 
 test('every banned string traces to a line in PRD §2.3 or AGENTS.md invariant 3', () => {
   const source = normalise([...claimCeilingCells(), invariantThree()].join(' '));
+  const tracesDirectly = (claim) => claim.traces.some((t) => source.includes(normalise(t)));
   for (const claim of BANNED_CLAIMS) {
+    if (tracesDirectly(claim)) continue;
+    // An Indonesian entry traces through its English source, and that source must itself trace —
+    // so a translation can never be the root of the list.
+    const wanted = claim.translationOf;
+    const parent = wanted === undefined
+      ? undefined
+      : BANNED_CLAIMS.find((c) => c.traces.some((t) => normalise(t) === normalise(wanted)));
     assert.ok(
-      claim.traces.some((t) => source.includes(normalise(t))),
+      parent !== undefined && tracesDirectly(parent),
       `\`${claim.phrase}\` (${claim.source}) is in the code but in neither PRD §2.3 nor AGENTS.md invariant 3 — a ban no document states is a rule nobody can follow`,
     );
   }
+});
+
+test('the ceiling reaches the copy in the other language too', () => {
+  // The copy this rule governs is bilingual, so a list of English strings alone would leave a
+  // translation free to assert exactly what the ceiling forbids — in the other language.
+  const indonesian = 'Kami menawarkan layanan yang sepenuhnya otonom untuk komunitas Anda.';
+  const hits = scanForClaims(indonesian, { prose: true });
+  assert.ok(hits.length > 0, 'a claim asserted in Indonesian is the same claim');
 });
 
 test('every forbidden cell in PRD §2.3 is enforced, or named as a rule no sweep can enforce', () => {

@@ -25,7 +25,6 @@ self-hostable product.** Everything below follows from that sentence.
 |---|---|---|
 | **No install path.** | There is no root `package.json`, and `runtime/package.json` is `"private": true`. So `npm test` at the root does not exist, and adoption means copying a directory. Either publish it or state that vendoring-by-copy is intended — the gap is that neither is written down. | **owner**, then a doc or a publish |
 | **No release to pin.** | Zero tags, no published release, while a manifest already says `0.1.0`. A fork cannot depend on a version. | **owner** |
-| **No Indonesian-language on-ramp.** | Member-facing pack copy is bilingual `[id, en]`; the README, CONTRIBUTING, SECURITY and this file are English only. The community this was built for reads the pack, not the spec. | contributor-able (a translation PR is welcome; it takes the claim-honesty rules with it) |
 | **No quickstart that ends in an artefact.** | **Landed 2026-10-22** (`DECISIONS.md` D49): the README's "Try it now" now ends in the two files the reference host writes, and ends in a `verify` that re-reads them. What is still missing is the **install path** below — the quickstart's one `npm install` is a wart on a repo whose gates need none. | contributor-able, but it wants the install path first |
 
 ## Not complete for a contributor

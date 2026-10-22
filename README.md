@@ -103,6 +103,9 @@ answers rather than their values, so a log that travels carries no second person
 - **A reference host** (`adapters/reference/`) — it owns the clock, the store and the printing, and it **sends
   nothing**: no transport, so every member-facing commit still refuses `no_transport` (D21). It boots the pack
   (or continues its own log on restart), writes `events.jsonl` + `manifest.json`, and verifies what it wrote
+- **An Indonesian on-ramp** — `packs/kopdar-ops/README.id.md` is the pack's own onboarding doc in Indonesian,
+  and `packs/kopdar-ops/pack.local.example.yaml` explains the eight answers in Indonesian. The English file
+  stays the source of truth and carries the pointer; a translation is a copy, and a copy needs a pointer and a date
 - **A persisted log that can be verified** — `Fleet.verifyLog` (pure read, in `runtime/`): the rows must be dense
   in `seq`, they must fold, and the state they fold to must be the state the fleet holds. The file carries a
   **digest** of the `needs:` answers, never their values — one of them is a named human (spec/HOST-CONTRACT.md

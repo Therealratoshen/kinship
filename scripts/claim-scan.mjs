@@ -74,6 +74,12 @@
  * AGENTS.md. It is usually the phrase itself, but §2.3 row 4 writes one span with a shared
  * prefix — "Members will feel more valued / more engaged" — so that entry traces through both of
  * its halves rather than through a phrase the PRD never wrote.
+ *
+ * `translationOf` marks an entry as the **Indonesian** form of another entry. The copy this rule
+ * governs is bilingual — the pack's member copy is `[id, en]` and its prose now is too — so a list
+ * of English strings alone would leave a translation free to assert, in the other language, exactly
+ * what the ceiling forbids. An entry with `translationOf` traces to its English source instead of
+ * to a document, which is how it stays honest without pretending the PRD was written twice.
  */
 export const BANNED_CLAIMS = [
   { phrase: 'replace your community manager', re: /\b(replace your[- \s]+community[- \s]+manager)\b/i, traces: ['replace your community manager'], source: 'PRD §2.3 row 1' },
@@ -87,7 +93,7 @@ export const BANNED_CLAIMS = [
     // engaged" — so the entry is one claim with two readings, not two claims.
     phrase: 'members will feel more valued / more engaged',
     re: /\b(members[- \s]+will[- \s]+feel[- \s]+more[- \s]+(?:valued|engaged))\b/i,
-    traces: ['members will feel more valued / more engaged'],
+    traces: ['members will feel more valued / more engaged', 'members will feel more valued'],
     source: 'PRD §2.3 row 4',
   },
   {
@@ -102,6 +108,20 @@ export const BANNED_CLAIMS = [
   { phrase: 'hours saved', re: /\b(hours[- \s]+saved)\b/i, traces: ['hours saved'], source: 'AGENTS.md invariant 3' },
   { phrase: 'community size', re: /\b(community[- \s]+sizes?)\b/i, traces: ['community size'], source: 'AGENTS.md invariant 3' },
   { phrase: 'tam', re: /\b(tam)\b/i, traces: ['tam'], source: 'AGENTS.md invariant 3' },
+
+  // --- the Indonesian forms -------------------------------------------------------------------
+  // The copy is bilingual, so the ceiling has to be too: a translation that asserts "sepenuhnya
+  // otonom" is making the same claim as "fully autonomous", and a list of English strings would
+  // not see it. Each of these is the Indonesian form of an entry above.
+  { phrase: 'sepenuhnya otonom', re: /\b(sepenuhnya otonom)\b/i, traces: ['sepenuhnya otonom'], translationOf: 'fully autonomous', source: 'the Indonesian of PRD §2.3 row 2' },
+  { phrase: 'berjalan sendiri', re: /\b(berjalan sendiri)\b/i, traces: ['berjalan sendiri'], translationOf: 'runs itself', source: 'the Indonesian of AGENTS.md invariant 3' },
+  { phrase: 'menggantikan organizer', re: /\b(menggantikan organizer)\b/i, traces: ['menggantikan organizer'], translationOf: 'replace your community manager', source: 'the Indonesian of PRD §2.3 row 1' },
+  { phrase: 'kami yang mengelola acara', re: /\b(kami yang mengelola acara)\b/i, traces: ['kami yang mengelola acara'], translationOf: 'we run your events', source: 'the Indonesian of PRD §2.3 row 2' },
+  { phrase: 'kami yang mengirim pengingat', re: /\b(kami yang mengirim pengingat)\b/i, traces: ['kami yang mengirim pengingat'], translationOf: 'we send your reminders', source: 'the Indonesian of PRD §2.3 row 2' },
+  { phrase: 'anggota akan merasa lebih dihargai', re: /\b(anggota akan merasa lebih dihargai)\b/i, traces: ['anggota akan merasa lebih dihargai'], translationOf: 'members will feel more valued', source: 'the Indonesian of PRD §2.3 row 4' },
+  { phrase: 'kami yang membuat persetujuan', re: /\b(kami yang membuat persetujuan)\b/i, traces: ['kami yang membuat persetujuan'], translationOf: 'we invented approvals', source: 'the Indonesian of PRD §2.3 row 5' },
+  { phrase: 'jam yang dihemat', re: /\b(jam yang dihemat)\b/i, traces: ['jam yang dihemat'], translationOf: 'hours saved', source: 'the Indonesian of AGENTS.md invariant 3' },
+  { phrase: 'ukuran komunitas', re: /\b(ukuran komunitas)\b/i, traces: ['ukuran komunitas'], translationOf: 'community size', source: 'the Indonesian of AGENTS.md invariant 3' },
 ];
 
 /**

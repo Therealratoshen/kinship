@@ -1,39 +1,46 @@
-# pack.local.example.yaml — the answers a community supplies.
+# pack.local.example.yaml — jawaban yang dipakai sebuah komunitas.
 #
-# Copy this to `pack.local.yaml` next to it (`packs/kopdar-ops/pack.local.yaml`) and fill it in.
-# That file is gitignored: a community's real names, channels and contacts never enter the
-# repository. Nothing in `runtime/` reads it — the host does, and it hands the answers to the
-# runtime in memory. See `adapters/reference/README.md`.
+# Salin berkas ini menjadi `pack.local.yaml` di sebelahnya
+# (`packs/kopdar-ops/pack.local.yaml`) lalu isi. Berkas itu di-gitignore: nama asli, kanal, dan
+# kontak komunitasmu tidak pernah masuk ke repositori. Tidak ada apa pun di `runtime/` yang
+# membacanya — host yang membacanya, lalu menyerahkan jawabannya ke runtime lewat memori. Lihat
+# `adapters/reference/README.md` (dan `README.id.md` untuk versi bahasa Indonesia).
 #
-# Every key below is one of the pack's `needs:` — the eight answers the fleet refuses to invent.
-# The pack will not boot without all eight, and this host refuses an answer the pack did not ask
-# for, so a typo here is a loud failure rather than a silent no-op.
+# Setiap kunci di bawah adalah satu dari `needs:` milik paket — delapan jawaban yang tidak akan
+# pernah dikarang oleh fleet. Paket tidak mau boot tanpa kedelapan answer, dan host menolak jawaban
+# yang tidak diminta paket, jadi salah ketik di sini adalah kegagalan yang keras, bukan diam-diam
+# tidak berlaku.
 #
-# A value may be quoted; the quotes come off. A `#` starts a comment when it follows whitespace,
-# so a value may contain one.
+# Nilai boleh diapit tanda kutip; tanda kutipnya dilepas. Tanda `#` memulai komentar hanya kalau
+# diikuti spasi, jadi nilai boleh memuat satu.
+#
+# -- Terjemahan. Sumbernya `pack.local.example.yaml` (bahasa Inggris). Kunci dan nilainya tidak
+#    diterjemahkan: keduanya identifier, bukan kalimat.
 
-# The community's name, as members know it. It appears in the canonical disclosure line every
-# member-facing message carries, in both languages.
+# Nama komunitas, seperti yang dikenal anggota. Ia muncul di baris pengungkapan kanonik yang
+# dibawa setiap pesan yang menghadap anggota, dalam dua bahasa.
 community_name: "AI Builders ID"
 
-# The recurring cadence, not a single date. The fleet's phases are derived from this.
+# Ritme berulang, bukan satu tanggal. Fase-fase fleet diturunkan dari ini.
 schedule: "every other Saturday"
 
-# Where the venue comes from: `gcal`, `luma` (Plus only), or `manual`.
+# Dari mana tempat acara diperoleh: `gcal`, `luma` (Plus saja), atau `manual`.
 venue_source: "manual"
 
-# The sponsors, or the words `none yet`. Never fabricated — an empty list is an honest answer.
+# Para sponsor, atau kata-kata `none yet`. Tidak pernah dikarang — daftar kosong adalah jawaban
+# yang jujur.
 sponsor_list: "none yet"
 
-# LOAD-BEARING: `escalate-to-human` has no target without this. It is a named human.
+# PENTING: `escalate-to-human` tidak punya tujuan tanpa ini. Ini manusia bernama.
 escalation_contact: "organiser"
 
-# The disclosure copy for the group, in both languages. Required, not optional.
+# Naskah pengungkapan untuk grup, dalam dua bahasa. Wajib, bukan opsional.
 member_notice_text: "bot ini asisten organiser, bukan manusia"
 
-# The named export `rsvp-chase` reconciles against. Name it, or the lane has nothing to read.
+# Ekspor bernama yang reread oleh `rsvp-chase`. Sebutkan, atau lane itu tidak punya apa pun untuk
+# dibaca.
 rsvp_source_of_truth: "google form"
 
-# The named allowed partners and the disclosure line they require. UNSET means the
-# cross-promotion class never fires at all — absence, not denial.
+# Mitra yang diizinkan dan baris pengungkapan yang mereka wajibkan. KOSONG berarti kelas
+# promosi lintas komunitas **tidak pernah** aktif sama sekali — ketiadaan, bukan penolakan.
 partner_policy: "Kopdar Sebelah saja; wajib baris disclosure"
