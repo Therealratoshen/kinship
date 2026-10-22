@@ -20,7 +20,7 @@ import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
 import { SUPPORTED_LOCALES, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
-import type { Autonomy, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
+import type { Autonomy, CommunityCoverage, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
 
@@ -167,6 +167,133 @@ function parseAgents(yaml: string): Record<string, PackedAgent> {
  */
 const FLOOR_NAMES = ['report_aggregation_floor', 'member_message_cap_per_24h', 'identity_disclosure', 'defaults'];
 
+/** The keys a `coverage:` block may carry, in the spelling the file uses. */
+const COVERAGE_KEYS: ReadonlySet<string> = new Set(['mode', 'timezone', 'days', 'opens', 'closes']);
+
+/** Local weekday names a pack may write, mapped to the number the runtime uses (0 = Sunday). */
+const WEEKDAYS: Record<string, number> = {
+  sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6,
+};
+
+/** `HH:MM` in local time — the only shape a coverage window is written in. */
+function localTimeToMinutes(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(raw.trim());
+  if (m === null) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+/**
+ * The `coverage:` block — the community's staffed hours, in the community's own local calendar.
+ *
+ * Parsed here, refused here, for the same reason as the sanction ladder (D37): this file is the
+ * only reader of a pack folder, and the gate that matters is the one a fork cannot skip by not
+ * running CI.
+ *
+ * The refusals here are about *shape*, not about whether the promise is wise — a community may
+ * staff any hours it likes. What is refused is a window the runtime cannot read, because a window
+ * that silently evaluates to "never on duty" would turn every later number into a quiet lie.
+ */
+function parseCoverage(yaml: string, packKey: string): CommunityCoverage | undefined {
+  // The same trap the sanction ladder guards against (D37 / PKG-62): a file may not write the
+  // block twice. A reader takes the first and ignores the rest, so a second block would be a
+  // staffing promise no check ever saw.
+  const occurrences = yaml.split('\n').reduce(
+    (acc, l) => (new RegExp(`^${'coverage'}:\\s*(#.*|)$`).test(l) ? acc + 1 : acc),
+    0,
+  );
+  if (occurrences > 1) {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` writes \`coverage:\` ${occurrences} times — a reader takes the first block and ignores the rest, so a second block is a staffing promise no check ever saw. One file may not disagree with itself`);
+  }
+
+  const lines = block(yaml, 'coverage');
+  if (lines.length === 0) return undefined; // an unstated staffing promise is not a promise
+
+  const map = new Map<string, string>();
+  for (const l of lines) {
+    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l.trim());
+    if (kv === null) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` has a \`coverage:\` line this parser cannot read: \`${l.trim()}\` — a window the runtime cannot evaluate is a window that would read as "never on duty" and turn every later number into a quiet lie`);
+    }
+    map.set(kv[1]!, kv[2]!.trim().replace(/^["']|["']$/g, ''));
+  }
+
+  // An unknown key is refused, not skipped — the same rule the sanction ladder follows (D37). A
+  // typo (`dayz:` for `days:`) would otherwise read as a window with no days and no complaint, and
+  // a key the runtime does not understand is a key the community believes it wrote.
+  const unknown = [...map.keys()].filter((k) => !COVERAGE_KEYS.has(k));
+  if (unknown.length > 0) {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` writes \`coverage.${unknown[0]}\`, a key it does not have — the runtime reads ${[...COVERAGE_KEYS].map((k) => `\`${k}\``).join(', ')} and nothing else, so a line it cannot read is not skipped: a window whose file and whose parsed shape disagree is exactly the document this repo refuses to boot`);
+  }
+
+  const mode = map.get('mode');
+  if (mode !== 'always' && mode !== 'staffed') {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares \`coverage.mode: ${mode ?? '(absent)'}\` — expected \`always\` (a 24/7 community) or \`staffed\` (a window of hours)`);
+  }
+  if (mode === 'always') {
+    // `always` is a claim that the community is staffed around the clock, so there are no days to
+    // name and no hours to open and close. A block that writes them anyway is a file disagreeing
+    // with itself — the same fault the duplicate-block rule refuses — so they are refused rather
+    // than quietly dropped. The zone is kept when the pack names one and is `null` when it does
+    // not: an invented "UTC" would be a claim about a community nobody described.
+    for (const key of ['days', 'opens', 'closes']) {
+      if (map.has(key)) {
+        refuse('pack_invalid', 'coverage parse gate',
+          `pack \`${packKey}\` declares \`coverage.mode: always\` and also writes \`coverage.${key}\` — a community staffed around the clock has no shift to open or close, so the file is disagreeing with itself. Drop the \`${key}\` line or declare \`mode: staffed\``);
+      }
+    }
+    return { mode: 'always', timezone: map.get('timezone') ?? null };
+  }
+
+  const timezone = map.get('timezone');
+  if (timezone === undefined || timezone === '') {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares a staffed window with no \`timezone:\` — "business hours" without a zone is not a commitment, and an unzoned window is a window nobody can be on duty for`);
+  }
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: timezone });
+  } catch {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares \`coverage.timezone: ${timezone}\`, which is not an IANA zone — the window is a statement about that zone's local calendar, so an unreadable zone is an unreadable window`);
+  }
+
+  const daysRaw = map.get('days');
+  if (daysRaw === undefined || daysRaw === '') {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares a staffed window with no \`days:\` — a shift needs the weekdays it covers`);
+  }
+  const days: number[] = [];
+  for (const raw of daysRaw.split(',')) {
+    const name = raw.trim().toLowerCase();
+    const day = WEEKDAYS[name];
+    if (day === undefined) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` names \`${raw.trim()}\` in \`coverage.days:\` — expected local weekday names (sun..sat)`);
+    }
+    if (!days.includes(day)) days.push(day);
+  }
+
+  const opens = localTimeToMinutes(map.get('opens'));
+  const closes = localTimeToMinutes(map.get('closes'));
+  if (opens === null || closes === null) {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares a staffed window whose \`opens:\`/\`closes:\` are not \`HH:MM\` local times — the window is read as a local wall clock, so anything else cannot be evaluated`);
+  }
+  if (opens >= closes) {
+    refuse('pack_invalid', 'coverage parse gate',
+      `pack \`${packKey}\` declares \`coverage.opens: ${map.get('opens')}\` and \`coverage.closes: ${map.get('closes')}\` — a shift that closes before it opens is not a shift (an overnight window would need its own rule, not a backwards one)`);
+  }
+
+  return { mode: 'staffed', timezone, days: days.sort((a, b) => a - b), opens, closes };
+}
+
 /**
  * Where the organisation manifests are. A fork is a whole repo, so `orgs/` sits beside `packs/` and
  * walking up from the pack folder finds it; a pack handed to the loader from somewhere else (a temp
@@ -226,6 +353,7 @@ export function loadPack(dir: string): Packed {
   const budgets = blockMap(block(yaml, 'budgets'));
   const needs = blockList(block(yaml, 'needs'));
   const agents = parseAgents(yaml);
+  const coverage = parseCoverage(yaml, key);
 
   const llmRaw = budgets.get('llm_per_event_idr');
   const llmPerEventIdr = llmRaw !== undefined && /^\d+$/.test(llmRaw) ? Number(llmRaw) : null; // null stays null: the unset ceiling refuses (§12-Q9)
@@ -278,6 +406,9 @@ export function loadPack(dir: string): Packed {
     needs,
     organisation,
     ...(org !== undefined ? { org } : {}),
+    // A pack that declared no coverage window reads back as absent, not as a default window: an
+    // unstated staffing promise is not a promise, and the reads report the duty state as unknown.
+    ...(coverage !== undefined ? { coverage } : {}),
     // A pack that declared no ladder reads back as `undefined`, not as `[]` and not as a default ladder:
     // the runtime has no business supplying norms a community never wrote down (D37).
     ...(sanctionLadder.length > 0 ? { sanctionLadder } : {}),

@@ -5,8 +5,7 @@
 > rujukan. Nama berkas, kunci, id aturan, dan perintah terminal **tidak** diterjemahkan: itu
 > identifier, bukan kalimat.
 
-Sebuah **contoh yang bisa di-fork**, bukan produk. Ini adalah bentuk acuan untuk `kinship/v1`: 3
-agent di atas satu siklus hidup acara, satu antrean persetujuan, dan sekumpulan invarian yang tidak
+Sebuah **contoh yang bisa di-fork**, bukan produk. Ini adalah bentuk acuan untuk `kinship/v1`: 3 agent di atas satu siklus hidup acara, satu antrean persetujuan, dan sekumpulan invarian yang tidak
 boleh dihapus oleh fork. Baca [`PACK.md`](PACK.md) untuk apa yang dikerjakan skuad ini dan mengapa
 setiap penolakan ada; berkas ini hanya on-ramp-nya.
 
@@ -56,7 +55,7 @@ PACK.md              frontmatter (key, bundled, agents[], requiredSkills) + pros
 .kinship.yaml        schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs,
                      `sanction_ladder:` (opsional; lihat "Konsekuensi Anda, sebagai data" di bawah)
 agents/<role>/AGENTS.md   instruksi per-agent — event-ops · engagement · moderator
-skills/<name>/SKILL.md    16 prosedur, masing-masing dengan satu assertion yang membuat paket gagal
+skills/<name>/SKILL.md    19 prosedur, masing-masing dengan satu assertion yang membuat paket gagal
 pack.example.yaml    bentuk satu berkas yang sudah digantikan; disimpan sebagai penunjuk (D17), tidak dibaca apa pun
 ```
 

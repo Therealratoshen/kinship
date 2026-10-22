@@ -327,3 +327,162 @@ test('the real pack boots into a Fleet whose settings carry the org tier', () =>
   assert.deepEqual(fleet.settings(), fleet.settings(), 'a pure read returns the same artefact twice, and writes nothing between the calls');
   assert.equal(fleet.state.events.length, 0, 'and boot + settings together appended no event');
 });
+
+// --- the community's coverage window, at the boot door --------------------------------------------
+// The CI door is `scripts/validate-pack.mjs` (PKG-65). This is the second door: the parser in
+// `pack.ts` refuses the same shapes on its own, because a host may run a pack that never saw CI.
+// A gate that only exists in CI is a gate a fork can skip by not running CI.
+
+/** A copy of the shipped pack with its `coverage:` block replaced by `body`. */
+const withCoverageBlock = (body: string): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-coverage-'));
+  const target = join(dir, 'kopdar-ops');
+  cpSync(PACK_DIR, target, { recursive: true });
+  const f = join(target, '.kinship.yaml');
+  const text = readFileSync(f, 'utf8');
+  assert.match(text, /^coverage:\s*$/m, 'the shipped pack must carry a coverage block for this test to replace it');
+  writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, `coverage:\n${body}\n\n`));
+  return target;
+};
+
+test('the shipped pack parses its coverage window into the numbers the file states', () => {
+  const p = loadPack(PACK_DIR);
+  assert.deepEqual(p.coverage, {
+    mode: 'staffed',
+    timezone: 'Asia/Jakarta',
+    days: [1, 2, 3, 4, 5],
+    opens: 9 * 60,
+    closes: 18 * 60,
+  });
+});
+
+test('a coverage window with no timezone refuses to load — business hours without a zone is not a commitment', () => {
+  const target = withCoverageBlock('  mode: staffed\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /timezone/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window that closes before it opens refuses to load', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /opens|closes/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window with an unrecognised mode refuses to load', () => {
+  const target = withCoverageBlock('  mode: whenever\n  timezone: Asia/Jakarta');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /mode/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window with an unknown weekday refuses to load', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /days|funday/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a pack with no coverage block loads with no window at all — an unstated staffing promise is not a promise', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-nocov-'));
+  try {
+    const target = join(dir, 'kopdar-ops');
+    cpSync(PACK_DIR, target, { recursive: true });
+    const f = join(target, '.kinship.yaml');
+    writeFileSync(f, readFileSync(f, 'utf8').replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, ''));
+    const p = loadPack(target);
+    assert.equal(p.coverage, undefined, 'no window is read back as no window, not as a default window');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a 24/7 community parses as `always` with no invented window — and no invented zone', () => {
+  const target = withCoverageBlock('  mode: always');
+  try {
+    const p = loadPack(target);
+    assert.deepEqual(p.coverage, { mode: 'always', timezone: null },
+      'a community that names no zone gets `null`, not a fabricated "UTC" — an invented zone is a claim about a community nobody described');
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a 24/7 community that names its zone keeps it', () => {
+  const target = withCoverageBlock('  mode: always\n  timezone: Asia/Jakarta');
+  try {
+    const p = loadPack(target);
+    assert.deepEqual(p.coverage, { mode: 'always', timezone: 'Asia/Jakarta' });
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage block with an unknown key refuses to load — a key the runtime does not read is a key the community believes it wrote', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /dayz/, 'the refusal names the key it does not have');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('`mode: always` alongside a shift the runtime cannot have refuses to load — the file may not disagree with itself', () => {
+  const target = withCoverageBlock('  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /always/, 'the refusal names the contradiction');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});

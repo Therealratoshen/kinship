@@ -30,6 +30,9 @@ requiredSkills:
   - kinshipai/bundled/event-ops/kopdar/skills/near-miss-log
   - kinshipai/bundled/event-ops/kopdar/skills/escalate-to-human
   - kinshipai/bundled/event-ops/kopdar/skills/fleet-health
+  - kinshipai/bundled/event-ops/kopdar/skills/standing-engagement
+  - kinshipai/bundled/event-ops/kopdar/skills/community-minutes
+  - kinshipai/bundled/event-ops/kopdar/skills/community-health
 requiredPacks: []                  # no cross-pack deps in v0.1; a moderation-procedure pack would be `kinshipai/...` by key
 tags: [kopdar, event-ops, bilingual, id, en, draft-only, supervised]
 ---

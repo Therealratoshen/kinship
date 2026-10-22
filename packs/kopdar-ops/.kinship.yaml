@@ -109,6 +109,26 @@ guardrails:
   cross_promo_per_event_cap: 1                   # FR-6.5: a partner's reach is not our cadence (bounded 0-3)
   defaults: deny
 
+# --- The community's coverage window: the hours a human is on duty for this community. ---------
+#
+# NOT the member's quiet hours. Quiet hours (FR-5.5) live in each member's own timezone and are a
+# member protection — they answer "may I contact this person". This window answers a different
+# question: "was anyone watching when this community was left waiting". Only the community can state
+# its own staffing, so it is a pack fact and not a floor the org may lower.
+#
+# It is read as a LOCAL wall clock in `timezone`, never as a stored UTC offset — so "09:00" still means
+# 09:00 on both sides of a daylight-saving change. `mode: always` is a genuinely 24/7 community.
+#
+# A shift that ENDS while an obligation is still open is what the health read counts; a shift that has
+# not ended yet is not a miss, and a weekend gap is not a miss either. That is what keeps this a
+# staffing fact rather than a blame metric.
+coverage:
+  mode: staffed
+  timezone: Asia/Jakarta
+  days: mon,tue,wed,thu,fri
+  opens: "09:00"
+  closes: "18:00"
+
 budgets:
   llm_per_event_idr: null                # REAL field, UNSET value. Owner's call — PRD §12-Q9.
                                          # Do not fill this with a plausible number; see PACK.md note 3.

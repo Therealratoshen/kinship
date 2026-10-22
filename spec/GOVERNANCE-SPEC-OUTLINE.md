@@ -601,6 +601,77 @@ nothing (D21), the rungs are executed by humans outside the fleet, and the ladde
 type. What this section claims is narrower and checkable — that a pack can record its consequences honestly,
 and that recording them does not hand the fleet a way to carry them out.
 
+### 2.13 The community's coverage window: the hours a human was on duty, and what waited past them
+
+Every governance rule in this spec so far is about what the **fleet** may do and what a **member** is owed.
+None of them is about the third thing a community has: a promise it made to itself about when a human would
+be watching. A community that answers questions between 09:00 and 18:00 on weekdays has made a staffing
+promise; a runtime that says nothing about it cannot tell the difference between "we answered" and "nobody
+was there", and a community that cannot tell that difference cannot tell whether it is keeping its word.
+
+This is the gap the SLA literature keeps separate and the community-agent literature mostly collapses.
+The member's quiet hours (FR-5.5, `members.ts`) answer *"may I contact this person?"* and live in the
+**member's** zone — a member protection. The coverage window answers *"was anyone watching when this
+community was left waiting?"* and lives in the **community's** zone — a staffing fact. They are different
+questions, different clocks, and different owners, so they are not allowed to share a field.
+
+Four properties, each one a thing an implementer can fail a test on (`DECISIONS.md` **D54**):
+
+- **A window is pack data, not an org floor.** `coverage:` lives beside `guardrails:` in the pack, and only
+  the community can state its own staffing. It is not a floor an org may impose, and it is not a member
+  protection the org may lower. **Absence is legal**: a pack that declares no window has an *unknown* duty
+  state, and the read says `null` — never `0`. Zero would claim the community was never on duty, which is a
+  different and false claim.
+- **The two modes are not the same shape of claim, and the type says so.** `mode: staffed` names a zone, the
+  weekdays it covers, and the hours it opens and closes — every one load-bearing. `mode: always` is a 24/7
+  community: it has **no window**, so there are no days to name, no hours to open and close, and no shift that
+  can end. The type is a discriminated union, because pretending the two modes have the same shape would make
+  the read lie. A community that names no zone in `always` mode reads back `null` — an invented "UTC" would be a
+  claim about a community nobody described — and a file that writes `days:`/`opens:`/`closes:` alongside
+  `mode: always` is **refused**, because it disagrees with itself.
+- **The window is a local wall clock, never a stored offset.** "09:00 in Jakarta" is a statement about
+  Jakarta's calendar, so it is evaluated there. A window that spans a daylight-saving transition therefore
+  keeps its local meaning; 09:00 is 09:00 on both sides of the change. Storing a UTC offset and subtracting
+  it is exactly how a "09:00–18:00 staffed window" silently becomes "10:00–19:00" twice a year.
+- **Only a shift whose end has passed counts as missed.** The SLA rule: "requests submitted outside
+  coverage hours have their response-time clock start at the beginning of the next coverage window"
+  (ArcadeDB's SLA, read 2026-10-22). An obligation raised at 10:00 and still open at 12:00 is *inside* the
+  shift that ends at 18:00; it has not been missed. **The clock pauses outside coverage.**
+- **A gap that spans a closed window is not a miss.** Created Friday 20:00, still open Monday 10:00, staffed
+  Monday–Friday: Friday's shift ended *before* the obligation existed and Monday's has not ended yet, so
+  nothing was missed. This is the "Friday 5:30pm → clock starts Monday 9am" case, and it is the single rule
+  that separates a staffing promise from a blame metric — a runtime that counted it would be publishing a
+  number about the community's diligence, and the number would be false.
+
+The read it produces is a section of the existing health snapshot, and it is **a read**: it appends nothing
+and replays identically (§1.2). It names the window, says whether a human was on duty at the moment of the
+read, and counts the obligations that outlived a staffed shift. It does **not** say whether the community is
+healthy, and it does not say what anyone felt — PRD §5 keeps sentiment and churn out of v0, and a health
+read that implies omniscience is a lie. The `unmeasured` list grows an entry saying so, because a health read
+that only states what it can measure teaches the reader to trust the parts it did not.
+
+The reading rules belong to the strict reader. `runtime/src/pack.ts` refuses a mode it does not know, a
+staffed window with no zone, an unknown weekday, hours that are not `HH:MM`, a shift that closes before it
+opens, a key the block does not have, a file that writes the block twice, and a `mode: always` block that also
+writes a shift. The last two are for the same reason the ladder's duplicate is refused: a hand-rolled reader
+takes the first block and ignores the rest, so a fork could ship a window no check ever saw, and a file that
+writes `days:` beside `mode: always` is disagreeing with itself.
+
+**The two doors are split by what each can judge, and the split is the point.** The validator (`PKG-65`) checks
+the *shape* — the mode is one of two, a staffed window has a zone and days and `HH:MM` hours that do not run
+backwards, `mode: always` carries no shift — because those are the properties a fork's CI can read off a file.
+The parser owns the *reading* strictness — a line it cannot parse, a key it does not have — and the validator
+deliberately stays silent on those, because `loadPack` runs the validator first and a refusal there would make
+the parser's own door unreachable (a check that cannot fire is worth exactly nothing; the D24 class). The two
+readers must also agree on *which file they see*: the validator's `coverage:` pattern matches the parser's,
+comment and all, because a gate that only found the bare spelling would skip a window the runtime does read.
+
+`[UNVERIFIED]` Whether a coverage window changes the community's behaviour is untestable here: phase 1 sends
+nothing (D21), no dated event exists (D9), and the window is not wired to any refusal yet — the standing
+engagement lane honours it in its own instructions, not in a gate. What this section claims is narrower and
+checkable — that a community can record its own staffing promise, that the runtime can read it without
+guessing, and that a promise it did not make reads as unknown rather than as zero.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -698,7 +769,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 7,855 as of 2026-10-22, split 3,531 domain code / 3,771 tests / 553 tour. The count is re-run whenever a
+prints 8,641 as of 2026-10-22, split 3,902 domain code / 4,160 tests / 579 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -731,6 +802,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | Pack boot gate: a fork cannot weaken an invariant (FR-1.14) — the validator's own `validatePack` runs before parsing | `src/pack.ts` | `test/pack.test.ts` (tamper cases on the real `packs/kopdar-ops`) |
 | §1.2 read side, **second artefact** (PRD **FR-1.16**): the same log read as a *list* instead of counts — what a human currently owes, by kind (`verdict` / `handoff` / `release` / `overdue`), ordered by how long it has waited, with ranking explicitly refused, the identifier sweep run **before** the 160-char preview cut, and `memberInputs.linkable: false` because the log carries no input→card join | `src/inbox.ts` (`deriveInbox`, exposed as `Fleet.inbox()`), borrowing `health.ts`'s now-exported `pendingCards` + `withholdMemberIdentifiers` rather than re-implementing them, `src/engine.ts` (the method appends nothing) | `test/inbox.test.ts` (11 cases: purity across two calls and replay deep-equality *of the read*, the `handoff` kind that lived only in the log until D31, cross-kind age ordering, the leak-at-the-cutline control, `limits` naming age ≠ importance), `runtime/tour.ts` (4 of the 15 guarantees that existed at D31; the tour now prints 22 — this row and the health row above each said 19 when they were written, and the count is recomputed per pass, never carried; D38 moved it again 21 → 22) |
 | §1.2 read side, **third artefact** (D35): the *tier stack* itself as a dated, positioned read — what each effective guardrail value is, which file put it there (`pack` / `org` / `default`), which org floor a pack-level value is holding above, what the resolved autonomy ceiling allows per action class, the seat set, the recognised agent roles, and the limits it refuses to exceed. A settings *write* would be a fifth governing actor, so `Fleet.settings()` appends nothing and replays identical | `src/settings.ts` (`deriveSettings`, exposed as `Fleet.settings()` through `src/engine.ts`, which appends nothing), `src/pack.ts` (`Packed.declared` — the set of keys the pack itself wrote, which is what makes provenance a fact rather than a guess) | `test/settings.test.ts` (27 cases as of D37 — was 20 when this row was written: incl. purity across two calls and replay deep-equality *of the read*, provenance sourced from the keys the pack actually wrote rather than the ones it merely did not override, and the seat-collision refusal that stops a pack from handing itself a human act by naming an agent `organiser`) |
+| §2.13 the community's coverage window (PRD **FR-5.12**, `DECISIONS.md` **D54**): a pack may declare the hours a human is **on duty** for it, and the health read reports the window, the duty state at the moment of the read, and how many obligations outlived a staffed shift. Evaluated as a **local wall clock** in the community's own zone (never a stored UTC offset, so 09:00 stays 09:00 across a DST change); **only a shift whose end has passed counts as missed**, so the clock pauses outside coverage; a gap spanning a closed window is not a miss. **Absence is legal and reads as `null`, never `0`** — an unstated staffing promise is an unknown duty state, and zero would claim the community was never on duty. Not the member's quiet hours: that clock is the member's (FR-5.5) and answers a different question. The two modes are a **discriminated union** — `always` is a 24/7 community with no window at all, and a file writing `days:` beside `mode: always` is refused as self-contradictory | `src/community.ts` (`isOnDuty`, `shiftCompletedBetween`, `deriveCoverageVerdict` — the arithmetic never converts an instant to UTC), `src/types.ts` (`CommunityCoverage`, the union), `src/pack.ts` (`parseCoverage` — the strict reader: unknown mode, no zone, unknown weekday, non-`HH:MM` hours, a backwards shift, an unknown key, a duplicate block, a self-contradicting `always`), `src/health.ts` (the `community` section of the snapshot, derived from the same four obligation kinds `inbox` lists), `scripts/validate-pack.mjs` **PKG-65** (the *shape*, in CI — the reading strictness stays in the parser, or the parser's own door becomes unreachable), `packs/kopdar-ops/.kinship.yaml` (the shipped window: `Asia/Jakarta`, Mon–Fri, 09:00–18:00) | `test/community.test.ts` (12 cases: the duty window by community timezone, `always` mode, the weekend gap that is not a miss, the inclusive shift-end boundary on a later day, the DST-local-meaning case, the health read's shape, the null-not-zero case, the member-identifier sweep, and the pure-read/replay property), `test/pack.test.ts` (the boot-door refusals, incl. the `always` mode, the unknown key and the self-contradicting block), `scripts/validate-pack.test.mjs` (14 new cases, incl. the duplicate-block refusal, the POSITIVE CONTROL that a pack with no window passes, and the case that proves the validator does NOT shadow the parser's unknown-key door), `runtime/tour.ts` (`health_reports_the_communitys_coverage_window`, `health_reports_an_unknown_duty_state_as_null`) |
 | Host boundary: what `runtime/` may not own (PRD **FR-1.17**, `DECISIONS.md` D32/D33) — no third-party package, no network builtin or network global, no dynamic `import()`, no `node:fs` outside `pack.ts`; and a credential-shaped prefix in any pack file fails the shape gate | `runtime/test/boundary.test.ts` (the scanner: scope `runtime/src/**`, comments stripped so prose about a transport is not a transport), `scripts/validate-pack.mjs` **PKG-57**, `runtime/package.json` (an empty dependency set is itself asserted), semantics in **`spec/HOST-CONTRACT.md`** | `test/boundary.test.ts` (6 cases — one positive control per rule, a legal-file control, and an anti-vacuity check that the scanned module list is non-empty), `scripts/validate-pack.test.mjs` (a key-shaped string fails the build; a 48-hex revision hash and a `$KINSHIP_HOST_TOKEN` placeholder pass; a PEM block fails) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end

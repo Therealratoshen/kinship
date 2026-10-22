@@ -106,7 +106,7 @@ not to the library.
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 53-case tamper-resistant contract test (60 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
+- The validator and its 67-case tamper-resistant contract test (61 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs,
   or if any markdown table in the repository loses the header that gives its rows meaning
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
@@ -131,6 +131,20 @@ not to the library.
   comment, the sweep reaches the copy that actually ships (the root `README.md` and a pack's own `README.md`
   included), and `scripts/claims.test.mjs` fails if a forbidden cell in the PRD is neither enforced nor named as
   a rule no sweep can enforce
+- **The community's coverage window** (`coverage:` in a pack, spec §2.13 / PRD FR-5.12, `DECISIONS.md` D54) — a
+  community can write down the hours a human is **on duty** for it, in its own timezone, and the health read reports
+  the window, whether anyone was on duty at the moment of the read, and how many obligations outlived a staffed
+  shift. This is **not** the member's quiet hours: that clock is the member's and answers "may I contact this
+  person", while this one answers "was anyone watching when this community was left waiting". Three rules make it
+  a promise rather than a score — the window is a **local wall clock** (never a stored UTC offset, so 09:00 stays
+  09:00 across a daylight-saving change), **only a shift whose end has passed counts as missed** (the clock pauses
+  outside coverage), and a **pack that declares no window reads `null`, never `0`** (an unstated staffing promise is
+  an unknown duty state; zero would claim the community was never on duty)
+- **A community-lead lane** — three skills on the existing `engagement` agent, not a fourth agent: `standing-engagement`
+  (the community's presence *between* events — read the room before speaking, hold the thread, and never answer
+  outside the staffed window), `community-minutes` (decisions with the people who made them, obligations with owners,
+  quotes with sources), and `community-health` (the health check as a **recommended** metric, because a health number
+  that becomes a target is a number a volunteer community optimises for instead of the community)
 
 **Gated behind shadow-mode measurement:**
 - Any channel transport (WhatsApp, Telegram, email, Discord)
@@ -140,7 +154,7 @@ The gating mechanism is real: every member-facing commit refuses with `no_transp
 
 ## The governance spec
 
-`spec/GOVERNANCE-SPEC-OUTLINE.md` is the publishable artifact. It covers the autonomy ladder, grant taxonomy, audit replay, event-lifecycle state machine, member protections, disclosure, stranger-input containment, shatter-guard, cross-community promotion, settings resolution across the org/pack tiers, and the human seat set. Part 6 maps every spec rule to its runtime file and test.
+`spec/GOVERNANCE-SPEC-OUTLINE.md` is the publishable artifact. It covers the autonomy ladder, grant taxonomy, audit replay, event-lifecycle state machine, member protections, disclosure, stranger-input containment, shatter-guard, cross-community promotion, settings resolution across the org/pack tiers, the human seat set, and the community's coverage window. Part 6 maps every spec rule to its runtime file and test.
 
 ## For community operators
 

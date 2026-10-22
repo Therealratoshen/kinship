@@ -58,6 +58,12 @@ These are gaps the product's own claims run into, not packaging problems.
 - **The audit timeline's visibility is unresolved.** Spec §2.3 both asks "who can see the audit log?" and
   calls the timeline member-readable; `DECISIONS.md`'s "Not yet decided" table names which artefact may
   print a person's identifier.
+- **The coverage window records a promise; it does not yet enforce one.** A pack can declare the hours a
+  human is on duty (`coverage:`, spec §2.13 / FR-5.12, D54) and the health read reports whether an
+  obligation outlived a staffed shift. What it cannot yet do is *stop* the standing-engagement lane from
+  answering outside those hours, because that refusal needs a transport to refuse against and phase 1
+  sends nothing (D21). The window is a **record and a measurement** today; making it a gate is phase-2
+  work, and until then the lane honours it in its own instructions only.
 
 ## How to pick something
 

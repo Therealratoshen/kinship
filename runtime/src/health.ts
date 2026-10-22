@@ -35,7 +35,8 @@
  * about a row whose time has passed, computed on demand, not a heartbeat anyone ran.
  */
 import { memberIdentifierTokens } from './partner.ts';
-import type { FleetState, Packed } from './types.ts';
+import { deriveCoverageVerdict, type DueObligation } from './community.ts';
+import type { CommunityCoverage, FleetState, Packed } from './types.ts';
 
 /**
  * FR-1.11's own number, from its acceptance criterion ("simulate 3 cycles with `moderator` idle →
@@ -103,6 +104,20 @@ export interface HealthReport {
   idleAgents: IdleAgentRow[];
   /** Two counts and nothing else — see rule 2 in the header. */
   members: { registered: number; suppressed: number };
+  /**
+   * The community's staffing state: the coverage window the pack declared, whether a human is on
+   * duty right now, and how many obligations outlived a staffed shift.
+   *
+   * This is NOT the member's quiet hours (FR-5.5 puts those in the member's own zone) and it is
+   * NOT a sentiment measure — it says who was on duty, not how anyone feels. Every field is `null`
+   * when the pack declares no window: an unstated staffing promise is an unknown duty state, and
+   * zero would claim the community was never on duty.
+   */
+  community: {
+    coverage: CommunityCoverage | null;
+    onDutyNow: boolean | null;
+    missedShift: { count: number; note: string } | null;
+  };
   /** What this snapshot cannot say, and why. A health read that implies omniscience is a lie. */
   unmeasured: string[];
 }
@@ -208,7 +223,24 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
     'whether anyone is happy with an event — nothing has sent yet: phase 1 ships no channel transport (D21) and no dated event exists (D9), so there is no member traffic to read. Printing a figure here would be invention.',
     'why a member suppressed — a stop is one row with a source and no API that clears it (§2.9); the count is honest, the reason is not this report\'s to guess.',
     'delivery, read receipts, or reach — with no adapter there is nothing to observe downstream, so a phase-1 health read says nothing about whether a message landed.',
+    'whether the community was neglected — the `community` block says who was ON DUTY, not whether anyone should have done more. A staffed shift that ended with an obligation open is a staffing fact; calling it neglect would be a judgement this runtime does not make.',
   ];
+
+  // The obligations a human currently owes, each with the instant it came due — the same four kinds
+  // `inbox.ts` lists, because "is anyone owed something" is the question both reads answer. The due
+  // instant is what the coverage window is compared against: a shift that ended *after* the
+  // obligation came due and *before* now is the one that was missed.
+  const obligations: DueObligation[] = [
+    ...waiting.map((c): DueObligation => ({ kind: 'card', ref: c.id, dueAt: c.createdAt })),
+    ...[...state.authorizations.values()]
+      .filter((a) => a.consumedAt === undefined)
+      .map((a): DueObligation => ({ kind: 'handoff', ref: a.cardId, dueAt: a.issuedAt })),
+    ...[...state.shatter.values()]
+      .filter((r) => r.releasedAt === undefined)
+      .map((r): DueObligation => ({ kind: 'freeze', ref: r.channel, dueAt: r.trippedAt })),
+    ...overdue.map((w): DueObligation => ({ kind: 'wake', ref: w.id, dueAt: w.dueAgeMs > 0 ? now - w.dueAgeMs : now })),
+  ];
+  const community = deriveCoverageVerdict(pack.coverage ?? null, obligations, now);
 
   return {
     derivedAt: now,
@@ -220,6 +252,7 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
     refusals,
     idleAgents,
     members: { registered: state.members.size, suppressed: state.suppressions.size },
+    community,
     unmeasured,
   };
 }
