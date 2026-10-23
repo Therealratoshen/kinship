@@ -171,6 +171,28 @@ test('no count claim in the live documents is unchecked', () => {
     `these count claims are in a live document but in no checked list:\n  ${offenders.join('\n  ')}`,
   );});
 
+test('every command AGENTS.md tells an agent to run actually exists', () => {
+  // Claude's review called this the highest-value thing about the agent file: *stale agent
+  // instructions are worse than none*. An agent that is told to run a command that does not exist
+  // loses time and trust, and a command that moved is a silent lie. So the file's commands are a
+  // CLAIM, and this test checks it.
+  const body = read('AGENTS.md');
+  const commands = [...body.matchAll(/^\s*(node [^\n`]+|npm [^\n`]+|grep [^\n`]+)/gm)].map((m) => m[1].trim());
+  assert.ok(commands.length >= 6, `expected AGENTS.md to list the commands it runs — found ${commands.length}`);
+  const missing = [];
+  for (const cmd of commands) {
+    // The first word is the program; the rest is the path or flag set. A command that reads a file
+    // must name a file that exists; a command that runs a script must name a script that exists.
+    const parts = cmd.split(/\s+/);
+    const fileish = parts.slice(1).find((p) => p.includes('/') && !p.startsWith('-') && !p.startsWith('"'));
+    if (fileish === undefined) continue;
+    const target = fileish.replace(/^["']|["']$/g, '');
+    if (target.includes('*') || target.includes('<') || target.includes('…')) continue;   // a glob or a placeholder
+    if (!existsSync(join(ROOT, target))) missing.push(`${cmd}  →  ${target}`);
+  }
+  assert.deepEqual(missing, [], `AGENTS.md tells an agent to run commands whose files are not there:\n  ${missing.join('\n  ')}`);
+});
+
 test('every relative link in the live documents resolves — the folder structure is a claim too', () => {
   // A link that points at a file that moved is a broken promise in the one place a reader clicks.
   // There was no check for this, which is why moving the dated documents needed a hand-written

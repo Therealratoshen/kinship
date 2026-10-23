@@ -277,3 +277,21 @@ test('the digest command reports the day, per channel, and names nobody', () => 
   assert.ok(text.includes('NOT a summary of what members said to each other'), 'and the limit is stated');
   assert.equal(text.includes('wa:62811'), false, 'the digest names nobody');
 });
+
+test('the redact command takes the member identifiers out and leaves the governance evidence in', () => {
+  const { opts, dir } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const logDir = join(dir, 'logs');
+  const out = runCommand({ ...opts, command: 'redact', logRoot: logDir });
+  assert.ok(out.some((l) => l.includes('member identifier(s) replaced')), out.join('\n'));
+  const src = join(logDir, 'kinshipai', 'bundled', 'event-ops', 'kopdar', 'events.jsonl');
+  const redacted = join(logDir, 'events.redacted.jsonl');
+  assert.ok(existsSync(redacted), 'the redacted copy exists');
+  const original = readFileSync(src, 'utf8');
+  const copy = readFileSync(redacted, 'utf8');
+  assert.ok(original.includes('wa:62811'), 'the original still has the real identifiers — it is the only record');
+  assert.equal(copy.includes('wa:62811'), false, 'and the copy does not');
+  assert.ok(copy.includes('member-1'), 'the pseudonyms are there instead');
+  assert.equal(copy.split('\n').filter((l) => l.trim() !== '').length, original.split('\n').filter((l) => l.trim() !== '').length,
+    'the row count is the same — the structure survived');
+});

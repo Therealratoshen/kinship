@@ -29,6 +29,7 @@ import type { LoggedEvent, NeedAnswers, Packed } from 'kinship-runtime/src/types
 import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } from './config.ts';
 import { planWakes, slotNames, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
 import { createRun, type RunState } from 'kinship-runtime/src/budget.ts';
+import { redactLog } from './redact.ts';
 import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
 
 export interface HostOptions {
@@ -40,7 +41,7 @@ export interface HostOptions {
   /** Whether to keep ticking. A host that only ticks on demand is a demo; one that ticks is a host. */
   watch: boolean;
   /** The command to run. */
-  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest';
+  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest' | 'redact';
   /**
    * The community's plan file — their own copy and their next event.
    *
@@ -481,6 +482,22 @@ export function runCommand(opts: HostOptions): string[] {
       persist(host, opts);
       break;
     }
+    case 'redact': {
+      // The mechanism behind "never attach a raw log to a public issue": the identifiers come out, the
+      // structure stays, and the original is never touched.
+      const dir = opts.logRoot;
+      const src = join(dir, 'kinshipai', 'bundled', 'event-ops', 'kopdar');
+      const r = redactLog({
+        eventsPath: join(src, 'events.jsonl'),
+        manifestPath: join(src, 'manifest.json'),
+        outDir: dir,
+      });
+      out.push(`redacted ${r.rows} row(s) — ${r.pseudonyms} member identifier(s) replaced`);
+      out.push(`  ${r.eventsPath}`);
+      if (r.manifestPath !== null) out.push(`  ${r.manifestPath}`);
+      out.push('  the original is untouched, and the pseudonyms are not reversible');
+      break;
+    }
     case 'digest': {
       // The community manager's day: what the fleet did, what a human decided, what was refused,
       // and what is still waiting — per channel, over a window the caller names.
@@ -543,7 +560,7 @@ export function runCommand(opts: HostOptions): string[] {
       break;
     }
     default:
-      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, digest, draft, approve, publish or verify`);
+      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, digest, redact, draft, approve, publish or verify`);
   }
   return out;
 }

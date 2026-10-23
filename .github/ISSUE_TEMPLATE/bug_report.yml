@@ -1,36 +1,47 @@
-name: Bug Report
-description: Report something that does not work the way the spec says it should
-title: "[Bug] "
-labels: [bug]
-assignees: []
+name: Bug report
+description: The code does not do what the spec says it does.
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## What the spec says should happen
-
-        (cite the relevant section of `spec/GOVERNANCE-SPEC-OUTLINE.md`)
-
-  - type: markdown
+        **Never paste a raw log, a `manifest.json`, or anything containing member data into a public
+        issue.** The log carries member *identifiers*. Share the redacted form, or open a private
+        security advisory if this is a vulnerability ([SECURITY.md](../../SECURITY.md)).
+  - type: input
+    id: version
     attributes:
-      value: |
-        ## What actually happens
-
-        (concrete description, not a summary)
-
-  - type: markdown
+      label: Version
+      description: The `v0.x.y` tag or the commit sha you ran.
+      placeholder: "v0.2.0 (ec07049)"
+    validations:
+      required: true
+  - type: input
+    id: node
     attributes:
-      value: |
-        ## To reproduce
-
-        ```bash
-        # paste the commands that reproduce the issue
-        ```
-
-  - type: markdown
+      label: Node version
+      description: "The runtime needs node >= 23. Run `node --version`."
+      placeholder: "v24.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
     attributes:
-      value: |
-        ## Environment
-
-        - Node version:
-        - OS:
+      label: What you expected
+      description: What the spec says should happen, and where the spec says it.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: The exact command, and the output you got.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output
+      description: "Paste the command output. Do NOT paste a raw log file or member data — redact identifiers first."
+    validations:
+      required: false

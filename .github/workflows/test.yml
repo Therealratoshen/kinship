@@ -116,3 +116,29 @@ jobs:
 
       - name: Typecheck
         run: npx tsc -p runtime/tsconfig.json --noEmit
+
+  # The contribution-provenance check. NOT a fifth gate: the gate list stays four (D24). This is a
+  # *contribution* rule, like a licence header — it asks whether somebody else's commit carries a DCO
+  # sign-off, and it is the one thing a stranger's pull request can get wrong without knowing.
+  #
+  # The maintainer's own commits are exempt: the copyright holder signing their own work proves
+  # nothing, and a ritual that cannot inform is a ritual that only creates friction.
+  contribution:
+    name: Contribution provenance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: DCO sign-off
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "not a pull request — there is no outside contribution to check"
+            exit 0
+          fi
+          node scripts/dco-check.mjs --repo . \
+            "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"

@@ -149,6 +149,19 @@ Check the log is honest:
 node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
 ```
 
+**And if you want to share it** — with a maintainer, in an issue, anywhere public — redact it first.
+The log carries member *identifiers*; the redacted copy carries none, and the governance evidence
+(event types, order, refusal codes, reason strings) survives intact, so a reader can still check that
+the rules held. The original is never touched.
+
+```bash
+node adapters/reference/src/host.ts redact --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+# → logs/events.redacted.jsonl and logs/manifest.redacted.json
+```
+
+**And the honest limit of redaction:** it removes the *identifiers*, not the *shape*. A redacted log
+of a three-person community is still a small log, and a reader still learns that three people exist.
+
 The manifest states the privacy position inside the file: member identifiers are in the log, member
 message text is not, and the draft copy is. It carries a digest of your eight answers rather than
 their values, so the log can travel without carrying a second person's name.
@@ -261,6 +274,15 @@ speculated. HashiCorp→OpenTofu and Redis→Valkey are the license flip and its
 community-edition UI removal drew the reply *"It's not a feature issue, it's a trust one."* A governance
 pitch that rests on honesty is the one asset a silent flip destroys in a single news cycle
 (`research/OSS-AUTONOMY-FAILURES-2026-10-17.md` patterns 5–7).
+
+## What this is, and what it is not
+
+**Kinship reduces risk. It does not guarantee compliance, safe behaviour, or a good outcome.** It is
+a governance layer with a reference host, not a service, and it ships **no transport** — nothing
+member-facing can send. Where a claim in this README would outrun its evidence, the claim is not
+made: see [the evidence rule](#the-three-invariants) and the closed set of refusals in
+[the spec](spec/GOVERNANCE-SPEC-OUTLINE.md). What you get is a runtime that **refuses** the things
+it should refuse, and a log you can check afterwards.
 
 ## License, marks, and citation
 
