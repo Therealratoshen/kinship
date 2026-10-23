@@ -48,6 +48,14 @@ function liveCounts() {
     domainLines: dirLines(join(ROOT, 'runtime', 'src')),
     testLines: dirLines(join(ROOT, 'runtime', 'test')),
     tourLines: lineCount(read('runtime/tour.ts')),
+    // The tour's guarantee count, computed by RUNNING the tour — not by counting a literal.
+    tourGuarantees: (() => {
+      const t = spawnSync('node', ['runtime/tour.ts', '--json'], { cwd: ROOT, encoding: 'utf8' });
+      assert.equal(t.status, 0, `the tour must hold its guarantees for its own count to mean anything:\n${t.stderr}`);
+      return Object.keys(JSON.parse(t.stdout).guarantees ?? {}).length;
+    })(),
+    // The reference host's own cases, counted the way the rest are counted.
+    hostCases: countOf(read('adapters/reference/test/host.test.ts'), /^test\(/gm),
   };
 }
 
@@ -66,6 +74,10 @@ const COUNT_CLAIMS = [
   ['packs/kopdar-ops/README.id.md', /\d+\s+prosedur/, (c) => `${c.packSkills} prosedur`],
   ['packs/kopdar-ops/README.id.md', /\d+\s+agent di atas satu/, (c) => `${c.packAgents} agent di atas satu`],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /prints [\d,]+ as of/, (c) => `prints ${c.runtimeLines.toLocaleString('en-US')} as of`],
+  // The two counts that were quoted in a live document and protected by nothing. A count in prose is
+  // a claim, and a claim nobody checks is a claim that rots (the sweep found both of these stale).
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /the tour now prints \d+/, (c) => `the tour now prints ${c.tourGuarantees}`],
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /adapters\/reference\/test\/host\.test\.ts` \(\d+ cases/, (c) => 'adapters/reference/test/host.test.ts` (' + c.hostCases + ' cases'],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /split [\d,]+ domain code \/ [\d,]+ tests \/ [\d,]+ tour/, (c) => `split ${c.domainLines.toLocaleString('en-US')} domain code / ${c.testLines.toLocaleString('en-US')} tests / ${c.tourLines.toLocaleString('en-US')} tour`],
 ];
 

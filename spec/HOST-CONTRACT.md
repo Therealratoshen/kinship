@@ -61,8 +61,11 @@ There is no scheduler in `runtime/`, and phase 1 does not add one: D10 records t
 inside an organiser's existing agent instance, which already has a scheduler, and D21 keeps everything
 member-facing behind the shadow-mode gate.
 
-**What the host does.** Decides when a run happens. It calls `attempt` / `commit` / `runActions`, and
-it re-arms promises by calling `fireWake` for the rows in `health().wakes.overdue`. Because the host owns
+**What the host does.** Decides when a run happens, and — since D60 — *what* the run is about: it reads
+the community's working file, asks `planWakes` what the fleet would do, schedules the timers, and fires
+the ones that are due by calling `fireWake` for the rows in `health().wakes.overdue`. **A wake now
+carries the action it will attempt**, so firing it *is* the fleet acting, through the same gate any
+hand-fed action goes through. Because the host owns
 the tick, it also owns **what "a run" is** (D38): `runActions(fleet, actions)` mints its own counter, so a
 host that calls it once per agent per tick bounds each agent separately and attempts `agents × max_actions_per_run`
 across the tick. To make the pack's number mean the tick instead, hold one `createRun()` from
@@ -167,4 +170,5 @@ an answer.
 
 | Version | Date | Change |
 |---|---|---|
+| v0.2 | 2026-10-23 | **D60/D61.** The host now *plans* as well as ticks: the community's working file carries its own copy, its next event and its members, and `runtime/src/plan.ts` turns that into the actions the fleet takes. A wake carries the action it will attempt, so firing it is the fleet acting. The run cap now covers that path (it lived only in `runActions` before), a refused phase-origin claim is **logged** rather than silently dropped, and the `textId` / `textEn` field names left this file in D58 — the copy is a map keyed by language code. Seam 1 is unchanged: the host still holds every credential and it still cannot reach a person. |
 | v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D33: the four seams named in one place, the adapter-location rule made mechanical, the Paperclip mapping written down, and Paperclip's card checkout recorded as declined pending PRD section 12-Q12. |

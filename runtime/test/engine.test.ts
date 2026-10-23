@@ -506,3 +506,23 @@ test('a wake fired with no run handle is unmetered — the cap is the caller\'s 
   assert.equal(f.fireWake(a.id).result, 'attempted');
   assert.equal(f.fireWake(b.id).result, 'attempted', 'without a handle there is no run to be bounded');
 });
+
+test('a refused phase-origin claim on the wake path is LOGGED — a refusal that leaves no trace is a promise a reader cannot check', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#b', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo again', en: 'hello again' } },
+  });
+  f.fireWake(a.id);
+  const second = f.fireWake(b.id);
+  assert.equal(second.result, 'refused');
+  assert.equal(second.code, 'conflict_409');
+  const refused = f.state.events.filter((e) => e.type === 'CommitRefused');
+  assert.equal(refused.length, 1, 'the refusal is in the log — a reader must be able to see it');
+  assert.equal((refused[0] as { code?: string }).code, 'conflict_409');
+  assert.ok(f.health().refusals.some((r) => r.code === 'conflict_409'), 'and it is counted in the health read');
+});

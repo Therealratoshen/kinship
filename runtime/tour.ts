@@ -235,7 +235,47 @@ function runStory() {
   // The org floor the pack beat, read out of the provenance row rather than restated here.
   const capRow = settings.provenance.find((p) => p.key === 'member_message_cap_per_24h');
 
-  // 11) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
+  // 11) THE FLEET RUNS ON THE COMMUNITY'S OWN WORDS (D60 / spec section 2.18). This is the part the
+  //     product IS, and until now the tour did not show it: a wake that carries the action it will
+  //     attempt, a timer firing it, the card landing on a human's desk, and the second timer for the
+  //     same phase being refused — **and the refusal being in the log**, because a refusal that leaves
+  //     no trace is a promise a reader cannot check.
+  const planFleet = Fleet.boot(pack, ANSWERS, DAY);
+  const planText = { id: `Ingat ya besok kopdar!\n\n${DISCLOSURE_ID}`, en: `Reminder: kopdar tomorrow!\n\n${DISCLOSURE_EN}` };
+  const planWake = planFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-12',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const planFired = planFleet.fireWake(planWake.id);
+  // The second timer for the same event and phase: refused with a 409, and recorded.
+  const planTwin = planFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-12#twin',
+    nextCheckAt: DAY + 2_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const planTwinFired = planFleet.fireWake(planTwin.id);
+  // The run cap, on the path the fleet actually uses: the third wake is not fired at all.
+  const cappedFleet = Fleet.boot({ ...pack, budgets: { ...pack.budgets, maxActionsPerRun: 1 } }, ANSWERS, DAY);
+  const cappedWake = cappedFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-13',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-13',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const cappedRun = createRun();
+  cappedFleet.fireWake(cappedWake.id, cappedRun);
+  const cappedSecond = cappedFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-14',
+    nextCheckAt: DAY + 2_000,
+    eventId: 'kopdar-14',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const cappedOutcome = cappedFleet.fireWake(cappedSecond.id, cappedRun);
+
+  // 12) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
   //     it holds — and the same rows with one deleted, which must NOT verify. The verification is a
   //     pure read in the runtime; the writing is the host's (D41's memo section 3).
   const soundLog = Fleet.verifyLog(fleet.events, ANSWERS, pack, { state: fleet.state });
@@ -247,6 +287,9 @@ function runStory() {
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     soundLog, tamperedLog,
+    planFired, planTwinFired, cappedOutcome,
+    planFleetInbox: planFleet.inbox(),
+    planFleetHealth: planFleet.health(),
     mainFleetHealth: fleet.health(),
     mainFleetInbox: fleet.inbox(),
     timeline: fleet.auditTimeline(),
@@ -285,6 +328,16 @@ function guarantees(s: ReturnType<typeof runStory>) {
     // Both halves, because a check that cannot fail is worth exactly nothing (D24).
     a_written_log_verifies_and_a_tampered_one_does_not: s.soundLog.ok && !s.tamperedLog.ok
       && s.tamperedLog.problems.some((p) => p.kind === 'seq_missing'),
+
+    // D60: the fleet runs on the community's own words (spec section 2.18). Four promises, and each
+    // is checked as a pair — what happened AND what the log says happened, because a guarantee that
+    // only checks the outcome would pass on a fleet that lied.
+    a_scheduled_wake_attempts_its_action: s.planFired.result === 'attempted' && s.planFired.card !== undefined
+      && s.planFired.card.actionClass === 'draft.reminder' && s.planFired.card.phase === 't-minus-1',
+    the_drafted_card_waits_on_a_human: s.planFleetInbox.counts.verdict === 1,
+    a_second_timer_for_the_same_phase_is_refused: s.planTwinFired.result === 'refused' && s.planTwinFired.code === 'conflict_409',
+    and_that_refusal_is_in_the_log: s.planFleetHealth.refusals.some((r) => r.code === 'conflict_409'),
+    the_run_cap_stops_the_fleet: s.cappedOutcome.result === 'truncated' && s.cappedOutcome.fired === false,
 
     boot_requires_all_needs: s.bootGate.threw && /need_unanswered/.test(s.bootGate.code),
     member_action_starts_as_draft: s.draft.disposition === 'card',

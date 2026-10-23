@@ -213,10 +213,22 @@ export class Fleet {
   }
 
   /** Log a refused attempt (section 1.2 — refusals are outcomes; the near-miss discipline applies). */
-  private logRefusal(args: { actionClass: string; agent: string }, e: unknown): never {
+  /**
+   * Record a refusal in the log, and let the caller decide what happens next.
+   *
+   * `logRefusal` below throws, because an attempt that was refused has no result to return. The
+   * phase-origin claim on the wake path is the case that needs the other half: the refusal is
+   * recorded, and the caller turns it into a `refused` outcome. **A refusal that leaves no trace is
+   * a promise a reader cannot check** — the log would show the second timer firing and nothing else.
+   */
+  private recordRefusal(args: { actionClass: string; agent: string }, e: unknown): void {
     if (e instanceof KinshipError) {
       commitEvent(this.st, { type: 'CommitRefused', actionClass: args.actionClass, agent: args.agent, code: e.code, at: this.t });
     }
+  }
+
+  private logRefusal(args: { actionClass: string; agent: string }, e: unknown): never {
+    this.recordRefusal(args, e);
     throw e;
   }
 
@@ -485,8 +497,20 @@ export class Fleet {
     const action = row.action;
     if (action === undefined) return { fired: true, result: 'no-action' };
     const eventId = row.eventId ?? row.id;
+    // The phase-origin claim is a refusal like any other, and **a refusal that leaves no trace is a
+    // promise a reader cannot check**: the second timer for a phase was refused with a 409, and a
+    // reader of the log would have concluded the second reminder went out. So the claim's refusal
+    // is logged the same way `attempt` logs its own.
     try {
       claimPhaseOrigin(this.ctx(), eventId, 'event', eventId, action.phase, action.agent);
+    } catch (e) {
+      if (e instanceof KinshipError) {
+        this.recordRefusal({ actionClass: action.actionClass, agent: action.agent }, e);
+        return { fired: true, result: 'refused', code: e.code, reason: e.message };
+      }
+      throw e;
+    }
+    try {
       const res = this.attempt({ ...action, origin: { kind: 'event', id: eventId } });
       return { fired: true, result: 'attempted', ...(res.card !== null ? { card: res.card } : {}) };
     } catch (e) {

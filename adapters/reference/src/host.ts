@@ -27,7 +27,7 @@ import { KinshipError } from 'kinship-runtime/src/errors.ts';
 import { loadPack } from 'kinship-runtime/src/pack.ts';
 import type { LoggedEvent, NeedAnswers, Packed } from 'kinship-runtime/src/types.ts';
 import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } from './config.ts';
-import { planWakes, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
+import { planWakes, slotNames, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
 import { createRun, type RunState } from 'kinship-runtime/src/budget.ts';
 import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
 
@@ -146,14 +146,31 @@ export function verifyHost(host: Host): { ok: boolean; problems: string[]; rows:
   return { ok: v.ok, problems: v.problems.map((p) => `[${p.kind}] ${p.detail}`), rows: rows.length };
 }
 
-/** Move the clock, fire whatever came due, and tell the operator what is waiting on them. */
+/**
+ * Move the clock, fire whatever came due, and tell the operator what is waiting on them.
+ *
+ * **The tick is metered and it says what happened.** It shares the one run handle with the rest of
+ * the tick's work, so `budgets.max_actions_per_run` bounds the tick rather than each wake; and a
+ * refused wake is reported as a refusal, not as a success — a line that says "fired" when the
+ * action was refused is the kind of line nobody checks again.
+ */
 export function tick(host: Host, opts: HostOptions): string[] {
   host.fleet.advance(opts.tickMs);
   const due = host.fleet.health().wakes.overdue;
   const fired: string[] = [];
+  const run = createRun();
   for (const wake of due) {
-    host.fleet.fireWake(wake.id);
-    fired.push(`wake ${wake.id} fired: ${wake.purpose}`);
+    const outcome = host.fleet.fireWake(wake.id, run);
+    if (outcome.result === 'attempted') {
+      fired.push(`wake ${wake.id} fired: ${wake.purpose}${outcome.card !== undefined ? ` → card ${outcome.card.id}, waiting on a human` : ''}`);
+    } else if (outcome.result === 'refused') {
+      fired.push(`wake ${wake.id} fired: ${wake.purpose} → REFUSED: ${outcome.code ?? 'unknown'}`);
+    } else if (outcome.result === 'truncated') {
+      fired.push(`wake ${wake.id} not fired — this tick stopped at its cap of ${host.pack.budgets.maxActionsPerRun} actions`);
+      break;
+    } else {
+      fired.push(`wake ${wake.id} fired: ${wake.purpose}`);
+    }
   }
   return fired;
 }
@@ -310,6 +327,12 @@ export function planView(host: Host): string[] {
       out.push(`  ${w.purpose}`);
       out.push(`      at ${new Date(w.nextCheckAt).toISOString()}${due ? '  (due now)' : ''}`);
       out.push(`      copy: ${w.action.text[host.pack.locale[0]!] ?? '(none)'}`);
+      // The facts the copy draws on. A community that reads this knows what to put in the event.
+      const t = host.plan.templates.find((x) => `${x.actionClass}@${x.phase}` === w.purpose.slice(0, w.purpose.lastIndexOf(':')));
+      if (t !== undefined) {
+        const slots = [...new Set(Object.values(t.copy).flatMap((c) => slotNames(c)))].sort();
+        out.push(`      needs: ${slots.join(', ')}`);
+      }
     }
   } else if (problems.length === 0) {
     out.push('nothing planned — the templates you wrote are not timer-backed phases');
@@ -458,7 +481,7 @@ export function runCommand(opts: HostOptions): string[] {
       // bug in the host — it is the phase-1 lock, and it is logged like any other refusal.
       if (opts.cardId === undefined) throw new Error('publish needs --card <id>');
       if (opts.recipients === undefined || opts.recipients.length === 0) {
-        throw new Error('publish needs --recipient <member-id> (repeat it for more) — the host does not know your community\'s members, so you name them');
+        throw new Error('publish needs --recipient <member-id> (repeat it for more) — say who this message is for; your community\'s members are in the plan file, and a member the runtime has no row for is held');
       }
       registerMembers(host);
       const card = host.fleet.state.cards.get(opts.cardId);
