@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-labelledby="k-title">
+  <title id="k-title">Kinship</title>
+  <!--
+    The Kinship mark: two rings, interlocking.
+
+    Two parties and the rule that binds them. The overlap is the shared ground — the record both
+    of them are accountable to, and the place where one of them has to sign. It is drawn with
+    explicit fills and no `currentColor`, because `currentColor` does not cross the `<img>`
+    boundary: a mark that renders black inside a README is a mark that only works in one place.
+  -->
+  <g fill="none" stroke="#1F2933" stroke-width="6" stroke-linecap="round">
+    <circle cx="25" cy="32" r="17"/>
+    <circle cx="39" cy="32" r="17"/>
+  </g>
+</svg>

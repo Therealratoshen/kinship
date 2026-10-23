@@ -20,7 +20,7 @@
  *   node src/host.ts approve --pack ... --config ... --log ... --card card-1 --why "tanggal sudah benar"
  *   node src/host.ts verify  --pack ... --config ... --log ...
  */
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fleet } from 'kinship-runtime/src/engine.ts';
 import { KinshipError } from 'kinship-runtime/src/errors.ts';
@@ -41,7 +41,7 @@ export interface HostOptions {
   /** Whether to keep ticking. A host that only ticks on demand is a demo; one that ticks is a host. */
   watch: boolean;
   /** The command to run. */
-  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest' | 'redact';
+  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest' | 'redact' | 'init';
   /**
    * The community's plan file — their own copy and their next event.
    *
@@ -297,6 +297,45 @@ export function registerMembers(host: Host): string[] {
 }
 
 /**
+ * The easy setup: scaffold a community's two working files from the shipped examples.
+ *
+ * **Why a command and not a paragraph.** A new user should not have to know that there are two
+ * files, which is which, or that one of them is gitignored — they should run one command and be
+ * told what to edit next. **Nothing is ever overwritten**: a file that already exists is kept and
+ * said so, because an `init` that clobbers a community's own answers is a data-loss bug wearing a
+ * helpful hat.
+ */
+export function initCommunity(packDir: string, out: string[]): void {
+  const answers = join(packDir, 'pack.local.yaml');
+  const plan = join(packDir, 'pack.local.plan.yaml');
+  const created: string[] = [];
+  for (const [from, to] of [
+    [join(packDir, 'pack.local.example.yaml'), answers],
+    [join(packDir, 'pack.local.plan.example.yaml'), plan],
+  ] as const) {
+    if (existsSync(to)) {
+      out.push(`  kept: ${to} (it already exists — nothing was overwritten)`);
+      continue;
+    }
+    if (!existsSync(from)) {
+      out.push(`  missing: ${from} — copy it from the pack's README by hand`);
+      continue;
+    }
+    copyFileSync(from, to);
+    created.push(to);
+  }
+  out.push(created.length > 0 ? `created ${created.length} file(s):` : 'nothing to create:');
+  for (const c of created) out.push(`  ${c}`);
+  out.push('');
+  out.push('  Edit them next — two things, and the fleet needs both:');
+  out.push(`    ${answers}      — who you are: your name, your channels, your contacts`);
+  out.push(`    ${plan}         — what you are doing next: your copy, your event, your members`);
+  out.push('');
+  out.push(`  Then:  node adapters/reference/src/host.ts plan --pack ${packDir} --config ${answers} --plan ${plan} --log logs`);
+  out.push("  The files are gitignored on purpose: a community's member list is not a repository artefact.");
+}
+
+/**
  * What the community's plan says the fleet will do.
  *
  * The host asks the runtime; the runtime does not ask the host. The plan is computed from the pack,
@@ -403,6 +442,13 @@ export function fireDue(host: Host, run: RunState = createRun()): string[] {
 
 /** Run one command and return what to print. */
 export function runCommand(opts: HostOptions): string[] {
+  // `init` runs BEFORE the host boots: the files it creates are the ones the boot needs, so booting
+  // first would ask for a config that does not exist yet.
+  if (opts.command === 'init') {
+    const out: string[] = [];
+    initCommunity(opts.packDir, out);
+    return out;
+  }
   const host = bootHost(opts);
   const out: string[] = [];
   switch (opts.command) {
@@ -560,7 +606,7 @@ export function runCommand(opts: HostOptions): string[] {
       break;
     }
     default:
-      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, digest, redact, draft, approve, publish or verify`);
+      throw new Error(`unknown command \`${opts.command}\` — init, plan, run, tick, digest, redact, draft, approve, publish or verify`);
   }
   return out;
 }

@@ -1,10 +1,15 @@
 # Kinship
 
+<img src="assets/kinship-mark.svg" width="72" height="72" align="right" alt="Kinship — two interlocking rings">
+
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Governance Gates](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml?query=branch%3Amain)
 
 > **The fleet proposes. The organiser approves. Every action is logged and replayable.**
+
+*The mark is two interlocking rings: two parties, and the rule that binds them. The overlap is the
+shared ground — the record both are accountable to, and the place where one of them has to sign.*
 
 Kinship is an open-source **supervised AI-agent fleet** for community operations — event lifecycle, reminders, RSVP, recaps, and moderation — with a governance control plane that enforces what an agent is allowed to do to a person.
 
@@ -78,11 +83,17 @@ That is the only `npm install` in the repository. The host's one dependency is a
 `runtime/`, so npm creates a symlink and downloads nothing. `--offline` works too.
 
 **Two files, both gitignored, because both hold your community's own data.** The first is who you are;
-the second is what you are doing next.
+the second is what you are doing next. You do not have to copy them by hand:
 
 ```bash
-cp packs/kopdar-ops/pack.local.example.yaml     packs/kopdar-ops/pack.local.yaml
-cp packs/kopdar-ops/pack.local.plan.example.yaml packs/kopdar-ops/pack.local.plan.yaml
+node adapters/reference/src/host.ts init --pack packs/kopdar-ops
+```
+
+That creates both from the shipped examples and tells you what to edit next. **It never overwrites a
+file that already exists** — an `init` that clobbers a community's own answers is a data-loss bug
+wearing a helpful hat.
+
+```bash
 $EDITOR packs/kopdar-ops/pack.local.yaml         # eight answers: your name, your channels, your contacts
 $EDITOR packs/kopdar-ops/pack.local.plan.yaml    # your copy, your next event, your members
 ```

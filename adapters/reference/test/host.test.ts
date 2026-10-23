@@ -295,3 +295,22 @@ test('the redact command takes the member identifiers out and leaves the governa
   assert.equal(copy.split('\n').filter((l) => l.trim() !== '').length, original.split('\n').filter((l) => l.trim() !== '').length,
     'the row count is the same — the structure survived');
 });
+
+test('init scaffolds the two working files from the examples, and never overwrites one', () => {
+  const { opts, dir } = aHost();
+  const packDir = join(dir, 'kopdar-ops');
+  // Start from a pack with no working files.
+  rmSync(join(packDir, 'pack.local.yaml'), { force: true });
+  rmSync(join(packDir, 'pack.local.plan.yaml'), { force: true });
+  const out = runCommand({ ...opts, packDir, command: 'init' });
+  assert.ok(out.some((l) => l.includes('created 2 file(s)')), out.join('\n'));
+  assert.ok(existsSync(join(packDir, 'pack.local.yaml')));
+  assert.ok(existsSync(join(packDir, 'pack.local.plan.yaml')));
+  assert.ok(out.some((l) => l.includes('who you are')), 'and it says what to edit next');
+  // Second run: nothing is overwritten.
+  writeFileSync(join(packDir, 'pack.local.yaml'), 'community_name: "Mine"\n');
+  const again = runCommand({ ...opts, packDir, command: 'init' });
+  assert.ok(again.some((l) => l.includes('nothing was overwritten')), again.join('\n'));
+  assert.equal(readFileSync(join(packDir, 'pack.local.yaml'), 'utf8'), 'community_name: "Mine"\n',
+    "a community's own answers survive init");
+});
