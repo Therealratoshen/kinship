@@ -27,10 +27,23 @@ place to put rows, a way to reach a person — are exactly the four things `runt
 
 ---
 
-## Seam 1 — credential: the owner brings the key (BYOD)
+## Seam 1 — credential: the owner brings the key (BYOK)
 
 The community's model spend is the community's own. The host configures its provider; Kinship never
 sees a provider key, and a pack must never contain one.
+
+**The word, said precisely, because this repository had it wrong.** This seam is **BYOK — bring your
+own KEY**: the credential is the host's, and the runtime's half of it is to have none. It is not
+**BYOD**, and the two are different questions that this seam answers differently:
+
+| | What it means here | Who holds it | Enforced by |
+|---|---|---|---|
+| **BYOK** — bring your own key | the provider credential, the model, the model provider | the **host** | `PKG-57` (a pack may not contain a key), the D32 gate (the runtime may not reach the network), and `runtime/package.json` declaring no dependencies |
+| **BYOD** — bring your own data | the community's **members**, their registry, and the log the host writes | the **host** | the log holds member *identifiers* and never member message text; a member with no row is held (`suppression_unknown`) |
+
+**So a community may run any model, on any provider, on its own hardware, with a key Kinship has never
+seen** — and the runtime has no opinion about which one, because the pack's vocabulary does not contain
+"model": it contains `budgets.llm_per_event_idr`, a ceiling in rupiah, and `budget.spend`, a lane.
 
 **What the host does.** Calls the model with its own credential, in its own process, and passes
 Kinship only the number the governance semantics need: `Fleet.recordSpend(eventId, amountIdr, note)`
@@ -54,6 +67,18 @@ hashes, and the first fork that gets a false positive turns the rule off, which 
 becomes a decorative one.
 
 **What is not checked here.** That the host keeps its own key safe. That is the host's product.
+
+**And the honest limit of BYOK, which is worth stating rather than discovering.** The runtime **cannot
+price a model call.** It receives a *number* — `recordSpend(eventId, amountIdr, note)` — and holds it
+against the pack's ceiling. So the budget is a bound on **the host's report**, and a host that reports
+one rupiah for a fifty-rupiah call defeats it. Nothing in this repository can catch that, and nothing
+should pretend otherwise: **BYOK means the key is outside, and the price of what the key bought is
+outside with it.** The runtime's own position is the deliberate one in `settings.ts`: *spend and queue
+depth are the organiser's own cost, not a promise to a member* — so the member-facing protections and
+the money are held on opposite sides of the seam, on purpose. What the runtime *does* give the
+community is the **record**: the log carries every `SpendRecorded` row, so a community can audit what
+the fleet said it cost. That is the difference between *the budget is enforced* and *the spend is
+visible*, and only the second one survives BYOK.
 
 ## Seam 2 — clock: the runtime does not tick (D10)
 
@@ -170,5 +195,6 @@ an answer.
 
 | Version | Date | Change |
 |---|---|---|
+| v0.3 | 2026-10-24 | **The credential seam is named correctly.** It was headed *BYOD* — "the owner brings the key" — and the word is wrong twice over: the thing is a **key** (BYOK), and **BYOD** is a different question this seam answers differently (the community's own *data*: its members, its registry, its log). The two are now tabled side by side, and the **honest limit of BYOK is stated**: the runtime cannot price a model call, so the budget is a bound on the host's *report* — what the runtime gives the community instead is the **record**, the `SpendRecorded` row in the log. Also: the D58 note on the copy being a map keyed by language code. |
 | v0.2 | 2026-10-23 | **D60/D61.** The host now *plans* as well as ticks: the community's working file carries its own copy, its next event and its members, and `runtime/src/plan.ts` turns that into the actions the fleet takes. A wake carries the action it will attempt, so firing it is the fleet acting. The run cap now covers that path (it lived only in `runActions` before), a refused phase-origin claim is **logged** rather than silently dropped, and the `textId` / `textEn` field names left this file in D58 — the copy is a map keyed by language code. Seam 1 is unchanged: the host still holds every credential and it still cannot reach a person. |
 | v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D33: the four seams named in one place, the adapter-location rule made mechanical, the Paperclip mapping written down, and Paperclip's card checkout recorded as declined pending PRD section 12-Q12. |
