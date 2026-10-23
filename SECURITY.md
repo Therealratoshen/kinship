@@ -1,8 +1,22 @@
 # Security policy
 
-**Do not open a public issue for a vulnerability.** Report it privately via
-[GitHub security advisories](https://github.com/Therealratoshen/kinship/security/advisories/new)
-and it will be triaged within 3 business days.
+**Do not open a public issue for a vulnerability.** Report it privately — either way reaches the same
+inbox, and both are read by the maintainer:
+
+1. **[GitHub security advisories](https://github.com/Therealratoshen/kinship/security/advisories/new)** —
+   the private route, and the one to prefer: it is the only one that does not put a disclosure in a
+   place an attacker can read before it is fixed.
+2. **Email — `filborthen@gmail.com`**, the same address the commits and the licence carry. Put
+   "security" in the subject. **This address is the maintainer's personal one; a dedicated
+   `security@` alias on a domain the project owns is the better long-term home, and setting one up is
+   an open item rather than a done thing.**
+
+Triage within **3 business days**, and a fix or a mitigation note before the next release either way.
+
+**What is *not* a vulnerability**, so the report is not wasted: a pack that fails to boot because its
+own shape is wrong; a refusal you think is wrong (the refusal codes are the product, and
+[the spec](spec/GOVERNANCE-SPEC-OUTLINE.md) says which rule each one enforces); and a fork you think
+should have shipped something it does not — that is a feature request, and the discussion is open.
 
 The executable surface is two things, both of which parse **untrusted pack directories**:
 

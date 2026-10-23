@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: "Kinship — a governance control plane for community AI agents"
+message: "If you use this software, please cite it as below. The DOI below is minted from the GitHub release archive (Zenodo) when a release is archived; until then, cite the commit and the release tag."
+type: software
+authors:
+  - family-names: Henrico
+    given-names: Filbert
+    alias: filbert
+repository-code: "https://github.com/Therealratoshen/kinship"
+url: "https://github.com/Therealratoshen/kinship"
+license: MIT
+version: 0.2.0
+date-released: "2026-10-23"
+keywords:
+  - ai-governance
+  - agent-governance
+  - human-in-the-loop
+  - community-management
+  - audit-log
+  - event-sourcing
+  - ai-safety
+abstract: >-
+  Kinship is a dependency-free TypeScript control plane that decides what an AI agent fleet may
+  do to reach a person, and proves that it was decided. The runtime produces approval cards
+  and an append-only, replayable audit log; it ships no channel transport, so nothing
+  member-facing can send. Governance is enforced by tested code rather than by prose, and every
+  refusal is a record rather than a crash.

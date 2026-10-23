@@ -262,11 +262,23 @@ community-edition UI removal drew the reply *"It's not a feature issue, it's a t
 pitch that rests on honesty is the one asset a silent flip destroys in a single news cycle
 (`research/OSS-AUTONOMY-FAILURES-2026-10-17.md` patterns 5–7).
 
-## License
+## License, marks, and citation
 
-MIT. See [LICENSE](LICENSE).
+**MIT** — see [LICENSE](LICENSE). One honest caveat while PRD section 12-**Q4** stays the owner's open
+decision: MIT is what these files and this README already state, and Q4 is where it becomes a ratified
+commitment rather than a working default. The reasoning is written up as a question with a
+recommendation in [LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md), not as a decision.
 
-One honest caveat while PRD section 12-**Q4** stays the owner's open decision: MIT is what these files and this
-README already state, and Q4 is where it becomes a ratified commitment rather than a working default. The
-reasoning is written up as a question with a recommendation in
-[LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md), not as a decision.
+**The name is not covered by the licence, and that is on purpose.** A licence grants rights in the
+*code*; it says nothing about the *name*. So the mark is stated separately, in
+[TRADEMARKS.md](TRADEMARKS.md): **fork this project freely, under your own name** — and do not publish
+something under the Kinship name or the `kinshipai/…` namespace in a way that suggests it is this
+project. A fork that says it is a fork is good for everyone; a fork that pretends to be the project is
+the thing the mark exists to stop.
+
+**Citing it.** [`CITATION.cff`](CITATION.cff) gives GitHub a *Cite this repository* button, and
+[CHANGELOG.md](CHANGELOG.md) is the dated record of what shipped. If you use Kinship in something
+written down, please cite it — it is the difference between a project with a history and a project
+somebody found.
+
+**Reporting a vulnerability** is not a public issue: see [SECURITY.md](SECURITY.md).
