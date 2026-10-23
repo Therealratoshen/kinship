@@ -1,5 +1,5 @@
 /**
- * The runner — §1.6's owner of a run.
+ * The runner — section 1.6's owner of a run.
  *
  * The engine is deliberately *not* a scheduler: phase 1 runs inside the organiser's own Paperclip
  * instance (D10), and no channel transport ships at all (D21). What this runtime can state
@@ -12,15 +12,15 @@
  *  1. A refused action still counts against the cap. The bound is on work attempted, not work
  *     delivered — a run of twenty refusals is twenty attempts the organiser paid for.
  *  2. A `KinshipError` is an outcome, not a crash: the batch continues and the refusal keeps its
- *     code (§1.2 — "why not" is part of the product). Anything else is a bug and propagates; the
+ *     code (section 1.2 — "why not" is part of the product). Anything else is a bug and propagates; the
  *     runner does not turn garbage arguments into a tidy report.
  *  3. The run's counter is never written to state. It lives in a handle the caller may hold, but the
- *     fold never sees it, so `Fleet.replay` still reproduces the ledger exactly (§1.2).
+ *     fold never sees it, so `Fleet.replay` still reproduces the ledger exactly (section 1.2).
  *
  * A fourth is now explicit rather than implicit: **a run is the caller's handle, not this function's
  * invocation.** `runActions` makes its own handle when none is handed in, which means one call bounds
  * itself and a scheduler that ticks once per agent gets `agents × max_actions_per_run` attempted
- * actions with nothing refusing it. That is a legitimate shape — per-agent fairness is what §1.6's
+ * actions with nothing refusing it. That is a legitimate shape — per-agent fairness is what section 1.6's
  * "per-agent, per-run" wording asks for — but it is only legitimate when the reader can tell which
  * bound they are looking at, so the report says so in `capScope`, and a host that wants one cap per
  * tick hands in one handle. `D38` records why the trap was worth naming in the type rather than only
@@ -70,7 +70,7 @@ const summary = (a: CommitArgs) => ({ index: 0, actionClass: a.actionClass, agen
 /**
  * `run` is the caller's, and its absence is a decision: omit it and the cap bounds *this call*, which is
  * what a scheduler that ticks once per agent wants per agent. Hand in one handle across calls and the same
- * cap bounds the tick instead of multiplying by the number of agents — §1.6's "per-run" has always meant
+ * cap bounds the tick instead of multiplying by the number of agents — section 1.6's "per-run" has always meant
  * "per run the caller declares", never "per call the runner happens to make".
  */
 export function runActions(fleet: Fleet, actions: readonly CommitArgs[], run: RunState = createRun()): RunReport {
@@ -85,7 +85,7 @@ export function runActions(fleet: Fleet, actions: readonly CommitArgs[], run: Ru
     if (gate === 'truncated') {
       outcomes.push({
         ...summary(a), index: i, result: 'dropped',
-        reason: `§1.6 — this run stopped at its cap of ${cap} actions; the partial results above are kept and nothing here is retried`,
+        reason: `section 1.6 — this run stopped at its cap of ${cap} actions; the partial results above are kept and nothing here is retried`,
       });
       next = i + 1; // the crossing action is accounted for; everything after it is not attempted
       break;

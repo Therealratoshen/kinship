@@ -6,7 +6,7 @@
 
 An open-source, self-hosted **supervised** fleet that runs the operational work of a
 community — event lifecycle, reminders, recaps — while a named human holds approval and veto
-over anything member-facing. The fleet proposes. A **human seat** approves, and while PRD §12-Q12
+over anything member-facing. The fleet proposes. A **human seat** approves, and while PRD section 12-Q12
 (delegation) is unratified the org declares exactly one: `organiser`. Every action is
 logged and replayable.
 
@@ -19,7 +19,7 @@ in `DECISIONS.md`; the runtime does not change that — it sends nothing by cons
 One number here is easy to misread, so it says which scope it bounds: `budgets.max_actions_per_run`
 is **per run**, and a run is the handle the caller holds (D38). `runActions(fleet, actions)` makes its
 own handle, so a host ticking once per agent gets `agents × cap` attempted actions — legitimate under
-spec §1.6's "per-agent, per-run", but never a fleet ceiling to quote. Hand one `createRun()` across
+spec section 1.6's "per-agent, per-run", but never a fleet ceiling to quote. Hand one `createRun()` across
 calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either way.
 
 ## The three invariants
@@ -29,15 +29,15 @@ calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either
    a reviewer must be able to grep the tool list and find nothing, not find a denied call.
    Escalation is per **action class**, never per agent, and only ever as far as the evidence
    in the governance spec licenses. A pack may now *describe* its sanctions (`sanction_ladder:`, D37 / spec
-   §2.12) and the fleet may still not carry one out: `PKG-63` refuses any rung whose `via:` names a tool some
+   section 2.12) and the fleet may still not carry one out: `PKG-63` refuses any rung whose `via:` names a tool some
    agent declares, and there is no `moderate.sanction` class to escalate.
 2. **The control plane is the product; the runtime is a commodity.** Kinship owns the autonomy
    ladder, the event-lifecycle state machine, the grant taxonomy, identity disclosure,
    stranger-input containment, and the replayable audit trail. It does not own model routing,
    memory storage, trace storage, evals, or an orchestration framework — those are wrapped or
-   bought (`DECISIONS.md` D12, `research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` §4).
+   bought (`DECISIONS.md` D12, `research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` section 4).
 3. **A claim may not outrun its evidence.** External products are described only from a primary
-   source, dated, in the evidence ledger (`PRD … §2.2`) or the `research/` files. Forbidden in
+   source, dated, in the evidence ledger (`PRD … section 2.2`) or the `research/` files. Forbidden in
    any copy: hours-saved figures, TAM, community sizes, "runs itself", "fully autonomous",
    "we invented approvals", and any price that was not read from the vendor on the day it was
    printed. Where a claim is corrected, the correction is a new dated row — history is not
@@ -51,7 +51,7 @@ calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either
 | `rules/pack-format.mdc` | The directory shape, namespaced keys, and what the validator enforces — including the optional `sanction_ladder:` (D37) — read before touching `packs/` or `scripts/` |
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
 | `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
-| `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec §1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
+| `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec section 1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
 | `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
 | `ROADMAP.md` | What is **not** complete, and for each gap whether a contributor may close it or it is the owner's call. Read it before proposing a capability — several refusals are enforced by the validator, so the wrong PR fails a gate, not a review. |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
@@ -91,4 +91,4 @@ the shadow-mode gate.
 ## Changing something
 
 `design-thinking/` is frozen (it is the citation source) — correct it with a dated `DECISIONS.md` row, never an
-edit; `PRD … §14` takes a changelog row for any substantive edit. If a check cannot run here, say which one.
+edit; `PRD … section 14` takes a changelog row for any substantive edit. If a check cannot run here, say which one.

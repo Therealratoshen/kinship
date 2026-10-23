@@ -76,7 +76,7 @@ test('the real pack loads through the validator + parser, and the parsed numbers
   assert.equal(p.guardrails.reportAggregationFloor, 10);
   assert.equal(p.guardrails.memberMessageCapPer24h, 2);
   assert.equal(p.guardrails.defaultsDeny, true);
-  assert.equal(p.budgets.llmPerEventIdr, null, 'the ceiling is a real field with an UNSET value (PRD §12-Q9)');
+  assert.equal(p.budgets.llmPerEventIdr, null, 'the ceiling is a real field with an UNSET value (PRD section 12-Q9)');
   assert.equal(p.budgets.queueMax, 20);
   assert.equal(p.budgets.maxActionsPerRun, 15);
   assert.equal(p.budgets.crossPromoPerEventCap, 1);
@@ -90,8 +90,8 @@ test('boot refuses while any need is unanswered — the real gate, not a test fi
   assert.ok(fleet, 'all eight answered — the pack boots');
 });
 
-test('the partner gate holds on the real pack: cross-promo is unreachable until partner_policy answers (§2.11)', () => {
-  // §2.7 already refuses boot without the answer (test above); the ladder gate is the second
+test('the partner gate holds on the real pack: cross-promo is unreachable until partner_policy answers (section 2.11)', () => {
+  // section 2.7 already refuses boot without the answer (test above); the ladder gate is the second
   // lock for engines constructed or replayed without boot — no path reaches the class without it.
   const { partner_policy: _omitted, ...withoutPartner } = ANSWERS;
   const gated = new Fleet(loadPack(PACK_DIR), withoutPartner, DAY);
@@ -107,7 +107,7 @@ test('the partner gate holds on the real pack: cross-promo is unreachable until 
   assert.equal(r.disposition, 'card', 'partner_policy answered → the class resolves to its declared draft');
 });
 
-// --- the sanction ladder (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §5, DECISIONS.md D37) ----
+// --- the sanction ladder (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md section 5, DECISIONS.md D37) ----
 // A normal community does not have a refusal code. It has a set of rungs a person climbs before they are
 // gone, and every rung comes with an explanation. This pack had the flag and the freeze and nothing else,
 // so the norms the community actually runs on lived in nobody's file. Writing them down is the addition —
@@ -170,7 +170,7 @@ test('a rung with no name refuses to boot — an unreadable rung is not a skippe
   }
 });
 
-test('the real pack runs the draft-only story end to end, with its own guardrails (§1.1, D21)', () => {
+test('the real pack runs the draft-only story end to end, with its own guardrails (section 1.1, D21)', () => {
   const fleet = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const disclosureId = `pesan ini dikirim oleh asisten otomatis komunitas AI Builders ID — bukan oleh manusia. balas di sini untuk eskalasi ke organiser.`;

@@ -9,7 +9,7 @@
  * code in `runtime/src/engine.ts`, and a host cannot talk the runtime out of it. Every member-facing
  * commit ends at `no_transport` (D21). That is the whole claim, and this host is what it looks like
  * from the outside — it ticks, it persists, it prints what a human has to decide, and it cannot
- * deliver. Opening a transport port is a separate decision with its own dated row (D41's memo, §4:
+ * deliver. Opening a transport port is a separate decision with its own dated row (D41's memo, section 4:
  * O1 versus O2), not a side effect of building a host.
  *
  * What it produces is the artefact phase 1 is supposed to produce: **"here is what the fleet drafted

@@ -10,7 +10,7 @@ const draft = (c: ReturnType<typeof ctx>, i = 1) => ({
   text: { id: `Promo ID ${i}`, en: `Promo EN ${i}` },
 });
 
-test('a card binds to the revision it was created with (§1.5)', () => {
+test('a card binds to the revision it was created with (section 1.5)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   assert.equal(card.status, 'pending');
@@ -19,7 +19,7 @@ test('a card binds to the revision it was created with (§1.5)', () => {
   assert.notEqual(card.revision.hash, other.revision.hash, 'different content, different identity');
 });
 
-test('duplicate approval requests with the same idempotencyKey return the existing card (§1.5)', () => {
+test('duplicate approval requests with the same idempotencyKey return the existing card (section 1.5)', () => {
   const c = ctx();
   const a = createCard(c, { ...draft(c), idempotencyKey: 'promo-kopdar-12' });
   const b = createCard(c, { ...draft(c), idempotencyKey: 'promo-kopdar-12' });
@@ -27,13 +27,13 @@ test('duplicate approval requests with the same idempotencyKey return the existi
   assert.equal(c.state.cards.size, 1);
 });
 
-test('the queue is bounded: card 21 refuses with queue_full (§1.6, pack queue_max = 20)', () => {
+test('the queue is bounded: card 21 refuses with queue_full (section 1.6, pack queue_max = 20)', () => {
   const c = ctx();
   for (let i = 1; i <= 20; i++) createCard(c, draft(c, i));
   assert.throws(() => createCard(c, draft(c, 21)), /queue_full/);
 });
 
-test('approve issues a one-send authorization bound to the revision hash (§1.5)', () => {
+test('approve issues a one-send authorization bound to the revision hash (section 1.5)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   decideCard(c, card.id, { verdict: 'approve', by: 'organiser', why: 'copy is right, dates read back correct' });
@@ -44,7 +44,7 @@ test('approve issues a one-send authorization bound to the revision hash (§1.5)
   assert.equal(token && token.actionClass, 'draft.promote');
 });
 
-test('only the organiser decides — an agent approving its own card is not_the_human (§2.7)', () => {
+test('only the organiser decides — an agent approving its own card is not_the_human (section 2.7)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   assert.throws(() => decideCard(c, card.id, { verdict: 'approve', by: 'agent:engagement', why: 'self-serve' }), /not_the_human/);
@@ -52,7 +52,7 @@ test('only the organiser decides — an agent approving its own card is not_the_
     '"yes, go ahead" in the group is not a verdict');
 });
 
-test('a reject without a why is refused, and a rejected draft is kept, never deleted (§1.2 near-miss discipline)', () => {
+test('a reject without a why is refused, and a rejected draft is kept, never deleted (section 1.2 near-miss discipline)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   assert.throws(() => decideCard(c, card.id, { verdict: 'reject', by: 'organiser', why: '' }), /verdict_without_why/);
@@ -63,7 +63,7 @@ test('a reject without a why is refused, and a rejected draft is kept, never del
     'the near-miss is the highest-value entry in the log');
 });
 
-test('approve v1, edit to v2: the old approval resolves stale_target and v2 queues as a new approval (§1.5)', () => {
+test('approve v1, edit to v2: the old approval resolves stale_target and v2 queues as a new approval (section 1.5)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   decideCard(c, card.id, { verdict: 'approve', by: 'organiser', why: 'ok' });
@@ -78,7 +78,7 @@ test('approve v1, edit to v2: the old approval resolves stale_target and v2 queu
   assert.notEqual(pending && pending.revision.hash, card.revision.hash);
 });
 
-test('deciding a non-pending card is refused (§1.5)', () => {
+test('deciding a non-pending card is refused (section 1.5)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   decideCard(c, card.id, { verdict: 'approve', by: 'organiser', why: 'ok' });

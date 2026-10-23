@@ -52,7 +52,7 @@ curious ▁▂▃▄▅▆▇█ wary
 
 **Delta:** Pair 1 `__→__` · Pair 2 `__→__`
 
-**Behavioural signs observed** (from `TEST-PROTOCOL.md` §5 — these outrank the self-report):
+**Behavioural signs observed** (from `TEST-PROTOCOL.md` section 5 — these outrank the self-report):
 - ☐ re-ran the fleet unprompted ☐ asked to raise autonomy ☐ told another organiser
 - ☐ abandoned the sheet/forward workaround ☐ granted WA write for reminders
 

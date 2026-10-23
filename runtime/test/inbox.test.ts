@@ -5,14 +5,14 @@
  * `health()` answers *"what is the condition of this?"* in counts, for forwarding. This answers
  * *"what is waiting on me, right now, in the order it has been waiting?"* — the list a volunteer opens
  * on a Tuesday morning. The donor control plane's worklist is an *agent's* assignment queue, gated by
- * exclusive checkout (`research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §3); this is the same shape pointed
+ * exclusive checkout (`research/PAPERCLIP-OSS-STUDY-2026-10-17.md` section 3); this is the same shape pointed
  * at a human, because in Kinship the queue is a person's attention, not an agent's throughput. So it
  * carries four kinds of wait and refuses to rank them.
  *
  * The four rules these tests hold shut:
  *
  *  1. **A read, not an event source.** It appends nothing, it is a pure function of the log, and
- *     `Fleet.replay` reproduces it exactly (§1.2). A queue that mutated state would be a fifth
+ *     `Fleet.replay` reproduces it exactly (section 1.2). A queue that mutated state would be a fifth
  *     governing actor with no grant and no approval.
  *  2. **Everything a human owes is a row, and every row a human owes is listed.** The failure this
  *     exists to kill is the community one: a reminder that was *approved* but never actually sent,
@@ -22,7 +22,7 @@
  *     (`withholdMemberIdentifiers`), because this list gets pasted into a group chat with
  *     co-organisers. Importing the mechanism rather than re-implementing it is the point.
  *  4. **It lists, it does not rank.** A `verdict` item does not know whether the venue card or the
- *     sponsor card matters more, and pretending otherwise would be the sentiment judgement PRD §5
+ *     sponsor card matters more, and pretending otherwise would be the sentiment judgement PRD section 5
  *     keeps out of v0. So the ordering is age — a fact the log carries — and `limits` says what the
  *     order does not mean.
  */
@@ -69,7 +69,7 @@ const bundle = (textEn = `Weekly practice is still on.\n\n${disclosureLine('en',
 const tryCard = (f: Fleet, id = 'kopdar-1') =>
   f.attempt({ actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id }, ...bundle() }).card!;
 
-test('an inbox is a read: it appends nothing, twice gives the same answer, and replay reproduces it (§1.2)', () => {
+test('an inbox is a read: it appends nothing, twice gives the same answer, and replay reproduces it (section 1.2)', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
   f.beginEvent('kopdar-1');
   tryCard(f);
@@ -100,7 +100,7 @@ test('a pending card is a verdict item with its age and a preview of the words a
   assert.ok(item);
   assert.equal(item!.ref, card.id);
   assert.equal(item!.ageMs, 7_200_000, 'how long a person has waited is the fact; depth alone hides the one nobody touched');
-  assert.equal(item!.action, 'approve, edit, or reject — with a why (§1.5)');
+  assert.equal(item!.action, 'approve, edit, or reject — with a why (section 1.5)');
   assert.match(item!.detail, /draft\.reminder/, 'the class tells the organiser what kind of promise this is');
   assert.match(item!.detail, /event:kopdar-1/);
   assert.match(item!.detail, /Latihan mingguan tetap jalan/, 'and the draft in its primary language (pack locale [id, en]): a verdict on unread copy is not a verdict');
@@ -126,7 +126,7 @@ test('an approved card nobody has actually sent is a handoff item — shadow mod
   assert.deepEqual(f.inbox().counts.handoff, 0, 'a consumed authorization is delivered work, not outstanding work');
 });
 
-test('a frozen lane is a release item naming the lane, never the member who complained (§2.6)', () => {
+test('a frozen lane is a release item naming the lane, never the member who complained (section 2.6)', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
   f.registerMember('wa:62811', 'Asia/Jakarta');
   f.tripShatter('telegram', 'wa:62811');
@@ -135,13 +135,13 @@ test('a frozen lane is a release item naming the lane, never the member who comp
   assert.equal(item.ref, 'telegram');
   assert.equal(item.ageMs, 3_600_000);
   assert.match(item.action, /release/);
-  assert.ok(!JSON.stringify(f.inbox()).includes('wa:62811'), 'the lane is down; who said so is not this list\'s business (§2.3)');
+  assert.ok(!JSON.stringify(f.inbox()).includes('wa:62811'), 'the lane is down; who said so is not this list\'s business (section 2.3)');
 
   f.releaseShatter('telegram', 'organiser');
   assert.deepEqual(f.inbox().counts.release, 0, 'a released lane is history, not outstanding work');
 });
 
-test('a wake whose time has passed is an overdue item, and its purpose is withheld before it is shown (§1.3)', () => {
+test('a wake whose time has passed is an overdue item, and its purpose is withheld before it is shown (section 1.3)', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
   f.registerMember('wa:62811', 'Asia/Jakarta');
   f.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-1' });
@@ -169,7 +169,7 @@ test('items are ordered by how long a human has owed them, oldest first, across 
   assert.deepEqual(f.inbox().items.map((i) => i.kind), ['release', 'verdict', 'overdue']);
 });
 
-test('member inputs are counted and explicitly not turned into a per-person to-do list (§2.3, PRD §5)', () => {
+test('member inputs are counted and explicitly not turned into a per-person to-do list (section 2.3, PRD section 5)', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
   f.registerMember('wa:62811', 'Asia/Jakarta');
   f.registerInput('wa:62811', 'halo, bisa batal tidak besok?');
@@ -180,7 +180,7 @@ test('member inputs are counted and explicitly not turned into a per-person to-d
   const r = f.inbox();
   assert.equal(r.memberInputs.received, 2, 'two messages arrived');
   assert.equal(r.memberInputs.awaitingVerdict, 1, 'one of them produced a card nobody has decided');
-  assert.equal(r.memberInputs.linkable, false, 'and the log carries no input→card link, so the list says so instead of implying one (§1.2)');
+  assert.equal(r.memberInputs.linkable, false, 'and the log carries no input→card link, so the list says so instead of implying one (section 1.2)');
   assert.match(r.memberInputs.note, /cannot be joined/, `the note names the defect rather than hiding it: ${r.memberInputs.note}`);
   assert.ok(!JSON.stringify(r).includes('62811'), 'no member identifier in the count either');
 });
@@ -213,20 +213,20 @@ test('the inbox says what the ordering does not mean, and never claims to know w
   tryCard(f);
   const r = f.inbox();
   const text = r.limits.join(' ').toLowerCase();
-  assert.match(text, /rank/, 'it states that age is not importance (PRD §5 keeps judgement out)');
+  assert.match(text, /rank/, 'it states that age is not importance (PRD section 5 keeps judgement out)');
   assert.match(text, /who|hand/, 'and that it cannot see whether the organiser actually sent the handoff by hand — no transport, no receipt (D21)');
   assert.deepEqual(Object.keys(r.counts).sort(), ['handoff', 'overdue', 'release', 'thread', 'verdict'],
-    'five kinds, closed — the fifth is a thread (spec §2.14 / FR-5.13), and a sixth would need a spec rule first');
+    'five kinds, closed — the fifth is a thread (spec section 2.14 / FR-5.13), and a sixth would need a spec rule first');
 });
 
 test('the fifth kind has the spec rule it was required to have — and the rule is where the doc says it is', () => {
   // This test used to say "a fifth would need a spec rule first", and it was right: the fifth kind
   // (a `thread` — a question the community owes an answer to) arrived in D55, and the rule it needed is
-  // spec §2.14. The check that the rule EXISTS is the point: without it, the kinds could grow with
+  // spec section 2.14. The check that the rule EXISTS is the point: without it, the kinds could grow with
   // nothing written down, and "the kinds are closed" would be a claim about a number rather than
   // about a document.
   const spec = readFileSync(join(ROOT, 'spec', 'GOVERNANCE-SPEC-OUTLINE.md'), 'utf8');
-  assert.match(spec, /### 2\.14 /, 'spec §2.14 — the community\'s open threads — is where the rule lives');
+  assert.match(spec, /### 2\.14 /, 'spec section 2.14 — the community\'s open threads — is where the rule lives');
   assert.match(spec, /FR-5\.13/, 'and it names the requirement it implements');
   assert.match(spec, /thread/, 'and it is about threads, not about something else that happens to be numbered 2.14');
 });

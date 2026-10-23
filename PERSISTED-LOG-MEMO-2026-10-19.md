@@ -1,7 +1,7 @@
 # Persisted log and the first host — seam 3, as a question with a recommendation
 
 **Date:** 2026-10-19 · **Owner of the decision:** Filbert. Seam 3 is the host's by contract
-(`spec/HOST-CONTRACT.md` §seam 3: "persisting, pruning, backing up, and access-controlling the event
+(`spec/HOST-CONTRACT.md` section seam 3: "persisting, pruning, backing up, and access-controlling the event
 log"), but the *format* is not decided by anyone: it appears in this repo only as a gap — "**no
 persisted log format**" in the not-decided list of `DECISIONS.md` D40 and in `PLAN.md`'s tenth addendum,
 and as shortlist item **A2** in `community/OSS-COMPLETENESS-POV-2026-10-19.md`, where it is called
@@ -15,7 +15,7 @@ call, and the row will be his, not mine.
 
 Written because `ROADMAP.md` lists three adopter gaps that are one gap wearing three hats — no host, no
 file, no quickstart that ends in an artefact — and because phase 1's evidence is currently **a hand-filled
-template** (`pilots/shadow-mode/TEST-PROTOCOL.md` §5 "Instruments" lists `EVENT-TEMPLATE.md` as the
+template** (`pilots/shadow-mode/TEST-PROTOCOL.md` section 5 "Instruments" lists `EVENT-TEMPLATE.md` as the
 per-card approval log), which means the diary and the fleet's own record cannot be cross-checked against
 each other.
 
@@ -49,7 +49,7 @@ from the spec.
 
 **(a) Replay proves the state. It does not prove the record — and `HOST-CONTRACT.md` reads as if it does.**
 Seam 3 promises the host "restore the rows, replay them, and a mismatch is a corrupt store rather than a
-governance bug" (`spec/HOST-CONTRACT.md` §seam 3, added by D33). Because of fact 4, a host can **delete
+governance bug" (`spec/HOST-CONTRACT.md` section seam 3, added by D33). Because of fact 4, a host can **delete
 every `CommitRefused` row from a file and the replay still matches**, since refusals and escalations mutate
 nothing. The rows most embarrassing to a fleet — what it tried and was refused — are precisely the rows a
 restore-and-compare check is blind to. `seq` density catches whole-row deletion (a gap is visible without
@@ -71,7 +71,7 @@ reader sees which answers existed without seeing who the escalation contact is.
 
 **(c) Persisting makes two already-open questions concrete.** Fact 5 is the good news and it should be
 kept as a promise with a test: **message text does not land in the file.** Facts 6 and 7 are the exposure:
-member refs and full draft copy do land. `spec/` §2.3 both asks "who can see the audit log?" and calls the
+member refs and full draft copy do land. `spec/` section 2.3 both asks "who can see the audit log?" and calls the
 timeline member-readable, and `ROADMAP.md` lists that as unresolved; the UU PDP / platform-data-terms
 posture is a standing owner decision that has never been asserted as compliant. In memory those gaps were
 theoretical; a file in a folder is copyable, syncable, and forwardable. Recommendation for v0, and the
@@ -138,7 +138,7 @@ That row's own wording says "through an `echo` transport", which pre-empts the O
 under O1 there is no transport at all, echo included, and the host prints through the read paths that already
 exist. The phrase is the owner's to keep or change, and this memo does not touch `ROADMAP.md`'s text beyond
 pointing the two rows here.
-`spec/HOST-CONTRACT.md` §"What an adapter looks like" already fixes the location: `adapters/<host>/`, own
+`spec/HOST-CONTRACT.md` section "What an adapter looks like" already fixes the location: `adapters/<host>/`, own
 manifest, own dependencies, never inside `runtime/`, never a dependency of `kinship-runtime`. There is no
 root `package.json` and `runtime/package.json` is `private: true`, so the first host has to decide the
 install question too — a `file:../runtime` dependency works locally without publishing anything, which is
@@ -156,7 +156,7 @@ code. That distinction is the whole claim, and it is the one genuine fork in thi
 | Option | What it is | What it costs | Verdict |
 |---|---|---|---|
 | **O1** | No port. The reference host persists, ticks and prints. `runtime/` unchanged; "sends nothing" stays structural. | A shadow-mode event produces refusals and a file, which is exactly the designed shape — but no delivery receipt is possible, and `inbox()` already states it cannot confirm a handoff (`runtime/src/inbox.ts:173`). | **Recommended for phase 1.** |
-| **O2** | Add an injected `deliver` at boot; when absent, today's refusal path is byte-identical. A host can then wire an `echo` transport and exercise the one-send authorization for real. | Converts the repo's strongest claim from *cannot* to *does not unless wired* — so README's §"What ships vs what is gated", `AGENTS.md`, `tour.ts`'s `gatedByDesign`, and D21's own sentence all need re-wording **in the same pass**, with a positive-control test that the unwired path still refuses. Needs its own dated row. | Real work, and his call — not a side effect of building a host. |
+| **O2** | Add an injected `deliver` at boot; when absent, today's refusal path is byte-identical. A host can then wire an `echo` transport and exercise the one-send authorization for real. | Converts the repo's strongest claim from *cannot* to *does not unless wired* — so README's section "What ships vs what is gated", `AGENTS.md`, `tour.ts`'s `gatedByDesign`, and D21's own sentence all need re-wording **in the same pass**, with a positive-control test that the unwired path still refuses. Needs its own dated row. | Real work, and his call — not a side effect of building a host. |
 | **O3** | An echo transport inside `runtime/src`. | Breaks invariant #2 and fails `boundary.test.ts`. | Refused by the gates, not by taste. |
 
 The trigger that should move him from O1 to O2 is measurable, not aesthetic: the day phase 1's protocol
@@ -185,7 +185,7 @@ themselves.
 and **the raw member input text** live in the audit log."
 The first half is true (fact 7). The last clause is **false** — the log stores a hash, never the text
 (fact 5, with two tests). It is a privacy statement printed to a human, and it is wrong in the direction
-that makes the runtime look more exposed than it is; it also undercuts §2(c) of this memo, which depends on
+that makes the runtime look more exposed than it is; it also undercuts section 2(c) of this memo, which depends on
 that promise. The fix is one clause in one string; I have not applied it, because "go" covered this document
 and a source edit — even a comment-free string — is his call. Say the word and it becomes a dated row with
 a positive-control test that a log scan finds no message text.
@@ -210,9 +210,9 @@ is his call.
 
 ## 7 · What this memo does not do
 
-No code, no gate, no schema, no new action class, no pack key, no `logs/` directory created. **No PRD §14
+No code, no gate, no schema, no new action class, no pack key, no `logs/` directory created. **No PRD section 14
 row and no version bump: nothing here changes what the product promises** — it is the opposite, a document
-about a promise that stays unmade. It does not add a §12 question number (the numbering is his, and D30's
+about a promise that stays unmade. It does not add a section 12 question number (the numbering is his, and D30's
 Q13 is the last one I was told to leave open). It does not start phase 1: **`D9` is still unset and is still
 the only thing that does.** It does not close any `ROADMAP.md` row — it gives two of them a shape to be
 closed by.
@@ -226,4 +226,4 @@ except `ROADMAP.md`'s two rows and a `DECISIONS.md` row.
 
 | Version | Date | Change |
 |---|---|---|
-| v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D41: the twelve verified facts, the replay-vs-record gap, the answers/replay dependency, the two-file format with two verification tiers, the verify-in-runtime / write-in-host split, and O1/O2/O3 on the transport port. §6 names two defects it found and did not fix — the `inbox.ts:174` privacy sentence that is wrong today, and the repo's own document count, which this pass measured as nine and thirteen against the six and eleven `ROADMAP.md` quotes. Recommendations only — every decision in §5 is the owner's. |
+| v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D41: the twelve verified facts, the replay-vs-record gap, the answers/replay dependency, the two-file format with two verification tiers, the verify-in-runtime / write-in-host split, and O1/O2/O3 on the transport port. section 6 names two defects it found and did not fix — the `inbox.ts:174` privacy sentence that is wrong today, and the repo's own document count, which this pass measured as nine and thirteen against the six and eleven `ROADMAP.md` quotes. Recommendations only — every decision in section 5 is the owner's. |

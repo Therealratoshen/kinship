@@ -13,12 +13,12 @@ material. The recap is the friendliest artefact in the fleet and therefore the e
 — it reads like a summary of the week, and a summary of a week in a small community is a description of
 specific people.
 
-Semantics: `spec/GOVERNANCE-SPEC-OUTLINE.md` §2.9.3 and §2.9.5; requirements: PRD **FR-5.3, FR-5.7**.
-Source: `community/MEMBER-LENS-2026-10-17.md` §1 (the right to lurk) and §3 (the silent-leave triggers).
+Semantics: `spec/GOVERNANCE-SPEC-OUTLINE.md` section 2.9.3 and section 2.9.5; requirements: PRD **FR-5.3, FR-5.7**.
+Source: `community/MEMBER-LENS-2026-10-17.md` section 1 (the right to lurk) and section 3 (the silent-leave triggers).
 
 **The scope of "publishable".** A channel, thread, or form is citable only if it was marked publish-consented
 when the content was written. Not "the organiser has access", not "it isn't named private", and not "the
-group is semi-public". Absence of a mark is **not** permission — the same fail-closed posture §1.7 applies to
+group is semi-public". Absence of a mark is **not** permission — the same fail-closed posture section 1.7 applies to
 trust presets, applied here to sourcing. A `digest_sources_are_consent_scoped` check runs at **assembly** time,
 before any text is generated, so the model never holds a quote it would have to be careful with. That ordering
 is the whole design: redaction after generation is a filter, and filters get bypassed by paraphrase.

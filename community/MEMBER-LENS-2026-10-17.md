@@ -27,14 +27,14 @@ The last group is the one this lens is most useful for, because the organiser's 
 
 | They say | Real need | Named gap in the current artifacts |
 |---|---|---|
-| "Tell me which human is responsible for this bot." | **Accountability, not just disclosure.** FR-3.4 / spec §2.8 make an utterance say *it is an agent, of <event>*. Nothing makes it carry **the person who approved it**, or give me a way to reach them. | Disclosure exists; **attributability does not**. `escalate-to-human` is an *organiser-side* action; there is no member-facing affordance. |
+| "Tell me which human is responsible for this bot." | **Accountability, not just disclosure.** FR-3.4 / spec section 2.8 make an utterance say *it is an agent, of <event>*. Nothing makes it carry **the person who approved it**, or give me a way to reach them. | Disclosure exists; **attributability does not**. `escalate-to-human` is an *organiser-side* action; there is no member-facing affordance. |
 | "I said stop. Stop." | **A per-member suppression object with state.** `rsvp.chase` and `nudge.no_show` target *individuals*; `no_ghost_watchers` and `queue_max` are organiser-side throttles. There is no requirement anywhere that a member's opt-out persists, is honoured across lanes, and is auditable. | **The sharpest gap in the whole spec.** Nothing in FR-1.x–4.x or Part 5's action taxonomy models the recipient's wishes at all. |
 | "Don't sell my attendance to the sponsor." | **An aggregation floor in reports.** FR-2.5 makes the sponsor report a dated, regenerable deliverable. Nothing forbids it naming who came, who no-showed, or who asked a question. | FR-2.5 has *form* and no *subject-protection*. This is the one leak that cannot be un-sent. |
-| "If you flag me, tell me — after." | **Due process for the accused party.** Flag-only (§3.5) is the right posture and it's honest about AutoMod precedent. But today a flag is a private record a member never sees, with no appeal path and no reason. | Spec governs the *organiser's queue*. Nobody governs the *subject of the flag*. |
+| "If you flag me, tell me — after." | **Due process for the accused party.** Flag-only (section 3.5) is the right posture and it's honest about AutoMod precedent. But today a flag is a private record a member never sees, with no appeal path and no reason. | Spec governs the *organiser's queue*. Nobody governs the *subject of the flag*. |
 | "Don't make me read three languages." | **Language preference is member data, not an organiser default.** The [id, en] pairing rule is right for *public broadcast*; for a **direct message to one person** it means two read-outs of the same thing, and for a foreign member in an Indonesian group it means an Indonesian paragraph they can't skip. | FR-3.1's pairing rule has no per-recipient preference branch. Retrofit cost is low, so this is a rule change, not a build. |
-| "I answered that question for free; make it count for something." | **Proof-of-work attribution.** Map 3's gain is *seen/pride* — attributable work that turns into inbound leads. `attribution:` in the pack credits **pack authors**, not community contributors. | **This is the member's only positive benefit from Kinship, and it is currently scheduled for the hub — which D6 deferred to phase 4.** See §4. |
+| "I answered that question for free; make it count for something." | **Proof-of-work attribution.** Map 3's gain is *seen/pride* — attributable work that turns into inbound leads. `attribution:` in the pack credits **pack authors**, not community contributors. | **This is the member's only positive benefit from Kinship, and it is currently scheduled for the hub — which D6 deferred to phase 4.** See section 4. |
 | "Let me be quiet." | **The right to lurk.** FR-3.1's digest is assembled "from community activity." Quiet members *are* activity if their messages get summarised into a public digest. | No rule restricts digest sourcing to content the channel has consented to publish, and no rule protects non-posters from being described. |
-| "Do not score me." | **No member model.** Nothing in the repo bans engagement scoring, attendance ranking, or a per-member profile object. The incentive to add one is external and paid: sponsors ask for it. | Needs a **structurally absent** entry, per §1.1's grep-verifiable rule — not a policy sentence. Policies get deleted; absent tools don't. |
+| "Do not score me." | **No member model.** Nothing in the repo bans engagement scoring, attendance ranking, or a per-member profile object. The incentive to add one is external and paid: sponsors ask for it. | Needs a **structurally absent** entry, per section 1.1's grep-verifiable rule — not a policy sentence. Policies get deleted; absent tools don't. |
 | "My phone is not your demo." | **Low-end Android on a metered connection, in WIB hours.** Per-member frequency caps and quiet hours; nothing I must install to RSVP or to opt out. | `queue_max` caps queued *cards*, not messages *received by one person*. No cadence rule exists at the recipient level. |
 
 ## 2. What the community refuses (these become ❌ lines, not backlog items)
@@ -42,7 +42,7 @@ The last group is the one this lens is most useful for, because the organiser's 
 - ❌ **A named individual in any sponsor- or externally-facing report.** Aggregate or nothing.
 - ❌ **Per-member engagement scores, attendance rankings, or profiles.** The fleet may count events; it may
   not rank people.
-- ❌ **An agent that answers "are you a bot?" with anything but yes** — already non-overridable (§2.8); the
+- ❌ **An agent that answers "are you a bot?" with anything but yes** — already non-overridable (section 2.8); the
   community's addition is that the *first* reply must also name the human.
 - ❌ **Auto-replies in a peer's voice.** An agent that drafts like a fellow member and posts into a
   discussion is not "engagement", it is the reason AI-restrictive bans spread (frozen evidence,
@@ -93,7 +93,7 @@ Three of these **bind now**, because retrofitting them is a migration plus an ap
 | *(cheap)* **No-member-model** as a structurally-absent tool entry | Costs a line in the pack and a validator rule. Its whole value is that it is grep-verifiable. |
 
 **Phase 2** (needs real sends to matter): per-member cadence caps + quiet hours; direct-message language
-preference. **Phase 3** (needs the hub, or an owner ruling on §4): proof-of-work attribution. **Gated on
+preference. **Phase 3** (needs the hub, or an owner ruling on section 4): proof-of-work attribution. **Gated on
 Q3/UU PDP** without asserting the regime: the member's access-and-erasure *capability* — buildable as a
 regime-independent property (FR-1.9/1.10 precedent), scheduled when the data subject can actually ask.
 
@@ -107,11 +107,11 @@ lane at all — which is itself worth knowing before the AIClub conversation.
 
 | Finding | Where it landed | What it may **not** be cited as |
 |---|---|---|
-| Nine needs → requirements | PRD **FR-5.1–5.10**, spec **§2.9** | Member demand. No member was interviewed. |
-| The ❌ refusals (§2) | spec **Part 5** absent list + validator `FORBIDDEN_CLASSES` (PKG-53) | A runtime guarantee — the validator proves shape, not enforcement |
-| Silent-leave triggers (§3) | three new skills: `member-rights`, `flag-notice`, `publishable-sourcing` (pack now 15) | Tested behaviour; nothing has run |
-| The §4 contradiction | PRD **Q10** (open) + spec §2.10 reserved + `DECISIONS.md` **D18** consequence line | Resolved. It is the owner's call. |
-| The instrumentation idea | `EVENT-TEMPLATE.md` member counters + `TEST-PROTOCOL.md` **P-6** (explicitly not a §4 gate) | Evidence that FR-5 is right — P-6 can demote it, which is the point of writing it down |
+| Nine needs → requirements | PRD **FR-5.1–5.10**, spec **section 2.9** | Member demand. No member was interviewed. |
+| The ❌ refusals (section 2) | spec **Part 5** absent list + validator `FORBIDDEN_CLASSES` (PKG-53) | A runtime guarantee — the validator proves shape, not enforcement |
+| Silent-leave triggers (section 3) | three new skills: `member-rights`, `flag-notice`, `publishable-sourcing` (pack now 15) | Tested behaviour; nothing has run |
+| The section 4 contradiction | PRD **Q10** (open) + spec section 2.10 reserved + `DECISIONS.md` **D18** consequence line | Resolved. It is the owner's call. |
+| The instrumentation idea | `EVENT-TEMPLATE.md` member counters + `TEST-PROTOCOL.md` **P-6** (explicitly not a section 4 gate) | Evidence that FR-5 is right — P-6 can demote it, which is the point of writing it down |
 
 The ten new tamper cases in `scripts/validate-pack.test.mjs` (14 → 25) are the part of this review that is
 already real: an invariant a fork cannot delete costs nothing to state and everything to retrofit.
@@ -120,4 +120,4 @@ already real: an invariant a fork cannot delete costs nothing to state and every
 
 **Closed at the end of this artifact.** This persona does not carry into the next task; if the member lens is
 needed again it is re-cast against a fresher artifact. What survives is the requirement list, the ❌ lines, and
-the §4 contradiction — of which §6 records the disposition, and Q10 remains the owner's call rather than this review's.
+the section 4 contradiction — of which section 6 records the disposition, and Q10 remains the owner's call rather than this review's.

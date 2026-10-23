@@ -24,7 +24,7 @@ const thePack = () => makePack({
  * A kitchen-sink run touching every applier: members, suppression, grants, cards, edits,
  * authorizations, refused commits, executed commits, phases, claims, checkouts, wakes,
  * budgets, shatter, member input, escalation. Then: fold the log, demand deep-equality.
- * §1.2 is a property claim, so the test runs the widest scenario the module can express.
+ * section 1.2 is a property claim, so the test runs the widest scenario the module can express.
  */
 function runKitchenSink(): Fleet {
   const f = newFleet();
@@ -80,7 +80,7 @@ function runKitchenSink(): Fleet {
   return f;
 }
 
-test('replay: folding the event log reproduces live state exactly — §1.2 is a property, not a promise', () => {
+test('replay: folding the event log reproduces live state exactly — section 1.2 is a property, not a promise', () => {
   const live = runKitchenSink();
   const reborn = Fleet.replay(live.events, ANSWERS);
   assert.deepEqual(reborn.state, live.state, 'fold(events) deep-equals the live state — the audit trail is a real replay, not a narrative');

@@ -16,9 +16,9 @@
  *
  * **And the new pair is not a claim about a culture.** Arabic is here because a community in Dubai
  * needs it, and the disclosure line has to be *canonical* in whatever language the community reads
- * (FR-5 / §2.8) — an improvised translation that drifts from the source would be a disclosure gate that
+ * (FR-5 / section 2.8) — an improvised translation that drifts from the source would be a disclosure gate that
  * passes for the wrong reason. What a community *tolerates* — whether it wants being approached, whether
- * it is discoverable — is the **posture** (§2.15), declared by the community, and still not a table
+ * it is discoverable — is the **posture** (section 2.15), declared by the community, and still not a table
  * this runtime carries.
  */
 
@@ -33,11 +33,11 @@
 export interface LocaleSpec {
   /** The BCP-47-ish code a pack declares. */
   code: string;
-  /** The canonical disclosure line (FR-5 / §2.8) — deterministic, carrying the community's name. */
+  /** The canonical disclosure line (FR-5 / section 2.8) — deterministic, carrying the community's name. */
   disclosure: (community: string) => string;
-  /** The budget-stop card the runtime raises (§1.6). */
+  /** The budget-stop card the runtime raises (section 1.6). */
   budgetStop: (eventId: string, wouldBe: number, ceiling: number) => string;
-  /** The escalation card the runtime raises (§2.4). */
+  /** The escalation card the runtime raises (section 2.4). */
   escalation: (purpose: string, to: string) => string;
 }
 
@@ -119,8 +119,8 @@ import { refuse } from './errors.ts';
 /**
  * The runtime's OWN copy, in every language the community declared.
  *
- * The runtime writes two things by itself — the budget-stop card (§1.6) and the escalation card
- * (§2.4) — and a community reads them whether or not a human drafted them. So they are written in
+ * The runtime writes two things by itself — the budget-stop card (section 1.6) and the escalation card
+ * (section 2.4) — and a community reads them whether or not a human drafted them. So they are written in
  * the community's languages, not in the runtime's: a card raised in Indonesian to a community that
  * reads English and Arabic is a card nobody can act on.
  */
@@ -133,7 +133,7 @@ export function localeCopy(
   for (const language of ctx.pack.locale) {
     const spec = localeSpec(language);
     if (spec === undefined) {
-      refuse('pack_invalid', 'spec §2.8 / FR-5',
+      refuse('pack_invalid', 'spec section 2.8 / FR-5',
         `this runtime does not implement \`${language}\` — the copy it writes on its own would have nowhere to be written`);
     }
     out[language] = build(spec);

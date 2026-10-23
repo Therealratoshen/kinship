@@ -1,10 +1,10 @@
 /**
- * §1.5 approval cards, §1.2 the near-miss as a first-class record, §1.6 the bounded queue.
+ * section 1.5 approval cards, section 1.2 the near-miss as a first-class record, section 1.6 the bounded queue.
  *
  * "You approved it" is the sentence that ends a trust relationship, so an approval binds to a
  * content revision hash and grants exactly one send of exactly that content. Editing resolves
  * the old approval `stale` and queues the new revision. Rejected drafts are kept with their
- * reason — the near-miss is the highest-value entry in the audit log (§1.2).
+ * reason — the near-miss is the highest-value entry in the audit log (section 1.2).
  */
 import { refuse } from './errors.ts';
 import { assertSeat } from './roles.ts';
@@ -27,12 +27,12 @@ export interface CreateCardArgs {
 export function createCard(ctx: Ctx, args: CreateCardArgs): Card {
   if (args.idempotencyKey !== undefined) {
     for (const c of ctx.state.cards.values()) {
-      if (c.id === `card-${args.idempotencyKey}`) return c; // §1.5 — same key, same card
+      if (c.id === `card-${args.idempotencyKey}`) return c; // section 1.5 — same key, same card
     }
   }
   const pendingCount = [...ctx.state.cards.values()].filter((c) => c.status === 'pending').length;
   if (pendingCount >= ctx.pack.budgets.queueMax) {
-    refuse('queue_full', 'spec §1.6', `approval queue holds ${pendingCount} pending cards (max ${ctx.pack.budgets.queueMax}) — depth is bounded, drain before creating`);
+    refuse('queue_full', 'spec section 1.6', `approval queue holds ${pendingCount} pending cards (max ${ctx.pack.budgets.queueMax}) — depth is bounded, drain before creating`);
   }
   const revision: Revision = {
     text: args.text,
@@ -62,30 +62,30 @@ export interface DecideArgs {
 }
 
 export function decideCard(ctx: Ctx, cardId: string, args: DecideArgs): Card {
-  // §1.5/§2.7 — the actor must hold a human seat. Which names hold one is the organisation's
+  // section 1.5 / section 2.7 — the actor must hold a human seat. Which names hold one is the organisation's
   // declaration (D36), not a string this file owns.
-  assertSeat(ctx, args.by, 'spec §1.5/§2.7');
+  assertSeat(ctx, args.by, 'spec section 1.5 / section 2.7');
   const card = ctx.state.cards.get(cardId);
-  if (!card) refuse('card_not_pending', 'spec §1.5', `no card \`${cardId}\``);
-  // §1.5: "approve v1, edit to v2 → the pending approval resolves stale_target". An edit on an
+  if (!card) refuse('card_not_pending', 'spec section 1.5', `no card \`${cardId}\``);
+  // section 1.5: "approve v1, edit to v2 → the pending approval resolves stale_target". An edit on an
   // already-approved card is the one legal decision on a decided card — it retracts the approval.
   const editOnApproved = card.status === 'approved' && args.verdict === 'edit';
   if (card.status !== 'pending' && !editOnApproved) {
-    refuse('card_not_pending', 'spec §1.5', `card \`${cardId}\` is \`${card.status}\` — a decided card does not re-decide`);
+    refuse('card_not_pending', 'spec section 1.5', `card \`${cardId}\` is \`${card.status}\` — a decided card does not re-decide`);
   }
   if (args.why.trim() === '') {
-    refuse('verdict_without_why', 'spec §1.2', 'a verdict without a why is not a record');
+    refuse('verdict_without_why', 'spec section 1.2', 'a verdict without a why is not a record');
   }
   if (args.verdict === 'edit') {
     if (args.newText === undefined) {
-      refuse('verdict_without_why', 'spec §1.5', 'an edit must carry the replacement revision');
+      refuse('verdict_without_why', 'spec section 1.5', 'an edit must carry the replacement revision');
     }
     const newRevision: Revision = {
       text: args.newText,
       hash: hashText(localeTextForHash(args.newText, ctx.pack.locale)),
     };
     if (newRevision.hash === card.revision.hash) {
-      refuse('verdict_without_why', 'spec §1.5', 'an edit that changes nothing is an approval');
+      refuse('verdict_without_why', 'spec section 1.5', 'an edit that changes nothing is an approval');
     }
     ctx.commit({ type: 'CardDecided', cardId, verdict: 'edit', by: args.by, why: args.why, newRevision, at: ctx.now() });
     // The edit retracts any approval the card still carries — a live v1 authorization dies here,
@@ -128,7 +128,7 @@ export function getAuthorization(ctx: Ctx, cardId: string) {
 export function consumeAuthorization(ctx: Ctx, token: string): void {
   const a = ctx.state.authorizations.get(token);
   if (!a || a.consumedAt !== undefined) {
-    refuse('stale_target', 'spec §1.5', `authorization \`${token}\` does not exist or is already consumed — the send it authorised already happened`);
+    refuse('stale_target', 'spec section 1.5', `authorization \`${token}\` does not exist or is already consumed — the send it authorised already happened`);
   }
   ctx.commit({ type: 'AuthorizationConsumed', token, at: ctx.now() });
 }

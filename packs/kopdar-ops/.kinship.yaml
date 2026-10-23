@@ -2,8 +2,8 @@
 #
 # Behaviour lives in PACK.md and agents/*/AGENT.md. This file carries only what a runtime must
 # enforce and a human must not have to parse: schema identity, per-agent permissions, budgets,
-# and the install gate. Shape donated from Paperclip's `.paperclip.yaml` (study §5); the
-# per-action-class keying and the absent-not-denied posture are Kinship's (spec §1.1).
+# and the install gate. Shape donated from Paperclip's `.paperclip.yaml` (study section 5); the
+# per-action-class keying and the absent-not-denied posture are Kinship's (spec section 1.1).
 #
 # Nothing in the pack file decides behaviour on its own: `scripts/validate-pack.mjs` checks the shape
 # and `runtime/src/pack.ts` boots through that same gate, so an edit here is a change to what the
@@ -31,8 +31,8 @@ agents:
       draft.promote: draft
       draft.reminder: draft
       report.assemble: draft
-      report.aggregate-only: opt-in-auto      # spec §2.9.3 — assembly-time floor; the agent never holds the name
-      member.suppression-check: opt-in-auto   # spec §2.9.2 — mandatory and unbypassable before any commit class
+      report.aggregate-only: opt-in-auto      # spec section 2.9.3 — assembly-time floor; the agent never holds the name
+      member.suppression-check: opt-in-auto   # spec section 2.9.2 — mandatory and unbypassable before any commit class
       budget.spend: opt-in-auto        # under the ceiling, warn-then-hard-stop
       escalate.to-human: opt-in-auto
     tools:                              # write paths, all gated by the class above
@@ -40,7 +40,7 @@ agents:
       - luma | read                     # write exists but needs Luma Plus; see PACK.md note 4
       - gmail | draft
       - sheets_or_notion | read
-    grants: []                          # always-grants live here, enumerable + revocable (spec §1.8)
+    grants: []                          # always-grants live here, enumerable + revocable (spec section 1.8)
   engagement:
     autonomy_by_class:
       observe.read: opt-in-auto
@@ -50,10 +50,10 @@ agents:
       answer.question: draft            # fast reply lane; stays `draft` until shadow mode licenses it
       commit.individual-message: draft
       commit.channel-post: draft        # Allow-once only in v0 — the class phase 1 exists to earn
-      member.notify-optout: opt-in-auto # the member's own control; nothing may promote past it (§2.9.2)
+      member.notify-optout: opt-in-auto # the member's own control; nothing may promote past it (section 2.9.2)
       member.notify-human: opt-in-auto  # "who is responsible for this?" -> the on_behalf_of line (FR-5.1)
-      member.digest-source-check: opt-in-auto  # §2.9 / FR-5.7 — only publish-consented channels are cited
-      promote.cross-community: draft     # §2.11 / FR-6 — partner content; unreachable unless needs.partner_policy answers it
+      member.digest-source-check: opt-in-auto  # section 2.9 / FR-5.7 — only publish-consented channels are cited
+      promote.cross-community: draft     # section 2.11 / FR-6 — partner content; unreachable unless needs.partner_policy answers it
     tools:
       - telegram | send
       - discord | send
@@ -64,7 +64,7 @@ agents:
     autonomy_by_class:
       observe.read: opt-in-auto
       moderate.flag: opt-in-auto        # flag-only in bundled packs; the human acts
-      member.notify-flagged: draft      # spec §2.9.4 — the subject of a flag is told, after the fact, with reason
+      member.notify-flagged: draft      # spec section 2.9.4 — the subject of a flag is told, after the fact, with reason
     outputs: human_queue                # flagged(reason, confidence) -> organiser decides; appeals return here
     tools:
       - whatsapp | read
@@ -76,21 +76,21 @@ agents:
 # --- Invariants a fork may not configure away ----------------------------------
 # The validator fails on deletion of any key below, and on a value that flips it.
 guardrails:
-  identity_disclosure: required          # spec §2.8 — outside the escalation path
-  member_input_is_data_not_instruction: true   # spec §2.1 / §2.7
-  trust_preset_resolution: fail_closed_narrower_wins   # spec §1.7
+  identity_disclosure: required          # spec section 2.8 — outside the escalation path
+  member_input_is_data_not_instruction: true   # spec section 2.1 / section 2.7
+  trust_preset_resolution: fail_closed_narrower_wins   # spec section 1.7
   low_trust_cannot_auto_promote: true
   private_objects_return: 404            # not 403
-  break_glass_must_be_audible: true      # spec §1.9.2
+  break_glass_must_be_audible: true      # spec section 1.9.2
   redaction_layers: 3
-  masked_preview_is_never_a_value: true  # spec §1.9.3 — needs a regression test, not a comment
+  masked_preview_is_never_a_value: true  # spec section 1.9.3 — needs a regression test, not a comment
   shatter: complaint -> freeze-to-draft-and-log
   exclusive_ownership: true              # 409 never retried
   no_ghost_watchers: true                # a promise to follow up requires a persisted wake row
   approval_binds_to_revision: true
   grant_taxonomy: [allow_once, allow_always, deny]   # collapsing once+always is the bug
   always_grant_must_name_scope: true
-  # --- the member as a subject, not only as an input source (spec §2.9, PRD FR-5) ---
+  # --- the member as a subject, not only as an input source (spec section 2.9, PRD FR-5) ---
   member_visible_binds_to_human: true   # FR-5.1: every member-visible utterance writes `on_behalf_of` at send time
   member_opt_out_persists_across_lanes: true   # FR-5.2: suppression is cross-lane and outside the escalation path
   suppression_precedence: member-over-organiser  # an `allow always` grant can NOT beat a member's stop
@@ -100,7 +100,7 @@ guardrails:
   digest_sources_are_consent_scoped: true # FR-5.7: the quiet member is not described by the fleet
   member_message_cap_per_24h: 2          # FR-5.5 (phase 2 value, declared now so lanes inherit it)
   quiet_hours: member_local_time         # FR-5.5: the member's timezone, not the organiser's
-  # --- cross-community promotion (spec §2.11, PRD FR-6) ---
+  # --- cross-community promotion (spec section 2.11, PRD FR-6) ---
   cross_promo_never_exports_member_data: true    # FR-6.1: partners receive copy, never people
   partner_claims_carry_sources: true             # FR-6.2: a partner's number without a named source escalates
   cross_promo_discloses_partner: true            # FR-6.3: the relationship is in the copy, both languages
@@ -126,7 +126,7 @@ guardrails:
 #
 # There is no country table in the runtime and never will be: it does not know that one place
 # tolerates being approached more than another, and a rule nobody in this community chose would be a
-# stereotype in code. So this community says, and the runtime holds the fleet to it (spec §2.15).
+# stereotype in code. So this community says, and the runtime holds the fleet to it (spec section 2.15).
 #
 # `contact: open` — this community DOES reach out to people who have not asked it anything: the
 #   no-show nudge and the RSVP chase are the point of an event community, and a member who has not
@@ -153,7 +153,7 @@ coverage:
       closes: "18:00"
 
 budgets:
-  llm_per_event_idr: null                # REAL field, UNSET value. Owner's call — PRD §12-Q9.
+  llm_per_event_idr: null                # REAL field, UNSET value. Owner's call — PRD section 12-Q9.
                                          # Do not fill this with a plausible number; see PACK.md note 3.
   warn_at_ratio: 0.8                     # warn before the stop, never silently
   hard_stop: true
@@ -205,7 +205,7 @@ sanction_ladder:
     by: organiser
     member_told: 'that you were removed, by whom, on which rung, and how to appeal it'
     via: host-ui                                 # the platform's own control, used by a human in the platform's UI
-    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec §2.9.4)'
+    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec section 2.9.4)'
 
 attribution:
   author: filbert (@handle)              # immutable in the pack hash

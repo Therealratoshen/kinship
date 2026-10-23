@@ -53,7 +53,7 @@ const OPEN: CommunityPosture = { contact: 'open', openness: 'open' };
 const CLOSED: CommunityPosture = { contact: 'never', openness: 'closed' };
 
 // The canonical disclosure line rides in the copy — it is part of the content, not a setting
-// (§2.8) — so a member-facing commit without it is refused before the posture is even consulted.
+// (section 2.8) — so a member-facing commit without it is refused before the posture is even consulted.
 /** A complete org manifest — the floor tests need a real one, not a stub with one field. */
 const ORG = (posture?: CommunityPosture): PackedOrg => ({
   schema: 'kinship-org/v1',
@@ -188,7 +188,7 @@ test('no posture declared is the conservative one — a fleet does not get to ap
 test('the pack may only be STRICTER than the org — a looser pack is refused, not clamped', () => {
   // The org says every community under it is closed to approaches. A pack that says `open` is
   // refused, because a value silently rounded toward the org is a file that lies about the system it
-  // configures — the same rule the guardrails follow (spec §1.10, "refuse, never clamp").
+  // configures — the same rule the guardrails follow (spec section 1.10, "refuse, never clamp").
   const pack = makePack({ 'event-ops': { 'commit.individual-message': 'draft' } });
   let refused: unknown = null;
   try {

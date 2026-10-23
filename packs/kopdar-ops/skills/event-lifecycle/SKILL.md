@@ -24,5 +24,5 @@ worst artefact this pack can produce.
 **Assertion (must hold).** For any event, `count(sends) == count(verdicts)` and no phase appears in the log
 without its entry condition recorded. `assert no wake row exists for a phase after status == closed`.
 
-Source: the gap named in `research/COMPETITOR-ANALYSIS-2026-10-17.md` §3 (row A-2) — no surveyed product ships
+Source: the gap named in `research/COMPETITOR-ANALYSIS-2026-10-17.md` section 3 (row A-2) — no surveyed product ships
 an event-lifecycle machine with per-phase approval; cron posters and inbox bots do not own a state machine.

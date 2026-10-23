@@ -239,6 +239,20 @@ test('CI runs this list rather than keeping a private copy of it', () => {
   assert.match(wf, /runs-on:\s*ubuntu-24\.04/, 'CI drifted to a floating runner image — reproducibility is the product');
 });
 
+test('the type contract is a CI job, and the tour is inside it', () => {
+  // A type contract nobody runs is not a contract. D58 changed the shape of the copy and the tour
+  // broke — because `runtime/tsconfig.json` included only `src/**` and `test/**`, so the tour had
+  // never been typechecked at all, and the first thing the typecheck caught once the tour was
+  // inside it was a real latent defect.
+  const wf = read('.github/workflows/test.yml');
+  assert.match(wf, /tsc -p runtime\/tsconfig\.json --noEmit/, 'CI must run the typecheck');
+  assert.match(wf, /typescript@5/, 'and it must install the compiler itself — the runtime package stays dependency-free, so a fork still downloads nothing');
+  const tsconfig = JSON.parse(read('runtime/tsconfig.json'));
+  assert.ok(tsconfig.include.includes('tour.ts'), 'the tour must be inside the typecheck — it is the demo the README shows');
+  assert.ok(tsconfig.include.includes('src/**/*.ts') && tsconfig.include.includes('test/**/*.ts'),
+    'and so must the runtime and its tests');
+});
+
 test('the Node range package.json claims is the Node range CI actually tests', () => {
   // `engines.node: ">=23"` is a support claim. A claim CI does not test is a claim that rots —
   // and a matrix with a hole in it (23, 25) silently stops testing 24 while still looking wide.

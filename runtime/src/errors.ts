@@ -1,42 +1,42 @@
 /**
  * Refusals. Every refusal carries a code (closed set) and the rule it enforces, so a card, a
- * log line, or a test failure names the invariant — "why not" is part of the product (§1.2).
+ * log line, or a test failure names the invariant — "why not" is part of the product (section 1.2).
  * Codes are strings the audit log keeps forever; renaming one is a versioned event, not an edit.
  */
 export const REFUSAL_CODES = [
-  'class_unavailable', // §1.1 — the class is `never` (absent), not denied
-  'not_the_human', // §2.7 — a member or an agent tried to act as the organiser
-  'grant_scope_unnamed', // §1.8 — an always-grant must name its scope
-  'grant_not_found', // §1.8 — no live grant covers this send
-  'grant_window_expired', // §2.11 — an always-grant's named window has closed
-  'stale_target', // §1.5 — approval no longer binds to the revision being sent
-  'card_not_pending', // §1.5 — a decided card cannot be decided again
-  'queue_full', // §1.6 — queue_max reached; depth is bounded
-  'verdict_without_why', // §1.2 — a reject/edit without a reason is not a record
+  'class_unavailable', // section 1.1 — the class is `never` (absent), not denied
+  'not_the_human', // section 2.7 — a member or an agent tried to act as the organiser
+  'grant_scope_unnamed', // section 1.8 — an always-grant must name its scope
+  'grant_not_found', // section 1.8 — no live grant covers this send
+  'grant_window_expired', // section 2.11 — an always-grant's named window has closed
+  'stale_target', // section 1.5 — approval no longer binds to the revision being sent
+  'card_not_pending', // section 1.5 — a decided card cannot be decided again
+  'queue_full', // section 1.6 — queue_max reached; depth is bounded
+  'verdict_without_why', // section 1.2 — a reject/edit without a reason is not a record
   'phase_sequence_violated', // lifecycle — phases may not be skipped
-  'conflict_409', // §1.4 — exclusive ownership; never retried
-  'ghost_watcher', // §1.3 — a promise with no persisted wake row
-  'budget_unset', // §1.6/§12-Q9 — no ceiling set → no metered spend
-  'budget_hard_stop', // §1.6 — the stop the organiser set
-  'run_truncated', // §1.6 — max_actions_per_run exceeded; partial kept, no retry storm
-  'member_suppressed', // §2.9 — the member's stop, beats any grant
-  'suppression_unknown', // §2.9 — absent row is unknown, fail closed
-  'member_cap_exceeded', // §2.9/FR-5.5 — per-24h cap, member-side
-  'quiet_hours', // §2.9/FR-5.5 — the member's local hours, not the organiser's
-  'report_below_floor', // §2.9/FR-5.3 — a named report under the aggregation floor is refused
-  'disclosure_missing', // §2.8 — no member-facing send without it
+  'conflict_409', // section 1.4 — exclusive ownership; never retried
+  'ghost_watcher', // section 1.3 — a promise with no persisted wake row
+  'budget_unset', // section 1.6 / section 12-Q9 — no ceiling set → no metered spend
+  'budget_hard_stop', // section 1.6 — the stop the organiser set
+  'run_truncated', // section 1.6 — max_actions_per_run exceeded; partial kept, no retry storm
+  'member_suppressed', // section 2.9 — the member's stop, beats any grant
+  'suppression_unknown', // section 2.9 — absent row is unknown, fail closed
+  'member_cap_exceeded', // section 2.9/FR-5.5 — per-24h cap, member-side
+  'quiet_hours', // section 2.9/FR-5.5 — the member's local hours, not the organiser's
+  'report_below_floor', // section 2.9/FR-5.3 — a named report under the aggregation floor is refused
+  'disclosure_missing', // section 2.8 — no member-facing send without it
   'answerability_missing', // FR-5.1 — no commit without on_behalf_of
-  'member_input_forbidden_here', // §2.7 — member text cannot cross into a higher-trust artefact
-  'unsourced_number', // §2.11 — a partner claim with no source the organiser named
-  'partner_data_leak', // §2.11 — no member identifier travels toward a partner
-  'cross_promo_cap', // §2.11 — partner reach is bounded per event
+  'member_input_forbidden_here', // section 2.7 — member text cannot cross into a higher-trust artefact
+  'unsourced_number', // section 2.11 — a partner claim with no source the organiser named
+  'partner_data_leak', // section 2.11 — no member identifier travels toward a partner
+  'cross_promo_cap', // section 2.11 — partner reach is bounded per event
   'no_transport', // D21 / D11 — this runtime ships no channel adapter; a commit must be wired to one
-  'need_unanswered', // §2.7 — the pack refuses to boot with invented content
-  'pack_invalid', // §2.7/D15/FR-1.18 — a pack that fails the validator, or goes below its org's floor, never instantiates
+  'need_unanswered', // section 2.7 — the pack refuses to boot with invented content
+  'pack_invalid', // section 2.7/D15/FR-1.18 — a pack that fails the validator, or goes below its org's floor, never instantiates
   'org_invalid', // FR-1.18/D35 — an organisation manifest that is not shaped right cannot hold a floor for anyone
-  'idempotent_hit', // §1.5 — same idempotencyKey returned the existing card
-  'thread_invalid', // §2.14/FR-5.13 — a thread closed with no note, or closed twice, is not a record
-  'posture_refused', // §2.15/FR-5.14 — the community's own posture says the fleet may not do this
+  'idempotent_hit', // section 1.5 — same idempotencyKey returned the existing card
+  'thread_invalid', // section 2.14/FR-5.13 — a thread closed with no note, or closed twice, is not a record
+  'posture_refused', // section 2.15/FR-5.14 — the community's own posture says the fleet may not do this
 ] as const;
 
 export type RefusalCode = (typeof REFUSAL_CODES)[number];
@@ -50,9 +50,9 @@ export type RefusalCode = (typeof REFUSAL_CODES)[number];
  */
 export const UNIMPLEMENTED_REFUSAL_CODES: Partial<Record<RefusalCode, string>> = {
   idempotent_hit:
-    'same-key reuse IS correct (§1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
+    'same-key reuse IS correct (section 1.5) and returns the existing card from cards.ts. This code is reserved for a caller-visible "you already asked for that" signal the engine does not yet expose — it is not a refusal.',
   unsourced_number:
-    '§2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word — and needs the pack to have a place to name a source, which it does not yet have.',
+    'section 2.11 requires a partner claim to cite a source the organiser named. Not built: nothing inspects commit content for a claim, so an unsourced number drafts today. Needs the content check, not the word — and needs the pack to have a place to name a source, which it does not yet have.',
 };
 
 export class KinshipError extends Error {

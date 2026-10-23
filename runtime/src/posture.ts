@@ -25,7 +25,7 @@
  *      - `open` — allowed, still at the class's own autonomy level.
  *
  * **And the direction of resolution is the same as everywhere else: a pack may only be STRICTER than
- * its org** (spec §1.10, "refuse, never clamp").
+ * its org** (spec section 1.10, "refuse, never clamp").
  */
 import { refuse } from './errors.ts';
 import type { Ctx } from './types.ts';
@@ -44,7 +44,7 @@ export function isOneToOneClass(actionClass: string): boolean {
  * `asked_only` asks a question the runtime can actually answer: **has this member spoken to the
  * community, or do they have a question open?** The first is "they engaged with us at some point";
  * the second is "they asked us something we have not answered" — and the second is the one that
- * matters, because it is a question the community is already late on (§2.14).
+ * matters, because it is a question the community is already late on (section 2.14).
  *
  * **A member's own consent still wins.** This gate sits AFTER `assertContactable` and the quiet-hours
  * and cap checks, so a member who said stop, or who is in their quiet hours, is refused by their own
@@ -56,19 +56,19 @@ export function assertPostureContact(ctx: Ctx, memberRef: string, oneToOne: bool
   if (posture.contact === 'open') return;
 
   if (posture.contact === 'never') {
-    refuse('posture_refused', 'spec §2.15 / FR-5.14',
+    refuse('posture_refused', 'spec section 2.15 / FR-5.14',
       `this community does not do individual outreach — \`posture.contact: never\` — so the fleet may not message \`${memberRef}\` one to one. A community that wants to answer members directly declares \`contact: asked_only\` or \`open\``);
   }
 
   // `asked_only`: the member must have spoken, or have a question still open.
   const spoke = ctx.state.inputs.has(memberRef) || hasOpenThread(ctx, memberRef);
   if (!spoke) {
-    refuse('posture_refused', 'spec §2.15 / FR-5.14',
+    refuse('posture_refused', 'spec section 2.15 / FR-5.14',
       `this community only answers members who asked — \`posture.contact: asked_only\` — and \`${memberRef}\` has neither spoken to the community nor a question open. A community that tolerates being approached declares \`contact: open\``);
   }
 }
 
-/** Does this member have a question the community still owes an answer to (§2.14)? */
+/** Does this member have a question the community still owes an answer to (section 2.14)? */
 function hasOpenThread(ctx: Ctx, memberRef: string): boolean {
   for (const thread of ctx.state.threads.values()) {
     if (thread.answeredAt === undefined && thread.memberRef === memberRef) return true;

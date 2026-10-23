@@ -6,7 +6,7 @@
  *
  * Shape + invariant gate for a Kinship squad pack. Adopted from the donor repo's
  * `validate-catalog.ts` + `shipped-catalog.test.ts` pattern
- * (research/PAPERCLIP-OSS-STUDY-2026-10-17.md §5 lesson 6): one script + one test file is what
+ * (research/PAPERCLIP-OSS-STUDY-2026-10-17.md section 5 lesson 6): one script + one test file is what
  * makes "fork this folder" a promise instead of a hope.
  *
  * WHAT THIS CAN AND CANNOT PROVE, stated because a green validator is easy to over-read:
@@ -41,7 +41,7 @@ const REQUIRED_GUARDRAILS = {
   no_ghost_watchers: 'true',
   private_objects_return: '404',
   low_trust_cannot_auto_promote: 'true',
-  // The member-as-subject group (spec §2.9, PRD FR-5). These are here because each one is
+  // The member-as-subject group (spec section 2.9, PRD FR-5). These are here because each one is
   // unrecoverable after the fact: an audit row cannot be backfilled without fabricating it, a
   // named attendee in a sponsor PDF cannot be un-sent, and a lane built without a suppression row
   // inherits the bug forever. A fork may not trade them for throughput.
@@ -53,7 +53,7 @@ const REQUIRED_GUARDRAILS = {
   digest_sources_are_consent_scoped: 'true',
   quiet_hours: 'member_local_time',
 };
-// Cross-community promotion (spec §2.11, PRD FR-6). Declaring the class opts the pack into these
+// Cross-community promotion (spec section 2.11, PRD FR-6). Declaring the class opts the pack into these
 // invariants; not declaring it opts out. A partnership is where an unsupervised fleet becomes a
 // spam cannon with someone else's content, so the gate is conditional on the class, not global.
 const CROSS_PROMO_GUARDRAILS = {
@@ -83,11 +83,11 @@ const FORBIDDEN_CLASSES = /^(score\.member|member\.opt-out-override|member\.desc
 const FORBIDDEN_CHANNEL_ACTION = [
   { channel: 'whatsapp', action: 'send', rule: 'whatsapp group/individual auto-send is out of scope — DECISIONS.md D11' },
 ];
-// Copy rules (PRD §2.3 claim ceiling) enforced inside the repo, not just in the pitch.
+// Copy rules (PRD section 2.3 claim ceiling) enforced inside the repo, not just in the pitch.
 // The member-side entries are here because the temptation is symmetric: after a good event, the easiest
 // next sentence is a felt claim about members ("they feel more valued") that no member was asked about.
 // The list itself lives in scripts/claim-scan.mjs, so the validator and the contract test read one
-// copy of it and the contract test can check it against PRD §2.3 rather than against a comment.
+// copy of it and the contract test can check it against PRD section 2.3 rather than against a comment.
 
 // The BYOD credential line (spec/HOST-CONTRACT.md seam 1, PRD FR-1.17): the owner brings the model key
 // and it never enters Kinship — so it must never enter a pack folder either, because a pack is the one
@@ -249,7 +249,7 @@ export function validatePack(dir, opts = {}) {
   if (fm.key?.startsWith('kinshipai/bundled/') && !isBundled) add('PKG-05', 'key says bundled but `bundled:` is not true — the safety boundary must be stated in one voice');
   if (fm.key?.startsWith('kinshipai/community/') && isBundled) add('PKG-05', 'key says community but `bundled: true` — only core packs may claim invariants are held');
   if (fm.key && basename(dirname(dir)) !== fm.slug && basename(dir) !== fm.slug) add('PKG-06', `slug \`${fm.slug}\` does not match the directory name — path and key must agree`);
-  if (isBundled && fm.license && fm.license.toLowerCase() !== 'mit') notices.push(`PKG-N1  bundled license is \`${fm.license}\`; PRD §12-Q4 is still the owner's call — do not copy this field into a public README yet`);
+  if (isBundled && fm.license && fm.license.toLowerCase() !== 'mit') notices.push(`PKG-N1  bundled license is \`${fm.license}\`; PRD section 12-Q4 is still the owner's call — do not copy this field into a public README yet`);
 
   // --- 2. agents ------------------------------------------------------------------------
   const agentPaths = fmList(packText, 'agents') || [];
@@ -300,10 +300,10 @@ export function validatePack(dir, opts = {}) {
     else if (stripComment(actual[1]).trim() !== v) add('PKG-25', `invariant \`${k}\` is \`${stripComment(actual[1]).trim()}\`, must be \`${v}\``);
   }
   const tax = new RegExp('^\\s+grant_taxonomy:\\s*\\[(.*)\\]', 'm').exec(machText);
-  if (!tax || !['allow_once', 'allow_always', 'deny'].every((t) => tax[1].includes(t))) add('PKG-26', 'grant_taxonomy must carry allow_once + allow_always + deny — collapsing once into always is the bug that turns a helper into an unattended bot (spec §1.8)');
+  if (!tax || !['allow_once', 'allow_always', 'deny'].every((t) => tax[1].includes(t))) add('PKG-26', 'grant_taxonomy must carry allow_once + allow_always + deny — collapsing once into always is the bug that turns a helper into an unattended bot (spec section 1.8)');
   for (const [k, bound] of Object.entries(BOUNDED_GUARDRAILS)) {
     const m = new RegExp(`^\\s+${k}:\\s*(.*)$`, 'm').exec(machText);
-    if (!m) { add('PKG-47', `\`${k}\` is missing — the value may be tuned, the protection may not be removed (spec §2.9)`); continue; }
+    if (!m) { add('PKG-47', `\`${k}\` is missing — the value may be tuned, the protection may not be removed (spec section 2.9)`); continue; }
     const val = Number(stripComment(m[1]).trim());
     if (!Number.isInteger(val) || val < bound.min || val > bound.max)
       add('PKG-48', `\`${k}\` is \`${stripComment(m[1]).trim()}\`, outside the useful range ${bound.min}–${bound.max} — an unbounded protection is not a protection`);
@@ -453,7 +453,7 @@ export function validatePack(dir, opts = {}) {
     for (const c of classes) {
       allClassNames.push(c.name);
       if (!AUTONOMY.has(c.value)) add('PKG-32', `agent \`${role}\` class \`${c.name}\` has autonomy \`${c.value}\`, which is not on the ladder (draft | opt-in-auto | never)`);
-      if (FORBIDDEN_CLASSES.test(c.name)) add('PKG-53', `agent \`${role}\` declares \`${c.name}\` — structurally absent from a bundled pack (spec Part 5, §2.9): a member may not be scored, a member's stop may not be overridden, and no agent may widen its own scope`);
+      if (FORBIDDEN_CLASSES.test(c.name)) add('PKG-53', `agent \`${role}\` declares \`${c.name}\` — structurally absent from a bundled pack (spec Part 5, section 2.9): a member may not be scored, a member's stop may not be overridden, and no agent may widen its own scope`);
     }
     if (role === 'moderator') {
       const sends = tools.filter(([, action]) => /send|write|post|publish|delete|ban|mute/.test(action));
@@ -468,7 +468,7 @@ export function validatePack(dir, opts = {}) {
   else {
     const bb = block(ml, budgetIdx, 0).map((o) => o.text.trim());
     const field = bb.find((t) => t.startsWith('llm_per_event_idr:'));
-    if (!field) add('PKG-36', 'budgets.llm_per_event_idr missing — the field must exist even while the number is the owner\'s call (PRD §12-Q9)');
+    if (!field) add('PKG-36', 'budgets.llm_per_event_idr missing — the field must exist even while the number is the owner\'s call (PRD section 12-Q9)');
     else {
       const val = field.split(':')[1].trim();
       if (!/^\d+$/.test(val)) {
@@ -479,7 +479,7 @@ export function validatePack(dir, opts = {}) {
         notices.push(`PKG-N3  llm_per_event_idr is set to ${val} — confirm it traces to a measured spend, not to a guess`);
       }
     }
-    if (!bb.some((t) => /currency_denomination:\s*event_scoped_money/.test(t))) add('PKG-39', 'budget must be denominated in event-scoped money, not tokens (spec §1.6) — a volunteer organiser cannot read "4.2M tokens"');
+    if (!bb.some((t) => /currency_denomination:\s*event_scoped_money/.test(t))) add('PKG-39', 'budget must be denominated in event-scoped money, not tokens (spec section 1.6) — a volunteer organiser cannot read "4.2M tokens"');
   }
 
   // --- 8. the install gate ---------------------------------------------------------------
@@ -490,12 +490,12 @@ export function validatePack(dir, opts = {}) {
   if (!needs.includes('escalation_contact')) add('PKG-42', 'needs.escalation_contact is unskippable: a fleet that cannot name the human it hands off to is an unattended bot with better manners');
   if (!needs.includes('member_notice_text')) add('PKG-43', 'needs.member_notice_text is unskippable: disclosure copy must be authored by the organiser, not generated at send time');
 
-  // --- cross-community promotion: declaring the class opts you into its gate (spec §2.11) --------
+  // --- cross-community promotion: declaring the class opts you into its gate (spec section 2.11) --------
   if (allClassNames.some((c) => c.startsWith('promote.cross'))) {
     if (!needs.includes('partner_policy')) add('PKG-54', 'the pack declares `promote.cross-community` but needs.partner_policy is unanswered — the organiser must name the allowed partners and the required disclosure line, or the class stays unreachable');
     for (const [k, v] of Object.entries(CROSS_PROMO_GUARDRAILS)) {
       const m = new RegExp(`^\\s+${k}:\\s*(.*)$`, 'm').exec(machText);
-      if (!m) add('PKG-55', `cross-promo invariant \`${k}\` missing — a partnership is not a second lane around the member's rights (spec §2.11)`);
+      if (!m) add('PKG-55', `cross-promo invariant \`${k}\` missing — a partnership is not a second lane around the member's rights (spec section 2.11)`);
       else if (stripComment(m[1]).trim() !== v) add('PKG-55', `cross-promo invariant \`${k}\` is \`${stripComment(m[1]).trim()}\`, must be \`${v}\``);
     }
     const cap = new RegExp('^\\s+cross_promo_per_event_cap:\\s*(.*)$', 'm').exec(machText);
@@ -513,7 +513,7 @@ export function validatePack(dir, opts = {}) {
   //
   //   PKG-58  the named org resolves to exactly one readable manifest — a missing org file is worse
   //           than no org at all, because the operator would believe a floor was holding;
-  //   PKG-59  the human seat set is one seat, and no seat name is also an agent role (§2.7);
+  //   PKG-59  the human seat set is one seat, and no seat name is also an agent role (section 2.7);
   //   PKG-60  every floor the org holds is met or beaten by this pack — per key, because a cadence cap
   //           and an aggregation floor are not strict in the same direction;
   //   PKG-61  no ceiling says `never` — absence is the pack's to declare (invariant #1).
@@ -547,13 +547,13 @@ export function validatePack(dir, opts = {}) {
       // --- PKG-59: the seats and the roster -----------------------------------------------------
       const seats = machList(orgText, 'human_seats');
       orgSeats = seats && seats.length ? seats : null;
-      if (seats === null) add('PKG-59', `${orgPath} declares no \`human_seats:\` — spec §2.7 puts approval and veto with a named human, and an org with no seat is an unattended fleet`);
+      if (seats === null) add('PKG-59', `${orgPath} declares no \`human_seats:\` — spec section 2.7 puts approval and veto with a named human, and an org with no seat is an unattended fleet`);
       else if (seats.length === 0) add('PKG-59', `${orgPath} has an empty \`human_seats:\` — same failure in the other direction: a list that names nobody`);
-      else if (seats.length > 1) add('PKG-59', `${orgPath} declares ${seats.length} human seats (${seats.join(', ')}) and only one is supported — a second seat is delegation, which is PRD §12-Q12, the owner's open question; until it is answered the runtime has no delegation path to gate`);
+      else if (seats.length > 1) add('PKG-59', `${orgPath} declares ${seats.length} human seats (${seats.join(', ')}) and only one is supported — a second seat is delegation, which is PRD section 12-Q12, the owner's open question; until it is answered the runtime has no delegation path to gate`);
       const roster = machList(orgText, 'agent_roles');
       if (roster === null) add('PKG-59', `${orgPath} declares no \`agent_roles:\` — the org states the roster it recognises; an empty roster is a deliberate \`[]\``);
       else for (const r of seats ?? []) {
-        if (roster.includes(r)) add('PKG-59', `${orgPath} lists \`${r}\` as both a human seat and an agent role — a pack could then give an agent the name that decideCard/issueGrant/revokeGrant/releaseShatter accept (§2.7)`);
+        if (roster.includes(r)) add('PKG-59', `${orgPath} lists \`${r}\` as both a human seat and an agent role — a pack could then give an agent the name that decideCard/issueGrant/revokeGrant/releaseShatter accept (section 2.7)`);
       }
 
       // --- PKG-60: the floors, per key, in the right direction ------------------------------------
@@ -566,23 +566,23 @@ export function validatePack(dir, opts = {}) {
       if (capFloor !== undefined) {
         const packCap = Number(packValue('member_message_cap_per_24h'));
         if (Number.isFinite(packCap) && packCap > Number(capFloor)) {
-          add('PKG-60', `\`member_message_cap_per_24h\` is ${packCap}, above org \`${orgRef}\`'s floor of ${capFloor} — for a cadence cap the SMALLER number is the stricter one, so this pack sends the member more than the operator holds (spec §2.9 / FR-5.5). The pack is refused, not clamped: a value silently rounded down is a file that lies`);
+          add('PKG-60', `\`member_message_cap_per_24h\` is ${packCap}, above org \`${orgRef}\`'s floor of ${capFloor} — for a cadence cap the SMALLER number is the stricter one, so this pack sends the member more than the operator holds (spec section 2.9 / FR-5.5). The pack is refused, not clamped: a value silently rounded down is a file that lies`);
         }
       }
       const aggFloor = floors.get('report_aggregation_floor');
       if (aggFloor !== undefined) {
         const packAgg = Number(packValue('report_aggregation_floor'));
         if (Number.isFinite(packAgg) && packAgg < Number(aggFloor)) {
-          add('PKG-60', `\`report_aggregation_floor\` is ${packAgg}, below org \`${orgRef}\`'s floor of ${aggFloor} — for an aggregation floor the LARGER number is the stricter one (spec §2.9 / FR-5.3). Refused, not clamped`);
+          add('PKG-60', `\`report_aggregation_floor\` is ${packAgg}, below org \`${orgRef}\`'s floor of ${aggFloor} — for an aggregation floor the LARGER number is the stricter one (spec section 2.9 / FR-5.3). Refused, not clamped`);
         }
       }
       const orgDisclosure = floors.get('identity_disclosure');
       if (orgDisclosure === 'required' && packValue('identity_disclosure') !== 'required') {
-        add('PKG-60', `\`identity_disclosure\` is \`${packValue('identity_disclosure') ?? '(absent)'}\` but org \`${orgRef}\` requires it — disclosure is outside the escalation path (spec §2.8), so no pack opts out of it`);
+        add('PKG-60', `\`identity_disclosure\` is \`${packValue('identity_disclosure') ?? '(absent)'}\` but org \`${orgRef}\` requires it — disclosure is outside the escalation path (spec section 2.8), so no pack opts out of it`);
       }
       const orgDefaults = floors.get('defaults');
       if (orgDefaults === 'deny' && packValue('defaults') !== 'deny') {
-        add('PKG-60', `\`defaults\` is \`${packValue('defaults') ?? '(absent)'}\` but org \`${orgRef}\` holds \`deny\` — an unset class may not become an open one (spec §1.1, invariant #1)`);
+        add('PKG-60', `\`defaults\` is \`${packValue('defaults') ?? '(absent)'}\` but org \`${orgRef}\` holds \`deny\` — an unset class may not become an open one (spec section 1.1, invariant #1)`);
       }
       for (const [k] of floors) {
         if (!['member_message_cap_per_24h', 'report_aggregation_floor', 'identity_disclosure', 'defaults'].includes(k)) {
@@ -608,7 +608,7 @@ export function validatePack(dir, opts = {}) {
   //   PKG-62  the ladder is a PROMISE the community makes to its members, so it is read back as one: at
   //           least two rungs (one step is a binary, not graduated response), every rung names a human
   //           seat as its actor and says what the member is told, and the bottom rung names the way
-  //           back in (spec §2.9.4). A sanction delivered in the dark is a rumour, not a process.
+  //           back in (spec section 2.9.4). A sanction delivered in the dark is a rumour, not a process.
   //   PKG-63  the ladder is not a LANE: a rung's `via` may not name a tool some agent declares under
   //           `tools:`. Invariant #1 read from the other side — a capability the fleet can execute lives
   //           in the tools list where a reviewer can grep it, so a rung the fleet can execute is a
@@ -651,7 +651,7 @@ export function validatePack(dir, opts = {}) {
       add('PKG-62', '`sanction_ladder:` is declared with no rung under it — the key tells a reader this community has a moderation policy and the empty list says it has none. Either write the rungs or delete the key');
     }
     if (named.length === 1) {
-      add('PKG-62', `ladder of one rung (\`${named[0].rung}\`) — one step is a binary, not a graduated response: the finding this pack is built from is that effective communities escalate, and the sequence is nudge → private word → public correction → removal (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §1). Two rungs, or none`);
+      add('PKG-62', `ladder of one rung (\`${named[0].rung}\`) — one step is a binary, not a graduated response: the finding this pack is built from is that effective communities escalate, and the sequence is nudge → private word → public correction → removal (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md section 1). Two rungs, or none`);
     }
     const norm = (t) => String(t).replace(/\s+/g, ' ').trim().toLowerCase();
     const holders = new Map();
@@ -662,17 +662,17 @@ export function validatePack(dir, opts = {}) {
     }
     named.forEach((rung, i) => {
       if (!rung.member_told) {
-        add('PKG-62', `rung \`${rung.rung}\` sanctions without saying what the member is told (spec §2.9.4) — the member is the subject of this ladder, not the audience of a sanction delivered in the dark`);
+        add('PKG-62', `rung \`${rung.rung}\` sanctions without saying what the member is told (spec section 2.9.4) — the member is the subject of this ladder, not the audience of a sanction delivered in the dark`);
       }
       if (!seats.includes(rung.by)) {
-        add('PKG-62', `rung \`${rung.rung}\` gives the sanction to \`${rung.by ?? '(absent)'}\`, which is not a human seat (${seats.join(', ')}) — the fleet flags and a person sanctions (§2.7); an agent that removes a member is the failure mode this pack exists to refuse`);
+        add('PKG-62', `rung \`${rung.rung}\` gives the sanction to \`${rung.by ?? '(absent)'}\`, which is not a human seat (${seats.join(', ')}) — the fleet flags and a person sanctions (section 2.7); an agent that removes a member is the failure mode this pack exists to refuse`);
       }
       const hit = holders.get(norm(rung.via ?? ''));
       if (hit) {
         add('PKG-63', `rung \`${rung.rung}\` is carried by \`${rung.via}\`, which ${hit.map((r) => `agent \`${r}\``).join(' and ')} declare as a tool — a rung the fleet can execute is not a ladder, it is an autonomous moderation lane (invariant #1). Drop the tool or hand the rung to the human's own action`);
       }
       if (i === named.length - 1 && !rung.appeal) {
-        add('PKG-62', `the ladder ends at \`${rung.rung}\` and names no appeal — the bottom of a sanction ladder is exactly where the route back in has to be written down (spec §2.9.4); a rung with no way back is an ejection, not a sanction`);
+        add('PKG-62', `the ladder ends at \`${rung.rung}\` and names no appeal — the bottom of a sanction ladder is exactly where the route back in has to be written down (spec section 2.9.4); a rung with no way back is an ejection, not a sanction`);
       }
     });
   }
@@ -697,7 +697,7 @@ export function validatePack(dir, opts = {}) {
     const t = read(f); if (!t) continue;
     const rel = f.replace(`${process.cwd()}/`, '');
     const emails = (t.match(/[\w.+-]+@[\w-]+\.[a-z]{2,}/gi) || []).filter((e) => !e.includes('example'));
-    if (emails.length) add('PKG-44', `${rel} contains what looks like a real address (${emails[0]}) — packs carry structure, never member or sponsor state (study §5 lesson 5)`);
+    if (emails.length) add('PKG-44', `${rel} contains what looks like a real address (${emails[0]}) — packs carry structure, never member or sponsor state (study section 5 lesson 5)`);
     const phones = t.match(/(?:\+62|08\d{2})[-\s]?\d[\d\s-]{6,}\d/g);
     if (phones) add('PKG-45', `${rel} contains what looks like an Indonesian phone number — attendee contacts do not ship in a pack`);
     // PKG-57: the credential line, swept over every line of every file in the folder — including
@@ -716,7 +716,7 @@ export function validatePack(dir, opts = {}) {
       // `isProse` decides which rule applies; scripts/claim-scan.mjs carries the reasoning and the
       // limit it cannot catch.
       for (const claim of scanForClaims(t, { prose: isProse(rel) })) {
-        add('PKG-46', `${rel} asserts the banned claim "${claim}" (PRD §2.3 claim ceiling) — the fleet proposes, the organiser approves`);
+        add('PKG-46', `${rel} asserts the banned claim "${claim}" (PRD section 2.3 claim ceiling) — the fleet proposes, the organiser approves`);
       }
     }
   }

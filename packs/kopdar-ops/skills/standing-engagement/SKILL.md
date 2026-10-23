@@ -32,7 +32,7 @@ What it never does:
 - **Never post unprompted to the channel.** `commit.channel-post` is "allow once only" in v0 and this
   skill does not widen that. Standing engagement means being *available*, not being *loud*.
 - **Never treat a reaction, a like, or a read as consent.** Engagement is not a permission.
-- **Never claim the community's sentiment.** There is no member-intelligence in v0 (PRD §5), and a lane
+- **Never claim the community's sentiment.** There is no member-intelligence in v0 (PRD section 5), and a lane
   that says "the community seems engaged" is inventing a measurement. Say what was said, by whom, when.
 - **Never use a member's words to prove the community is fine.** A quote lifted from a member into a
   report is a person's words without their context; the `publishable-sourcing` rules apply unchanged.
@@ -43,7 +43,7 @@ unanswered past a staffed shift. Outside the window, the right output is a hando
 
 **Holding the thread is a runtime primitive now, not a promise in prose.** A question a member asked is
 opened as a **thread** — a row with a date on it, held in the organiser's inbox until it is answered
-(`spec` §2.14 / PRD **FR-5.13**). The lane's job is to *open* the thread when it judges a message to be a
+(`spec` section 2.14 / PRD **FR-5.13**). The lane's job is to *open* the thread when it judges a message to be a
 question, to keep it open, and to close it with a note of how it was answered. What the lane never does is
 decide on its own that something was a question and leave it untracked: **an untracked question is the
 failure this lane exists to prevent**, and it is invisible in every read the runtime has.
@@ -52,7 +52,7 @@ A thread holds no text and no name in any read — the log keeps a hash of every
 the words, and the asker is swept out of every list. The lane gets the member's timezone from the thread
 so it can honour that member's own quiet hours; it never gets to quote them.
 
-**And the community's own `posture:` decides how hard the lane may push** (spec §2.15). This pack declares
+**And the community's own `posture:` decides how hard the lane may push** (spec section 2.15). This pack declares
 `contact: open`, so the lane may reach a member who has not asked it anything — a member who has not
 heard from us in three weeks is one we have lost. A community that declared `contact: never` would get a
 lane that only ever answers, and the runtime would refuse the approach rather than trusting the agent

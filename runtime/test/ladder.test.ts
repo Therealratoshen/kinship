@@ -22,14 +22,14 @@ test('a class at draft resolves draft, and opt-in-auto resolves itself', () => {
   assert.equal(resolve(ctx, 'answer.question'), 'opt-in-auto');
 });
 
-test('narrowest() is the §1.7 intersection: never > draft > opt-in-auto', () => {
+test('narrowest() is the section 1.7 intersection: never > draft > opt-in-auto', () => {
   assert.equal(narrowest('opt-in-auto', 'draft'), 'draft');
   assert.equal(narrowest('draft', 'opt-in-auto'), 'draft');
   assert.equal(narrowest('never', 'draft'), 'never');
   assert.equal(narrowest('opt-in-auto', 'never'), 'never');
 });
 
-test('a shatter complaint freezes the channel level-1 lane back to draft, automatically (§2.6)', () => {
+test('a shatter complaint freezes the channel level-1 lane back to draft, automatically (section 2.6)', () => {
   const ctx = makeCtx(pack());
   tripShatter(ctx, 'telegram', 'complaint-1');
   assert.equal(resolve(ctx, 'answer.question', 'engagement', 'telegram'), 'draft',
@@ -38,7 +38,7 @@ test('a shatter complaint freezes the channel level-1 lane back to draft, automa
     'the freeze is per channel, not fleet-wide');
 });
 
-test('only the organiser releases a shatter freeze, and the release is an event (§2.6)', () => {
+test('only the organiser releases a shatter freeze, and the release is an event (section 2.6)', () => {
   const ctx = makeCtx(pack());
   tripShatter(ctx, 'telegram', 'complaint-1');
   assert.throws(() => releaseShatter(ctx, 'telegram', 'agent:engagement'), /not_the_human/);
@@ -47,7 +47,7 @@ test('only the organiser releases a shatter freeze, and the release is an event 
     'reversible, by a person, with a record');
 });
 
-test('promote.cross-community is unreachable until needs.partner_policy is answered (§2.11)', () => {
+test('promote.cross-community is unreachable until needs.partner_policy is answered (section 2.11)', () => {
   const crossPack = () => makePack({ engagement: { 'promote.cross-community': 'draft' } });
   const noAnswer = makeCtx(crossPack());
   assert.equal(resolve(noAnswer, 'promote.cross-community'), 'never', 'fail closed, like every other gate');
@@ -55,7 +55,7 @@ test('promote.cross-community is unreachable until needs.partner_policy is answe
   assert.equal(resolve(answered, 'promote.cross-community'), 'draft');
 });
 
-test('a class the pack sets to never is a floor: a grant in the store does not widen it (§1.1)', () => {
+test('a class the pack sets to never is a floor: a grant in the store does not widen it (section 1.1)', () => {
   const ctx = makeCtx(makePack({ engagement: { 'whatsapp.group-send': 'never' } }));
   assert.equal(resolve(ctx, 'whatsapp.group-send'), 'never');
 });

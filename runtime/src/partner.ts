@@ -1,8 +1,8 @@
 /**
- * §2.11 — "Copy travels; people do not."
+ * section 2.11 — "Copy travels; people do not."
  *
  * A partner community is a third party the organiser vouches for, not a lane the fleet extends, so
- * the four rules of §2.11 all protect one asset: the member's identifier. `promote.cross-community`
+ * the four rules of section 2.11 all protect one asset: the member's identifier. `promote.cross-community`
  * pushes partner *words* to *our* members; nothing runs the other way. FR-6.1 states the test —
  * "the outbound payload contains zero member identifiers" — and this file is that assertion, as a
  * scan the engine can run ahead of any gate that could deliver.
@@ -18,11 +18,11 @@
  *  - **Refs, because refs are all the fleet holds.** A `Member` is `{ ref, tz, registeredAt }` — no
  *    name, no RSVP row, no handle (`types.ts`). So this file cannot scan for a member's *name*, and
  *    that is not an oversight to close here: a name reaching partner copy is a disclosure and
- *    aggregation question (§2.8, the recap floor in §2.9), owned elsewhere. If the fleet ever holds
+ *    aggregation question (section 2.8, the recap floor in section 2.9), owned elsewhere. If the fleet ever holds
  *    names, this scan has to grow with it, and the test that proves the bound must be edited with it.
  *
  * What the refusal says matters as much as when it fires: the audit timeline is member-readable
- * (§2.3), so it names the matched identifiers — the token the organiser must delete — and never the
+ * (section 2.3), so it names the matched identifiers — the token the organiser must delete — and never the
  * sentence around them.
  */
 import { refuse } from './errors.ts';
@@ -64,7 +64,7 @@ export function memberIdentifierTokens(state: FleetState): Array<{ ref: string; 
 /**
  * Which registered members appear in the given texts. Reports matches per member rather than a
  * boolean and rather than per token: a refusal that cannot name the person the organiser must
- * remove is a dead end (§1.2), and a count of tokens would overstate the exposure.
+ * remove is a dead end (section 1.2), and a count of tokens would overstate the exposure.
  */
 export function findMemberLeaks(state: FleetState, texts: string[]): MemberLeak[] {
   const hits: MemberLeak[] = [];
@@ -77,7 +77,7 @@ export function findMemberLeaks(state: FleetState, texts: string[]): MemberLeak[
 }
 
 /**
- * The §2.11 gate for partner-bound content. Called by `engine.commit` whenever a commit names a
+ * The section 2.11 gate for partner-bound content. Called by `engine.commit` whenever a commit names a
  * partner — the only moment copy is travelling toward a third party. Pure check: it logs nothing and
  * mutates nothing; the engine owns the audit record for the refusal.
  */
@@ -87,6 +87,6 @@ export function assertNoMemberDataInPartnerCopy(state: FleetState, text: LocaleT
   const leaks = findMemberLeaks(state, Object.values(text));
   if (leaks.length === 0) return;
   const who = leaks.map((l) => (l.token === l.ref ? l.ref : `${l.ref} (written bare, as \`${l.token}\`)`)).join(', ');
-  refuse('partner_data_leak', 'spec §2.11 / FR-6.1',
+  refuse('partner_data_leak', 'spec section 2.11 / FR-6.1',
     `partner-facing copy carries ${leaks.length} member identifier(s): ${who} — a partnership is not a second lane around the member's own privacy, so the copy is refused rather than redacted: delete the reference and re-approve the revision`);
 }

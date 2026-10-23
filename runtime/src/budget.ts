@@ -1,11 +1,11 @@
 /**
- * §1.6 bounded work and budgets — event-scoped and denominated in money the organiser actually
+ * section 1.6 bounded work and budgets — event-scoped and denominated in money the organiser actually
  * spends (FR-1.12), not tokens. The enforcement *mechanism* is wrapped, not built (D14:
  * LiteLLM carries the vendor-side stop); what lives here is the denomination layer's control
  * semantics: warn before the stop, refuse past it, and — because a hard stop must never
  * silently drop a scheduled phase — the engine raises a card when the stop fires.
  *
- * A ceiling of `null` is the honest boot state (PRD §12-Q9): the field is real, the number is
+ * A ceiling of `null` is the honest boot state (PRD section 12-Q9): the field is real, the number is
  * unset until shadow mode produces one, and an unset ceiling refuses metered spend rather than
  * inventing a limit.
  */
@@ -16,7 +16,7 @@ import type { Ctx, FleetEvent, FleetState, Packed } from './types.ts';
 
 export function setBudget(ctx: Ctx, eventId: string, ceilingIdr: number | null, warnRatio = ctx.pack.budgets.warnAtRatio): void {
   if (ceilingIdr !== null && (!Number.isFinite(ceilingIdr) || ceilingIdr <= 0)) {
-    refuse('budget_unset', 'spec §1.6', `ceiling \`${ceilingIdr}\` is not a budget`);
+    refuse('budget_unset', 'spec section 1.6', `ceiling \`${ceilingIdr}\` is not a budget`);
   }
   ctx.commit({ type: 'BudgetSet', eventId, ceilingIdr, warnRatio, hardStop: ctx.pack.budgets.hardStop, at: ctx.now() });
 }
@@ -24,10 +24,10 @@ export function setBudget(ctx: Ctx, eventId: string, ceilingIdr: number | null, 
 export function assertCanSpend(ctx: Ctx, eventId: string): void {
   const b = ctx.state.budgets.get(eventId);
   if (!b || b.ceilingIdr === null) {
-    refuse('budget_unset', 'spec §1.6 / PRD §12-Q9', `no ceiling is set for \`${eventId}\` — an unbounded fleet is not a supervised one, so metered spend refuses`);
+    refuse('budget_unset', 'spec section 1.6 / PRD section 12-Q9', `no ceiling is set for \`${eventId}\` — an unbounded fleet is not a supervised one, so metered spend refuses`);
   }
   if (b && b.stoppedAt !== undefined) {
-    refuse('budget_hard_stop', 'spec §1.6 / FR-1.12', `event \`${eventId}\` hit its hard stop at Rp ${b.spentIdr} — the organiser set this stop`);
+    refuse('budget_hard_stop', 'spec section 1.6 / FR-1.12', `event \`${eventId}\` hit its hard stop at Rp ${b.spentIdr} — the organiser set this stop`);
   }
 }
 
@@ -44,7 +44,7 @@ export function recordSpend(ctx: Ctx, eventId: string, amountIdr: number, note: 
     ctx.commit({ type: 'BudgetWarned', eventId, spentIdr: wouldBe, ceilingIdr: b.ceilingIdr, at: ctx.now() });
   }
   if (stopped) {
-    // A hard stop must never silently drop a scheduled phase — it raises a card (§1.6).
+    // A hard stop must never silently drop a scheduled phase — it raises a card (section 1.6).
     const card = createCard(ctx, {
       actionClass: 'budget.spend',
       agent: 'engine',
@@ -54,21 +54,21 @@ export function recordSpend(ctx: Ctx, eventId: string, amountIdr: number, note: 
       forcedBy: 'budget_hard_stop',
     });
     ctx.commit({ type: 'BudgetStopRaised', eventId, spentIdr: wouldBe, ceilingIdr: b.ceilingIdr, cardId: card.id, at: ctx.now() });
-    refuse('budget_hard_stop', 'spec §1.6 / FR-1.12',
+    refuse('budget_hard_stop', 'spec section 1.6 / FR-1.12',
       `event \`${eventId}\` would reach Rp ${wouldBe} of its Rp ${b.ceilingIdr} ceiling — stopped, and a card is raised`);
   }
   ctx.commit({ type: 'SpendRecorded', eventId, amountIdr, note, at: ctx.now() });
   return { spentIdr: wouldBe, warned, stopped: false };
 }
 
-// --- per-run action cap (§1.6: exceed → truncated, partial kept, no retry storm) ------------------
+// --- per-run action cap (section 1.6: exceed → truncated, partial kept, no retry storm) ------------------
 
 /**
  * Run-scoped, deliberately NOT replayable state: the log records what the fleet did, while a
  * run's counter is the runner's memory of this invocation — a fact the fold must not reproduce.
  * It is therefore a value the caller owns, never a module singleton: a singleton makes two runs
  * impossible and leaks one run's exhaustion into the next, which enforces a per-process rule
- * where §1.6 states a per-run one.
+ * where section 1.6 states a per-run one.
  */
 export interface RunState { actions: number; truncated: boolean }
 
@@ -84,7 +84,7 @@ export type RunAction = 'ok' | 'truncated';
  */
 export function recordRunAction(run: RunState, pack: Packed): RunAction {
   if (run.truncated) {
-    refuse('run_truncated', 'spec §1.6', `run already truncated at ${pack.budgets.maxActionsPerRun} actions — partial results kept, no retry storm`);
+    refuse('run_truncated', 'spec section 1.6', `run already truncated at ${pack.budgets.maxActionsPerRun} actions — partial results kept, no retry storm`);
   }
   run.actions += 1;
   if (run.actions > pack.budgets.maxActionsPerRun) {

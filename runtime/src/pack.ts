@@ -533,7 +533,7 @@ export function loadPack(dir: string): Packed {
   const posture = parsePosture(yaml, key);
 
   const llmRaw = budgets.get('llm_per_event_idr');
-  const llmPerEventIdr = llmRaw !== undefined && /^\d+$/.test(llmRaw) ? Number(llmRaw) : null; // null stays null: the unset ceiling refuses (§12-Q9)
+  const llmPerEventIdr = llmRaw !== undefined && /^\d+$/.test(llmRaw) ? Number(llmRaw) : null; // null stays null: the unset ceiling refuses (section 12-Q9)
 
   // --- the organisation tier (D35) ---------------------------------------------------------------
   // The pack names an org; the org holds floors. This is the only place either file is read, and the

@@ -20,5 +20,5 @@ broadcast-to-imported-contacts path in this pack.
 **Assertion.** `assert every count in a chase card cites the export it read (source + read-at timestamp)` and
 `assert no person is chased after a decline or after two unanswered attempts`.
 
-Source: named in PRD §1 as core work, **absent from every product surveyed**
-(`research/COMPETITOR-ANALYSIS-2026-10-17.md` §3, row A-4/G).
+Source: named in PRD section 1 as core work, **absent from every product surveyed**
+(`research/COMPETITOR-ANALYSIS-2026-10-17.md` section 3, row A-4/G).

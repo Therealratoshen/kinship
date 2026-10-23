@@ -7,7 +7,7 @@ import { freshState, append } from '../src/store.ts';
 import type { FleetEvent, LoggedEvent } from '../src/types.ts';
 
 /**
- * §2.6 shatter-guard, module-level. The behaviour that matters is that the freeze is
+ * section 2.6 shatter-guard, module-level. The behaviour that matters is that the freeze is
  * automatic, reversible, and *organiser-reversible only* — and that release touches the lane,
  * never the disclosure.
  */
@@ -18,7 +18,7 @@ const ladderArgs = (c: ReturnType<typeof ctx>) => ({
   pack: c.pack, role: 'engagement', actionClass: 'remind.member', state: c.state, answers: c.answers, channel: 'telegram',
 });
 
-test('a complaint freezes the named channel and the ladder demotes that lane to draft (§2.6)', () => {
+test('a complaint freezes the named channel and the ladder demotes that lane to draft (section 2.6)', () => {
   const c = ctx();
   assert.equal(resolveAutonomy(ladderArgs(c)), 'opt-in-auto', 'the lane starts auto-eligible');
   tripShatter(c, 'telegram', 'wa:62899');
@@ -48,7 +48,7 @@ test('tripping twice while frozen is one event, one record, one trippedAt (idemp
   assert.equal(c.state.shatter.get('telegram')?.ref, 'wa:62899', 'and the original cause stays the recorded cause');
 });
 
-test('release is an organiser act: an agent release refuses, and the freeze stays live (§2.6)', () => {
+test('release is an organiser act: an agent release refuses, and the freeze stays live (section 2.6)', () => {
   const c = ctx();
   tripShatter(c, 'telegram', 'wa:62899');
   assert.throws(() => releaseShatter(c, 'telegram', 'engagement'), /not_the_human/,

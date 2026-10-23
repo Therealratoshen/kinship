@@ -1,13 +1,13 @@
 /**
- * §2.8 identity disclosure — a product surface, not a compliance footnote. Every member-facing
+ * section 2.8 identity disclosure — a product surface, not a compliance footnote. Every member-facing
  * utterance identifies itself as an agent in a way that is *not imitation*: one canonical,
  * deterministic line per language, carrying the community's name, an explicit "not a human",
- * and the escalation path (§2.4). An improvised "I'm an AI" paragraph does not satisfy the gate
+ * and the escalation path (section 2.4). An improvised "I'm an AI" paragraph does not satisfy the gate
  * — the line is canonical precisely so a member (and a reviewer) can predict what disclosure
  * looks like and notice its absence.
  *
  * The line lives IN the approved revision, not stamped at send time: the organiser approves
- * the exact bytes that ship, disclosure included (§1.5). The commit gate refuses a send whose
+ * the exact bytes that ship, disclosure included (section 1.5). The commit gate refuses a send whose
  * revision lacks it.
  */
 import { refuse } from './errors.ts';
@@ -33,7 +33,7 @@ import type { LocaleText } from './locales.ts';
 export function disclosureLine(language: string, community: string): string {
   const spec = localeSpec(language);
   if (spec === undefined) {
-    refuse('pack_invalid', 'spec §2.8 / FR-5',
+    refuse('pack_invalid', 'spec section 2.8 / FR-5',
       `this runtime does not implement \`${language}\` — a disclosure line the runtime cannot produce canonically is not disclosure`);
   }
   return spec.disclosure(community);
@@ -55,7 +55,7 @@ export function assertDisclosed(text: LocaleText, community: string, locale: rea
   for (const language of locale) {
     const line = disclosureLine(language, community);
     if (!(text[language] ?? '').includes(line)) {
-      refuse('disclosure_missing', 'spec §2.8 / FR-5',
+      refuse('disclosure_missing', 'spec section 2.8 / FR-5',
         `a member-facing send carries the canonical disclosure line in every declared language — \`${language}\` is missing it, and an improvised AI mention is not disclosure`);
     }
   }
@@ -79,6 +79,6 @@ export function answerableBy(onBehalfOf: string | undefined): string {
  */
 export function assertAnswerability(onBehalfOf: string | undefined): void {
   if (onBehalfOf === undefined || onBehalfOf.trim() === '') {
-    refuse('answerability_missing', 'spec §2.9 / FR-5.1', 'a member-facing commit carries on_behalf_of — the named human who answers for it');
+    refuse('answerability_missing', 'spec section 2.9 / FR-5.1', 'a member-facing commit carries on_behalf_of — the named human who answers for it');
   }
 }

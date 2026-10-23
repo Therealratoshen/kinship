@@ -6,7 +6,7 @@ the only ones that can produce new information.
 
 | File | When you touch it |
 |---|---|
-| `TEST-PROTOCOL.md` | Once, before the event. Predictions are fixed 2026-10-17 — add results, never edit §3. |
+| `TEST-PROTOCOL.md` | Once, before the event. Predictions are fixed 2026-10-17 — add results, never edit section 3. |
 | `EVENT-TEMPLATE.md` | Copy to `event-<slug>.md` per event. Fill the baseline at T-7, the card log as cards arrive, the verdict after. |
 | `FEELING-DIARY.md` | Ninety seconds at T-1 and T+1. This is the measurement the build was waiting on. |
 | `OBSERVER-NOTES.md` | Only for the peer/outsider organiser conversations (W10). Not for your own runs. |

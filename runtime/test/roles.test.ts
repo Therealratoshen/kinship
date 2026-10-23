@@ -6,14 +6,14 @@
  * fifth act that needs a human gets a fifth literal, one of them gets refactored into a variable,
  * and the invariant becomes a habit. This file turns them into one set the org declares and the
  * runtime consults — which is also the honest shape of the answer to "how many roles do we need":
- * **the shape is a set; the size is the owner's ruling**, and PRD §12-Q12 is still unanswered, so a
+ * **the shape is a set; the size is the owner's ruling**, and PRD section 12-Q12 is still unanswered, so a
  * manifest with more than one seat is refused at parse time rather than half-supported here.
  *
  * Two exclusions, each with a test, because both would be severe bugs if the seat rule reached them:
  *
  *  - **A complainant is not an actor.** `tripShatter(channel, ref)` names who was annoyed, and that
  *    is a member. Seat-checking it would mean a member's complaint is refused because they are not
- *    the organiser — the exact way a governance system turns into a silencer (§2.6 vs §2.7).
+ *    the organiser — the exact way a governance system turns into a silencer (section 2.6 vs section 2.7).
  *  - **Answerability is not authority.** `on_behalf_of` may be `'unattributable'` (FR-5.1, D29): an
  *    unnamed human is recorded as unattributable, never as the organiser. If that field had to be a
  *    seat, the cheap fix for "who sent this?" would become "say the organiser said it".
@@ -65,12 +65,12 @@ test('the four human-only acts accept the seat and refuse a near-miss name', () 
   }
 });
 
-test('a seat refusal names the closed set and points at §12-Q12 — the reader is the owner', () => {
+test('a seat refusal names the closed set and points at section 12-Q12 — the reader is the owner', () => {
   const f = fleet();
   const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } }).card!;
   try {
     f.decideCard(card.id, { verdict: 'approve', by: 'delegate', why: 'the organiser asked me to' });
-    assert.fail('a delegate is not a seat while §12-Q12 is unanswered');
+    assert.fail('a delegate is not a seat while section 12-Q12 is unanswered');
   } catch (e) {
     const msg = String(e);
     assert.match(msg, /not_the_human/);
@@ -93,16 +93,16 @@ test('the seat check is one helper, reached from all four gates — no fifth lit
 
 test('assertSeat is the single rule: it takes the ctx, so it can see the org tier', () => {
   const ctx = makeCtx(makePack({ engagement: {} }), ANSWERS);
-  assert.doesNotThrow(() => assertSeat(ctx, 'organiser', 'spec §1.5'));
-  assert.throws(() => assertSeat(ctx, 'moderator', 'spec §1.5'), /not_the_human/);
-  assert.throws(() => assertSeat(ctx, '', 'spec §1.5'), /not_the_human/, 'an empty actor is not a seat either');
+  assert.doesNotThrow(() => assertSeat(ctx, 'organiser', 'spec section 1.5'));
+  assert.throws(() => assertSeat(ctx, 'moderator', 'spec section 1.5'), /not_the_human/);
+  assert.throws(() => assertSeat(ctx, '', 'spec section 1.5'), /not_the_human/, 'an empty actor is not a seat either');
 });
 
-test('A COMPLAINANT IS NOT AN ACTOR: tripShatter takes a member and does not seat-check it (§2.6)', () => {
+test('A COMPLAINANT IS NOT AN ACTOR: tripShatter takes a member and does not seat-check it (section 2.6)', () => {
   const f = fleet();
   assert.doesNotThrow(() => f.tripShatter('wa:group-1', 'wa:62812 — bu-dewi'));
   const frozen = f.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, channel: 'wa:group-1', text: { id: 'a', en: 'b' } });
-  assert.equal(frozen.disposition, 'card', 'and the freeze worked: the opt-in-auto lane is draft now (§1.7 narrowing)');
+  assert.equal(frozen.disposition, 'card', 'and the freeze worked: the opt-in-auto lane is draft now (section 1.7 narrowing)');
   try { f.releaseShatter('wa:group-1', 'wa:62812 — bu-dewi'); assert.fail('the complainant still cannot release their own freeze'); }
   catch (e) { assert.match(String(e), /not_the_human/); }
   f.releaseShatter('wa:group-1', 'organiser');
@@ -112,7 +112,7 @@ test('A COMPLAINANT IS NOT AN ACTOR: tripShatter takes a member and does not sea
 
 test('ANSWERABILITY IS NOT AUTHORITY: on_behalf_of may be unattributable and is not seat-checked (FR-5.1)', () => {
   // The pack declares itself OPEN, because a community that never said it is discoverable gets the
-  // conservative default (`openness: closed`, spec §2.15) and the public-post gate would refuse
+  // conservative default (`openness: closed`, spec section 2.15) and the public-post gate would refuse
   // before the answerability gate this test is about. Declaring it keeps the path under test
   // unchanged and the new gate explicit.
   const f = new Fleet({
@@ -122,7 +122,7 @@ test('ANSWERABILITY IS NOT AUTHORITY: on_behalf_of may be unattributable and is 
   }, ANSWERS, DAY);
   f.registerMember('wa:62811', 'Asia/Jakarta');
   // The grant names its lane, the way every lane-bound grant in this suite does — a grant with no
-  // channel cannot authorise a send to a channel (§1.8: an always-grant binds its lane). Without it
+  // channel cannot authorise a send to a channel (section 1.8: an always-grant binds its lane). Without it
   // this test would fail on `grant_not_found` and never reach the gate it is about.
   f.issueGrant({ actionClass: 'commit.channel-post', kind: 'allow_once', channel: 'wa:group-1', by: 'organiser' });
   assert.throws(() => f.commit({

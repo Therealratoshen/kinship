@@ -80,7 +80,7 @@ test('every runtime source file imports each types.ts name it uses (no invisible
 
 test('the scanner can fail: a file that uses Ctx without importing it is reported', () => {
   // The real shape of the shatter.ts defect, reconstructed so the rule cannot pass for the wrong reason.
-  const broken = `import { refuse } from './errors.ts';\nexport function trip(ctx: Ctx): void { refuse('not_the_human', '§2.6', 'x'); }\n`;
+  const broken = `import { refuse } from './errors.ts';\nexport function trip(ctx: Ctx): void { refuse('not_the_human', 'section 2.6', 'x'); }\n`;
   const defects = defectsIn(broken, ['Ctx', 'FleetState'], importedNames(broken));
   assert.deepEqual(defects, [{ kind: 'type_not_imported', name: 'Ctx' }]);
 });

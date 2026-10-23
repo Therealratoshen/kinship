@@ -7,7 +7,7 @@ import { makeCtx, makePack } from './helpers.ts';
 import type { Ctx } from '../src/types.ts';
 
 /**
- * §2.11: "Copy travels; people do not." The partner receives nothing but words the organiser
+ * section 2.11: "Copy travels; people do not." The partner receives nothing but words the organiser
  * approved — no member list, no RSVP data, no identifier in any direction (FR-6.1). This suite is
  * that sentence as a function: the scan, what it matches, and — just as important — what it
  * deliberately does not match, so the rule is not quietly broader than its document.
@@ -19,13 +19,13 @@ const ctx = (members: string[] = []): Ctx => {
   return c;
 };
 
-test('a registered member ref in partner copy is caught whole (§2.11 / FR-6.1)', () => {
+test('a registered member ref in partner copy is caught whole (section 2.11 / FR-6.1)', () => {
   const c = ctx(['wa:62811']);
   assert.deepEqual(findMemberLeaks(c.state, ['Jangan lupa absen, wa:62811 sudah daftar', 'reminder list']),
     [{ ref: 'wa:62811', token: 'wa:62811' }], 'the full ref is the obvious leak shape — a templated member line');
 });
 
-test('the bare identifier is caught too — the lane prefix is not the secret (§2.11)', () => {
+test('the bare identifier is caught too — the lane prefix is not the secret (section 2.11)', () => {
   const c = ctx(['wa:62811']);
   assert.deepEqual(findMemberLeaks(c.state, ['Kontak: 62811', '']), [{ ref: 'wa:62811', token: '62811' }],
     '"wa:" is our prefix; 62811 is still the member\'s number, and stripping it is not anonymising');
@@ -71,7 +71,7 @@ test('two members leak as two named entries, sorted — the refusal has to be ac
   assert.deepEqual(leaks.map((l) => l.ref), ['tg:62822', 'wa:62811']);
 });
 
-test('the refusal names the members and never the copy — the timeline is member-readable (§2.3)', () => {
+test('the refusal names the members and never the copy — the timeline is member-readable (section 2.3)', () => {
   const c = ctx(['wa:62811', 'tg:62822']);
   try {
     assertNoMemberDataInPartnerCopy(c.state, {
@@ -83,7 +83,7 @@ test('the refusal names the members and never the copy — the timeline is membe
     assert.ok(e instanceof KinshipError, 'a refusal is a coded outcome, not a crash');
     const err = e as KinshipError;
     assert.equal(err.code, 'partner_data_leak');
-    assert.ok(err.rule?.includes('§2.11'), `the message must cite the rule, got \`${err.rule}\``);
+    assert.ok(err.rule?.includes('section 2.11'), `the message must cite the rule, got \`${err.rule}\``);
     assert.ok(err.message.includes('wa:62811') && err.message.includes('tg:62822'),
       'the organiser has to know which members to delete: ' + err.message);
     assert.ok(err.message.includes('2 member identifier(s)'), 'and how many people are exposed');
@@ -93,7 +93,7 @@ test('the refusal names the members and never the copy — the timeline is membe
   }
 });
 
-test('a leak scan does not mutate state — it is a check, not a transaction (§1.2)', () => {
+test('a leak scan does not mutate state — it is a check, not a transaction (section 1.2)', () => {
   const c = ctx(['wa:62811']);
   const before = c.state.events.length;
   assert.throws(() => assertNoMemberDataInPartnerCopy(c.state, { id: 'wa:62811 ikut ya', en: 'you too' }), /partner_data_leak/);

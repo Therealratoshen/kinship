@@ -85,7 +85,7 @@ test('disclosure cannot be configured off', () =>
   inCopy((dir) => {
     mutate(machine(dir), 'identity_disclosure: required', 'identity_disclosure: optional');
     const r = validatePack(dir);
-    assert.ok(codes(r).includes('PKG-25'), 'spec §2.8: disclosure is outside the escalation path');
+    assert.ok(codes(r).includes('PKG-25'), 'spec section 2.8: disclosure is outside the escalation path');
   }));
 
 test('deleting an invariant is a failure, not a simplification', () =>
@@ -99,7 +99,7 @@ test('"allow once" may not be collapsed into "always"', () =>
   inCopy((dir) => {
     mutate(machine(dir), 'grant_taxonomy: [allow_once, allow_always, deny]', 'grant_taxonomy: [allow, deny]');
     const r = validatePack(dir);
-    assert.ok(codes(r).includes('PKG-26'), 'spec §1.8: the once/always split is the product');
+    assert.ok(codes(r).includes('PKG-26'), 'spec section 1.8: the once/always split is the product');
   }));
 
 test('a pack that cannot name its human does not boot', () =>
@@ -169,7 +169,7 @@ test('the machine and prose halves cannot drift apart', () =>
     assert.ok(c.includes('PKG-22') || c.includes('PKG-23') || c.includes('PKG-05'), 'a fork may not claim bundled in one file and not the other');
   }));
 
-// --- the member-as-subject group (spec §2.9, PRD FR-5) --------------------------------
+// --- the member-as-subject group (spec section 2.9, PRD FR-5) --------------------------------
 // Every rule below fails for the same structural reason: the protection is cheap to keep at
 // build time and unrecoverable after a send. An audit row cannot be backfilled without
 // fabricating it, a name in a sponsor PDF cannot be un-sent, and a lane built without a
@@ -187,7 +187,7 @@ test('an organiser grant may not be made to outrank a member\'s stop', () =>
   inCopy((dir) => {
     mutate(machine(dir), '  suppression_precedence: member-over-organiser', '  suppression_precedence: organiser-over-member');
     const r = validatePack(dir);
-    assert.ok(codes(r).includes('PKG-25'), 'spec §2.9.2: "allow always" cannot resurrect a message someone stopped');
+    assert.ok(codes(r).includes('PKG-25'), 'spec section 2.9.2: "allow always" cannot resurrect a message someone stopped');
   }));
 
 test('quiet hours are the recipient\'s timezone or they are not quiet hours', () =>
@@ -248,18 +248,18 @@ test('an off-ladder autonomy value breaks the build — the check that used to b
 
 test('an agent whose autonomy map is emptied fails, because deny-by-default is silent', () =>
   inCopy((dir) => {
-    mutate(machine(dir), '      observe.read: opt-in-auto\n      moderate.flag: opt-in-auto        # flag-only in bundled packs; the human acts\n      member.notify-flagged: draft      # spec §2.9.4 — the subject of a flag is told, after the fact, with reason\n', '');
+    mutate(machine(dir), '      observe.read: opt-in-auto\n      moderate.flag: opt-in-auto        # flag-only in bundled packs; the human acts\n      member.notify-flagged: draft      # spec section 2.9.4 — the subject of a flag is told, after the fact, with reason\n', '');
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-52'), 'an empty map reads as a safe pack while every class is `never` by silence');
   }));
 
-// --- cross-community promotion (spec §2.11, PRD FR-6) ---------------------------------
+// --- cross-community promotion (spec section 2.11, PRD FR-6) ---------------------------------
 
 test('a cross-promo class without a partner policy never boots', () =>
   inCopy((dir) => {
     mutate(machine(dir), '  - partner_policy', '');
     const r = validatePack(dir);
-    assert.ok(codes(r).includes('PKG-54'), 'spec §2.11: the organiser names the partners and the disclosure line, or the class is unreachable');
+    assert.ok(codes(r).includes('PKG-54'), 'spec section 2.11: the organiser names the partners and the disclosure line, or the class is unreachable');
   }));
 
 test('a cross-promo lane without the suppression rule is a second lane around a stop', () =>
@@ -280,7 +280,7 @@ test('an agent that can post as a member is rejected — astroturfing is absent,
   inCopy((dir) => {
     mutate(machine(dir), '      promote.cross-community: draft', '      message.as-member: never\n      promote.cross-community: draft');
     const r = validatePack(dir);
-    assert.ok(codes(r).includes('PKG-53'), 'spec §2.8 + Part 5: the fleet never pretends to be a person, and a `never` entry is still a surface');
+    assert.ok(codes(r).includes('PKG-53'), 'spec section 2.8 + Part 5: the fleet never pretends to be a person, and a `never` entry is still a surface');
   }));
 
 // --- the BYOD credential line (spec/HOST-CONTRACT.md seam 1, PRD FR-1.17) ------------------------------
@@ -384,7 +384,7 @@ test('an org manifest whose key does not match its filename fails (PKG-58)', () 
     assert.ok(codes(r).includes('PKG-58'), 'two names for one org is how a pack resolves the wrong floor');
   }));
 
-test('an org declaring a second human seat fails the build, naming PRD §12-Q12 (PKG-59)', () =>
+test('an org declaring a second human seat fails the build, naming PRD section 12-Q12 (PKG-59)', () =>
   orgCopy((orgsDir) => {
     const f = join(orgsDir, 'kinshipai.yaml');
     mutate(f, 'human_seats:\n  - organiser', 'human_seats:\n  - organiser\n  - delegate');
@@ -450,7 +450,7 @@ test('a ladder rung handed to an agent fails the build — the fleet flags, a hu
 
 test('a ladder whose last rung names no appeal fails the build (PKG-62)', () =>
   inCopy((dir) => {
-    mutate(machine(dir), "    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec §2.9.4)'", '');
+    mutate(machine(dir), "    appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec section 2.9.4)'", '');
     const r = validatePack(dir);
     assert.ok(r.errors.some((e) => e.startsWith('PKG-62') && /removal/.test(e)), 'the bottom of the ladder is where a member needs the route back');
   }));

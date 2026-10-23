@@ -92,16 +92,16 @@ one Community Moderator — the sole maintainer — so a report about the mainta
 here, and no response time is promised. That is a known incompleteness, listed in
 [ROADMAP.md](ROADMAP.md) under *not complete for contributors*, and it is the same open question the product
 carries for the people it serves: whether any authority may be delegated, and to whom
-(PRD §12-Q12 — recorded as the human-roles row in `DECISIONS.md`'s *Not yet decided* table; the seat set
+(PRD section 12-Q12 — recorded as the human-roles row in `DECISIONS.md`'s *Not yet decided* table; the seat set
 the project has already built is **D36**, and whether the maintainer can be *bound* by the repo's own rules
-is **D26**). An agent may never hold a moderation seat for a human (spec §1.8, §2.7), and
+is **D26**). An agent may never hold a moderation seat for a human (spec section 1.8, section 2.7), and
 this file does not create one.
 
 ## Addressing and Repairing Harm
 
 **[Project note: the ladder below is the Covenant's suggested guideline, unmodified. The maintainer is also
 the only moderator, which is disclosed in the section above. This project's separate, pack-declared
-`sanction_ladder:` — the graduated consequences a *community* applies to a member, spec §2.12 / PRD FR-5.11 —
+`sanction_ladder:` — the graduated consequences a *community* applies to a member, spec section 2.12 / PRD FR-5.11 —
 is data, not capability: the fleet records it and cannot carry any rung out. Keeping the contributor-facing
 ladder here and the member-facing ladder there is deliberate; do not merge them in a PR.]**
 

@@ -1,5 +1,5 @@
 /**
- * The log is the product's promise (§1.2): a replayable record of what happened. These tests hold
+ * The log is the product's promise (section 1.2): a replayable record of what happened. These tests hold
  * `append` to what its own doc-comment claims, which is the part no functional test could catch —
  * a shallow copy behaves identically until a caller touches its payload after committing.
  */
@@ -50,7 +50,7 @@ test('append freezes the logged event: a nested value mutated after commit does 
     'the audit record must say who was on the list AT COMMIT TIME, not whatever the caller\'s array became');
 });
 
-test('hashText is stable, 16 hex characters, and separates the two languages (§1.5 revision binding)', () => {
+test('hashText is stable, 16 hex characters, and separates the two languages (section 1.5 revision binding)', () => {
   const id = hashText('ingat kopdar');
   assert.match(id, /^[0-9a-f]{16}$/, 'the approval binds to a hash a card can quote');
   assert.equal(id, hashText('ingat kopdar'), 'same text, same hash — replay depends on this');

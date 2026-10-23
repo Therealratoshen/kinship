@@ -7,14 +7,14 @@ const COMMUNITY = 'AI Builders ID';
 const ID_EN = ['id', 'en'] as const;
 const EN_AR = ['en', 'ar'] as const;
 
-test('the disclosure lines name the assistant and the community — never a person (§2.8)', () => {
+test('the disclosure lines name the assistant and the community — never a person (section 2.8)', () => {
   const id = disclosureLine('id', COMMUNITY);
   const en = disclosureLine('en', COMMUNITY);
   assert.match(id, /asisten otomatis komunitas AI Builders ID/);
   assert.match(id, /bukan oleh manusia/, 'the denial is explicit, not implied');
   assert.match(en, /automated assistant of AI Builders ID/);
   assert.match(en, /not a human/);
-  assert.match(en, /escalate to the organiser/, '§2.4 — the escalation path is part of the disclosure');
+  assert.match(en, /escalate to the organiser/, 'section 2.4 — the escalation path is part of the disclosure');
 });
 
 test('the disclosure line is canonical in ARABIC too — a community reads the promise, not a translation', () => {
@@ -25,7 +25,7 @@ test('the disclosure line is canonical in ARABIC too — a community reads the p
   assert.match(ar, /المساعد الآلي/, 'it names the assistant');
   assert.match(ar, /ليست من إنسان/, 'it says plainly that it is not a human');
   assert.ok(ar.includes(COMMUNITY), 'and it names the community');
-  assert.match(ar, /المنظّم/, '§2.4 — the escalation path is part of the disclosure, in every language');
+  assert.match(ar, /المنظّم/, 'section 2.4 — the escalation path is part of the disclosure, in every language');
 });
 
 test('a member-facing draft carrying the canonical line passes the gate', () => {
@@ -39,7 +39,7 @@ test('a member-facing draft carrying the canonical line passes the gate', () => 
   ));
 });
 
-test('an improvised disclosure does not substitute for the canonical line (§2.8)', () => {
+test('an improvised disclosure does not substitute for the canonical line (section 2.8)', () => {
   assert.throws(() => assertDisclosed(
     { id: 'Halo! Aku asisten AI dari komunitas ya.', en: 'Hey! I am an AI assistant, just so you know.' },
     COMMUNITY,

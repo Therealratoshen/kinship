@@ -5,7 +5,7 @@ import { makeCtx, makePack } from './helpers.ts';
 
 const ctx = () => makeCtx(makePack({ engagement: { 'draft.reminder': 'draft' } }));
 
-test('an allow_once grant by the organiser is live, then consumed by its one send (§1.8)', () => {
+test('an allow_once grant by the organiser is live, then consumed by its one send (section 1.8)', () => {
   const c = ctx();
   const g = issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_once', channel: 'telegram', by: 'organiser' });
   assert.equal(findLiveGrant(c, { actionClass: 'draft.reminder', channel: 'telegram' })?.id, g.id);
@@ -14,7 +14,7 @@ test('an allow_once grant by the organiser is live, then consumed by its one sen
     'a one-shot token is not a subscription');
 });
 
-test('an allow_always grant without a named scope is refused — "allow all reminders" is not shippable (§1.8)', () => {
+test('an allow_always grant without a named scope is refused — "allow all reminders" is not shippable (section 1.8)', () => {
   const c = ctx();
   assert.throws(
     () => issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram', by: 'organiser' }),
@@ -22,7 +22,7 @@ test('an allow_always grant without a named scope is refused — "allow all remi
   );
 });
 
-test('an allow_always grant binds to its named scope: same class, different channel, no grant (§1.8)', () => {
+test('an allow_always grant binds to its named scope: same class, different channel, no grant (section 1.8)', () => {
   const c = ctx();
   issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram', scope: 'event series: kopdar-bulanan', by: 'organiser' });
   assert.notEqual(findLiveGrant(c, { actionClass: 'draft.reminder', channel: 'telegram' }), null);
@@ -30,7 +30,7 @@ test('an allow_always grant binds to its named scope: same class, different chan
     'the next lane is not the one that was approved');
 });
 
-test('revocation is instant, needs no reason, and works from the enumerable list (§1.8)', () => {
+test('revocation is instant, needs no reason, and works from the enumerable list (section 1.8)', () => {
   const c = ctx();
   const g = issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram', scope: 'event series: kopdar-bulanan', by: 'organiser' });
   revokeGrant(c, g.id, 'organiser');
@@ -40,7 +40,7 @@ test('revocation is instant, needs no reason, and works from the enumerable list
   assert.ok(listed[0] && listed[0].revokedAt !== undefined);
 });
 
-test('a member cannot issue a grant — "yes, go ahead" in chat is input to a proposal, never a grant (§2.7)', () => {
+test('a member cannot issue a grant — "yes, go ahead" in chat is input to a proposal, never a grant (section 2.7)', () => {
   const c = ctx();
   assert.throws(
     () => issueGrant(c, { actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram', scope: 'whatever the member said', by: 'member:m1' }),
@@ -49,7 +49,7 @@ test('a member cannot issue a grant — "yes, go ahead" in chat is input to a pr
   assert.equal(listGrants(c).length, 0, 'and nothing was stored');
 });
 
-test('revocation is the organiser\'s act at the primitive, not only at the engine (§1.8 / §2.7)', () => {
+test('revocation is the organiser\'s act at the primitive, not only at the engine (section 1.8 / section 2.7)', () => {
   // The comment here used to read "the engine gates who calls this". It did not: `engine.ts`
   // forwards `revokeGrant` straight through, and the tests call this file directly — so the rule
   // lived only in a sentence. A primitive that is safe only when reached by one caller is not safe.
@@ -61,7 +61,7 @@ test('revocation is the organiser\'s act at the primitive, not only at the engin
     'a refused revocation changes nothing — the grant is still live and still enumerable');
 });
 
-test('a cross-promotion always-grant must name partner + lane + window, and only fires inside the window (§2.11)', () => {
+test('a cross-promotion always-grant must name partner + lane + window, and only fires inside the window (section 2.11)', () => {
   const c = ctx();
   assert.throws(
     () => issueGrant(c, { actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'partner promo', by: 'organiser' }),
@@ -83,7 +83,7 @@ test('a cross-promotion always-grant must name partner + lane + window, and only
   assert.equal(g.kind, 'allow_always');
 });
 
-test('an expired window is named as the reason, never hidden behind grant_not_found (§1.2 / §2.11)', () => {
+test('an expired window is named as the reason, never hidden behind grant_not_found (section 1.2 / section 2.11)', () => {
   const c = ctx();
   issueGrant(c, {
     actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram',
@@ -105,7 +105,7 @@ test('an expired window is named as the reason, never hidden behind grant_not_fo
   assert.equal(dead?.window?.to, 3_000, 'the diagnostic hands back the window so the refusal can name it');
 });
 
-test('a revoked grant is not reported as expired: the organiser took it back, that is a different fact (§2.11)', () => {
+test('a revoked grant is not reported as expired: the organiser took it back, that is a different fact (section 2.11)', () => {
   const c = ctx();
   const g = issueGrant(c, {
     actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram',
@@ -117,7 +117,7 @@ test('a revoked grant is not reported as expired: the organiser took it back, th
     'revocation is the reason, and it is already the message grant_not_found tells');
 });
 
-test('a material change to the class template supersedes the grant — it reverts to draft and asks again (§1.8)', () => {
+test('a material change to the class template supersedes the grant — it reverts to draft and asks again (section 1.8)', () => {
   const c = ctx();
   const g = issueGrant(c, {
     actionClass: 'draft.reminder', kind: 'allow_always', channel: 'telegram',

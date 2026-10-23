@@ -13,12 +13,12 @@ test('a registered member is contactable until they say stop', () => {
   assert.doesNotThrow(() => assertContactable(c.state, 'm1'));
 });
 
-test('an unknown member is UNKNOWN, not clear — absent suppression row fails closed (§2.9)', () => {
+test('an unknown member is UNKNOWN, not clear — absent suppression row fails closed (section 2.9)', () => {
   const c = ctx();
   assert.throws(() => assertContactable(c.state, 'ghost'), /suppression_unknown/);
 });
 
-test('a stop is cross-lane: one row, every class, no exceptions (§2.9 / FR-5.2)', () => {
+test('a stop is cross-lane: one row, every class, no exceptions (section 2.9 / FR-5.2)', () => {
   const c = ctx();
   registerMember(c, 'm1', 'Asia/Jakarta');
   suppressMember(c, 'm1', { source: 'member', viaClass: 'nudge.no-show' });
@@ -26,7 +26,7 @@ test('a stop is cross-lane: one row, every class, no exceptions (§2.9 / FR-5.2)
     'the stop arrived through one lane; it holds on every lane');
 });
 
-test('there is no un-suppress: a second call cannot clear it, and no API exists that does (§2.9)', () => {
+test('there is no un-suppress: a second call cannot clear it, and no API exists that does (section 2.9)', () => {
   const c = ctx();
   registerMember(c, 'm1', 'Asia/Jakarta');
   suppressMember(c, 'm1', { source: 'member', viaClass: 'nudge.no-show' });
@@ -36,7 +36,7 @@ test('there is no un-suppress: a second call cannot clear it, and no API exists 
   assert.equal(rows.length, 1, 'one stop, one row — not a toggle');
 });
 
-test('the per-24h cap counts the member, not the lane (§2.9 / FR-5.5, pack cap = 2)', () => {
+test('the per-24h cap counts the member, not the lane (section 2.9 / FR-5.5, pack cap = 2)', () => {
   const c = ctx();
   const t0 = AT(7);
   const commits: number[] = [t0 - 3 * 3600_000];
@@ -47,7 +47,7 @@ test('the per-24h cap counts the member, not the lane (§2.9 / FR-5.5, pack cap 
     'the window is rolling 24h, not a daily batch — outside it does not count');
 });
 
-test('quiet hours are the member local time, not the organiser (§2.9 / FR-5.5)', () => {
+test('quiet hours are the member local time, not the organiser (section 2.9 / FR-5.5)', () => {
   const c = ctx();
   const organiserIsAwake = AT(17); // 17:00 UTC — daytime for a UTC organiser
   assert.throws(() => assertSendHour('Asia/Jakarta', organiserIsAwake), /quiet_hours/,
@@ -55,7 +55,7 @@ test('quiet hours are the member local time, not the organiser (§2.9 / FR-5.5)'
   assert.doesNotThrow(() => assertSendHour('Asia/Jakarta', AT(7))); // 14:00 WIB
 });
 
-test('nothing leaves the community under the aggregation floor — refuse, never truncate (§2.9 / FR-5.3)', () => {
+test('nothing leaves the community under the aggregation floor — refuse, never truncate (section 2.9 / FR-5.3)', () => {
   const c = ctx();
   assert.throws(
     () => assertAggregateOnly(c, 9, ['bu-dewi', 'pak-anton']),

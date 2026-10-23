@@ -1,7 +1,7 @@
-# License memo — PRD §12-Q4 (a question, with a recommendation)
+# License memo — PRD section 12-Q4 (a question, with a recommendation)
 
 **Date:** 2026-10-18 · **Owner of the decision:** Filbert (`DECISIONS.md` D1 assigns the license question to
-him; PRD §12-Q4 is where the ruling lands) · **Status:** **open.** This file recommends. It does not decide,
+him; PRD section 12-Q4 is where the ruling lands) · **Status:** **open.** This file recommends. It does not decide,
 and no row here belongs in `DECISIONS.md` until he takes the call.
 
 Written because `PLAN.md` W9 names it as one of two remaining hygiene deliverables, and because the repo
@@ -20,7 +20,7 @@ already says "MIT" in four places while Q4 is still listed as undecided. That ga
 So the practical answer to Q4 is already the default everyone sees. That is not a problem by itself — it is
 normal for a repo to carry its intended license before the owner formalises it — but it *is* a claim running
 ahead of its decision record, which is invariant #3 applied to ourselves. The fix is one line from him in
-PRD §12, not a rewrite of anything.
+PRD section 12, not a rewrite of anything.
 
 ## 2 · The question, stated honestly
 
@@ -31,7 +31,7 @@ or closes the governance layer that makes it Kinship.
 ## 3 · Evidence on the table
 
 - **MIT is the shape the adjacent category actually won in.** The highest-traction OSS agent plane near this
-  category is Paperclip, MIT (`research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §1) — as are the teams/skills
+  category is Paperclip, MIT (`research/PAPERCLIP-OSS-STUDY-2026-10-17.md` section 1) — as are the teams/skills
   catalog packages whose format we deliberately copied (**D17**), and as is **Discourse AI**, the closest OSS
   moderation precedent and the one that already ships our flag-only posture.
 - **Paperclip also shows the open-core pattern working without AGPL:** MIT core that keeps enforcement in the
@@ -50,17 +50,17 @@ or closes the governance layer that makes it Kinship.
 
 ## 4 · The tension this memo has to name, because Q4's original argument did not
 
-PRD §12-Q4's reasoning includes: *"AGPL protects against a hosting competitor; there is no hosted product
-planned (§5.2), so at 4–5 h/wk the protection buys nothing."*
+PRD section 12-Q4's reasoning includes: *"AGPL protects against a hosting competitor; there is no hosted product
+planned (section 5.2), so at 4–5 h/wk the protection buys nothing."*
 
 **That premise has moved since it was written.** **D19**, recorded the same day, says the hosted product will
 live under ShortcutSistem at `shortcutsistem.com`. So "no hosted product planned" is no longer exactly true,
 and a recommendation resting on it should be re-derived rather than repeated. Two clarifications keep it
 accurate:
 
-1. What PRD §5.2 actually rules out is **multi-tenant SaaS hosting of other people's communities** — the ops
+1. What PRD section 5.2 actually rules out is **multi-tenant SaaS hosting of other people's communities** — the ops
    burden, not the existence of a hosted surface. A hosted *single-tenant* Kinship on the owner's own terms is
-   compatible with both §5.2 and D19.
+   compatible with both section 5.2 and D19.
 2. The AGPL case is therefore not "AGPL is worthless," it is **"AGPL would forbid the owner himself from doing
    the thing D19 announces, and forbid the exact self-hosted parity D19 promises."** If the governance core is
    AGPL, every downstream modifier owes source disclosure — including communities that fork a pack to run it
@@ -93,7 +93,7 @@ not because the old sentence still reads well.
 
 ## 7 · The ask, sized
 
-One PRD §12 line — **Q4: MIT, ratified 2026-MM-DD** — plus a dated `DECISIONS.md` row so the ratification is
+One PRD section 12 line — **Q4: MIT, ratified 2026-MM-DD** — plus a dated `DECISIONS.md` row so the ratification is
 auditable the way D1–D21 are meant to be. Everything else in this file can then be read as background rather
 than as a live inconsistency.
 
@@ -101,4 +101,4 @@ than as a live inconsistency.
 
 | Date | Change |
 |---|---|
-| 2026-10-18 | Written from the repo's verified state; §4 records that D19 moved Q4's "no hosted product planned" premise and re-derives the recommendation on the new facts. |
+| 2026-10-18 | Written from the repo's verified state; section 4 records that D19 moved Q4's "no hosted product planned" premise and re-derives the recommendation on the new facts. |

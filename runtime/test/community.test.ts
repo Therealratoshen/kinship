@@ -30,7 +30,7 @@
  *
  * And the honest nulls: a pack that declares no coverage window has an *unknown* duty state, not an
  * always-on one, and `null` is what this file reports for "we cannot tell". Zero is a claim that
- * nothing was missed; `null` is the absence of the claim (§2.9's discipline, applied to staffing).
+ * nothing was missed; `null` is the absence of the claim (section 2.9's discipline, applied to staffing).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -224,7 +224,7 @@ test('an obligation that outlives its staffed shift is counted, and a pack with 
   assert.equal(h2.community.missedShift, null, 'with no window there is no shift to have missed');
 });
 
-test('the coverage read is a read: it appends nothing, and replay reproduces it exactly (§1.2)', () => {
+test('the coverage read is a read: it appends nothing, and replay reproduces it exactly (section 1.2)', () => {
   const pack = makePack({ 'community-lead': { 'observe.read': 'opt-in-auto' } }, JAKARTA());
   const f = Fleet.boot(pack, { community_name: 'AI Builders ID' }, local('Asia/Jakarta', 2026, 7, 20, 10, 0));
   f.beginEvent('kopdar-1');
@@ -237,7 +237,7 @@ test('the coverage read is a read: it appends nothing, and replay reproduces it 
 
   // The name of this test promises a replay, so the test does one: `Fleet.replay` rebuilds the fleet
   // from the log alone, and the coverage section must come back identical. A read that depends on
-  // anything the log does not carry would differ here — which is the whole claim of §1.2.
+  // anything the log does not carry would differ here — which is the whole claim of section 1.2.
   const answers = { community_name: 'AI Builders ID' };
   const replayed = Fleet.replay(f.events, answers, pack);
   assert.deepEqual(

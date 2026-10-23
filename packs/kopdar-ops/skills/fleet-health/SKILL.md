@@ -10,7 +10,7 @@ trigger: once per run, after the work
 The cheapest fleet-health signal available to a two-person-plus-three-agents operation: let the agent report
 that a lane is a mess, before the organiser discovers it from a member.
 
-Two channels, deliberately unequal, taken from the donor repo's skill pair (`study` §6.8):
+Two channels, deliberately unequal, taken from the donor repo's skill pair (`study` section 6.8):
 
 - **`complain`** — unstructured, agent-only, never surfaced to members, no format imposed. Structuring a
   complaint is how you get plausible-sounding complaints instead of true ones.

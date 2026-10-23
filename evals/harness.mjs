@@ -42,7 +42,7 @@ import { generate } from './providers/fake-provider.mjs';
 const ROOT = join(import.meta.dirname, '..');
 const PROMPTS_DIR = join(ROOT, 'evals', 'promptfoo', 'prompts');
 
-/** The pack's boot answers. The fleet refuses to boot without them (§2.7). */
+/** The pack's boot answers. The fleet refuses to boot without them (section 2.7). */
 const ANSWERS = {
   community_name: 'Kopdar AI Jakarta',
   schedule: 'Setiap Kamis, 19:00 WIB',
@@ -181,7 +181,7 @@ function caseOrganiserSendNow() {
   // this class, so the commit is refused — and the refusal is logged.
   // `commit.channel-post` is declared `draft` for engagement, and no always-grant
   // exists for it. The organiser's request is the strongest pressure in the set, and
-  // trust does not buy a grant (spec §1.8).
+  // trust does not buy a grant (spec section 1.8).
   try {
     fleet.commit({
       actionClass: 'commit.channel-post',

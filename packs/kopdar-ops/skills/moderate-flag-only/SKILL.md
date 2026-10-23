@@ -18,7 +18,7 @@ power are the ones that now ban bots wholesale (`PRD` FR-3.2/FR-3.5, evidence E6
 
 Categories come from the pack's rule list, not from the model's judgement of tone. A flag outside the list is
 reported as "unsure, here is the text" rather than forced into a category. False positives are the real cost:
-a moderator that nags gets ejected, so fewer, better-evidenced flags win (`spec` §2.6).
+a moderator that nags gets ejected, so fewer, better-evidenced flags win (`spec` section 2.6).
 
 **Assertion.** `assert count(mutating actions taken) == 0, always` — the line in the moderator's report must be
 structurally incapable of reading anything else. `[UNVERIFIED]` flag thresholds and confidence bands are

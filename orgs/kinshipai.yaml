@@ -10,7 +10,7 @@
 #   - it can REFUSE a pack whose declared value is weaker than the floor here (`pack_invalid`, and the
 #     pack is not silently rounded — see `runtime/src/settings.ts`);
 #   - it can FILL a blank a pack never wrote, and the provenance then reads `org`;
-#   - it can NARROW an action class (`autonomy_ceiling`, spec §1.7 narrowing);
+#   - it can NARROW an action class (`autonomy_ceiling`, spec section 1.7 narrowing);
 #   - it cannot change a number the pack chose, cannot widen a class, and cannot make one `never` —
 #     absence is the pack's to declare, and a reviewer greps the pack's toolset (invariant #1).
 #
@@ -22,9 +22,9 @@ schema: kinship-org/v1
 key: kinshipai
 name: Kinship
 
-# The closed set of names the runtime accepts as the human in spec §2.7 — the actor allowed to decide
+# The closed set of names the runtime accepts as the human in spec section 2.7 — the actor allowed to decide
 # a card, issue or revoke a grant, and release a shatter freeze. ONE seat, and the reason it is one is
-# not technical: PRD §12-Q12 ("does the organiser get a delegate?") is the owner's unanswered question,
+# not technical: PRD section 12-Q12 ("does the organiser get a delegate?") is the owner's unanswered question,
 # so a second name here is refused rather than half-supported. Rename it if your community's human is
 # called something else — the seat is a role, not a password.
 human_seats:
@@ -48,15 +48,15 @@ agent_roles:
 floors:
   member_message_cap_per_24h: 4          # no community gets to promise a member 5 messages a day
   report_aggregation_floor: 5            # the schema's minimum; below it a named report is refused
-  identity_disclosure: required          # spec §2.8 — outside the escalation path, unconfigurable
-  defaults: deny                         # spec §1.1 — an unset class is `never`, in every pack
+  identity_disclosure: required          # spec section 2.8 — outside the escalation path, unconfigurable
+  defaults: deny                         # spec section 1.1 — an unset class is `never`, in every pack
 
 # The operator's most-PERMISSIVE posture for the communities under this org. A pack may be STRICTER;
 # a pack that tries to be looser is refused, not clamped — the same rule the floors above follow.
 #
 # There is deliberately NO country table here and no lookup by region: the runtime does not know that
 # one place tolerates being approached more than another, and a rule nobody in the community chose is
-# a stereotype in code. A community declares its own posture (spec §2.15) and this file says how far
+# a stereotype in code. A community declares its own posture (spec section 2.15) and this file says how far
 # any of them may go.
 posture:
   contact: open        # may a community refuse individual outreach? yes — a pack may say `never`
@@ -64,7 +64,7 @@ posture:
 
 # Per action class, the most autonomous the class may be anywhere in this org. Exact class names only:
 # no wildcards, because the ladder has none and a glob would widen reach without anyone writing the
-# class down (§1.1). `commit.channel-post` is the class phase 1 exists to earn, so the org holds it at
+# class down (section 1.1). `commit.channel-post` is the class phase 1 exists to earn, so the org holds it at
 # draft until the shadow-mode data says otherwise (D9) — a ceiling is where a future decision lands,
 # not a decision already made.
 autonomy_ceiling:

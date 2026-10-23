@@ -25,12 +25,12 @@ const isRaised = (code: string): boolean =>
 
 const ANSWERS = { community_name: 'AI Builders ID', escalation_contact: 'organiser', member_notice_text: 'bot ini asisten organiser', partner_policy: 'Kopdar Sebelah + disclosure' };
 
-test('a refusal message names the code, the rule, and the reason — in that order (§1.2)', () => {
-  const e = new KinshipError('quiet_hours', 'member is asleep', 'spec §2.9');
-  assert.equal(e.message, '[quiet_hours] (spec §2.9) member is asleep',
+test('a refusal message names the code, the rule, and the reason — in that order (section 1.2)', () => {
+  const e = new KinshipError('quiet_hours', 'member is asleep', 'spec section 2.9');
+  assert.equal(e.message, '[quiet_hours] (spec section 2.9) member is asleep',
     'the log line has to be readable by someone who did not write the rule');
   assert.equal(e.code, 'quiet_hours');
-  assert.equal(e.rule, 'spec §2.9');
+  assert.equal(e.rule, 'spec section 2.9');
   assert.equal(e.name, 'KinshipError');
   assert.ok(e instanceof Error, 'so existing catch/expect-throws machinery works without a special case');
 });
@@ -42,7 +42,7 @@ test('the rule is optional in the type but never invented: no rule, no parenthes
 });
 
 test('refuse() throws and is typed never — the only way domain code says no', () => {
-  const thrower = (): ReturnType<typeof refuse> => refuse('stale_target', 'spec §1.5', 'the revision changed');
+  const thrower = (): ReturnType<typeof refuse> => refuse('stale_target', 'spec section 1.5', 'the revision changed');
   assert.throws(thrower, (e: unknown) => {
     assert.ok(e instanceof KinshipError, 'catchers rely on the class, not on message text');
     assert.equal((e as KinshipError).code, 'stale_target');

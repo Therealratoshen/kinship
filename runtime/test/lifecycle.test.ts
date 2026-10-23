@@ -49,7 +49,7 @@ test('closed is terminal — nothing re-enters a finished event loop', () => {
   assert.throws(() => transitionPhase(c, 'kopdar-12', 'running'), /phase_sequence_violated/);
 });
 
-test('single-active-per-origin: a second claim for the same (event, origin, phase) is a 409 that is never retried (§1.9.4, §1.4)', () => {
+test('single-active-per-origin: a second claim for the same (event, origin, phase) is a 409 that is never retried (section 1.9.4, section 1.4)', () => {
   const c = ctx();
   beginEvent(c, 'kopdar-12');
   claimPhaseOrigin(c, 'kopdar-12', 'rsvp-export', 'sheet-1', 'promoting', 'event-ops');
@@ -57,7 +57,7 @@ test('single-active-per-origin: a second claim for the same (event, origin, phas
   claimPhaseOrigin(c, 'kopdar-12', 'rsvp-export', 'sheet-1', 't-minus-7', 'engagement'); // another phase is a different claim
 });
 
-test('exclusive ownership of the event loop: two agents, one 409, and the caller picks different work (§1.4)', () => {
+test('exclusive ownership of the event loop: two agents, one 409, and the caller picks different work (section 1.4)', () => {
   const c = ctx();
   beginEvent(c, 'kopdar-12');
   checkoutEvent(c, 'kopdar-12', 'event-ops');
@@ -66,7 +66,7 @@ test('exclusive ownership of the event loop: two agents, one 409, and the caller
   checkoutEvent(c, 'kopdar-12', 'event-ops'); // re-checkout by the owner is a no-op, not a conflict
 });
 
-test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake row with nextCheckAt (§1.3)', () => {
+test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake row with nextCheckAt (section 1.3)', () => {
   const c = ctx();
   assert.throws(() => assertWakeBacked(c, 'chase rsvp non-responders'), /ghost_watcher/,
     'prose is not a waiting path');

@@ -32,7 +32,7 @@ Rules:
   fact.
 - **Bilingual, Indonesian first**, with the disclosure line where the artefact is member-facing.
 - **Quarantined content does not appear.** A member's low-trust message is replaced with the
-  substitution string, exactly as in `recap` (`spec` §1.7).
+  substitution string, exactly as in `recap` (`spec` section 1.7).
 - **The window is dated.** Minutes state which meeting they cover, because a decision is only real
   against the moment it was taken.
 

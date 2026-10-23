@@ -6,14 +6,14 @@
  *
  *  1. **Derived, never asserted.** Every number comes from a row the fleet already logged, so the
  *     report is replayable and cannot invent a condition. A read that mutates the log would
- *     corrupt §1.2's replay property, so that is tested too.
- *  2. **It counts the fleet, not the people.** `PRD §5` puts member-intelligence / churn scoring
+ *     corrupt section 1.2's replay property, so that is tested too.
+ *  2. **It counts the fleet, not the people.** `PRD section 5` puts member-intelligence / churn scoring
  *     out of scope, so there is no per-member row and no rate here — and the report says out loud
  *     what it cannot see. A health read that quietly becomes a sentiment metric is the failure
  *     mode this file exists to make impossible.
  *  3. **A member identifier does not ride along.** The report is the artefact an organiser
  *     forwards — to a co-organiser, a sponsor, a hub — so a free-text field naming a member is
- *     substituted on the way out, the same containment move §1.7 makes for drafting context.
+ *     substituted on the way out, the same containment move section 1.7 makes for drafting context.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -107,7 +107,7 @@ test('an escalation the organiser has not answered ages on its own, because a st
 
 test('an unset ceiling reports as unset, never as zero spend against nothing', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
-  f.setBudget('kopdar-1', null);                     // PRD §12-Q9: the honest boot state
+  f.setBudget('kopdar-1', null);                     // PRD section 12-Q9: the honest boot state
   const r = f.health();
   const b = r.budgets.find((x) => x.eventId === 'kopdar-1');
   assert.ok(b);
@@ -190,7 +190,7 @@ test('a member identifier in a free-text field is withheld from the report, not 
   f.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000 });
   f.advance(1_200_000);
   const raw = JSON.stringify(f.health());
-  assert.ok(raw.includes(HEALTH_WITHHELD_MEMBER_REF), 'a fixed sentence, not a masked preview (§1.7\'s precedent)');
+  assert.ok(raw.includes(HEALTH_WITHHELD_MEMBER_REF), 'a fixed sentence, not a masked preview (section 1.7\'s precedent)');
   assert.ok(!raw.includes('wa:62811'), 'the report is the artefact an organiser forwards — a person does not travel in it');
   assert.ok(raw.includes('about the venue change'), 'and it substitutes the identifier, not the whole field: the organiser still sees which promise is overdue');
 });
@@ -220,7 +220,7 @@ test('the snapshot counts the fleet and refuses to judge the people: no per-memb
   f.suppressMember('wa:62899', 'member');
   const r = f.health();
   assert.deepEqual(Object.keys(r.members).sort(), ['registered', 'suppressed'],
-    'two counts, because PRD §5 puts member-intelligence / churn scoring out of scope — no per-member entry and no rate');
+    'two counts, because PRD section 5 puts member-intelligence / churn scoring out of scope — no per-member entry and no rate');
   assert.equal(r.members.registered, 2);
   assert.equal(r.members.suppressed, 1);
 
@@ -229,7 +229,7 @@ test('the snapshot counts the fleet and refuses to judge the people: no per-memb
   assert.ok(text.includes('nothing has sent'), 'and why it cannot: phase 1 ships no transport (D21/D9), so there is no member traffic to read');
 });
 
-test('replay reproduces the snapshot exactly — the health read is a property of the log, not of the process (§1.2)', () => {
+test('replay reproduces the snapshot exactly — the health read is a property of the log, not of the process (section 1.2)', () => {
   const f = Fleet.boot(pack(TWO_AGENTS), ANSWERS, DAY);
   f.beginEvent('kopdar-1');
   f.attempt({ actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-1' }, ...bundle() });

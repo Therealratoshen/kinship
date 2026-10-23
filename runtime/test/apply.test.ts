@@ -20,7 +20,7 @@ const exec = (over: Partial<Extract<FleetEvent, { type: 'CommitExecuted' }>> = {
   revisionHash: 'deadbeefdeadbeef', onBehalfOf: 'organiser', recipients: [], transport: 'none', at: 5, ...over,
 });
 
-test('commitEvent appends AND applies: the log and the derived state move together (§1.2)', () => {
+test('commitEvent appends AND applies: the log and the derived state move together (section 1.2)', () => {
   const s = freshState();
   const logged = commitEvent(s, member('wa:62811'));
   assert.equal(s.events.length, 1, 'the event is in the log');
@@ -38,7 +38,7 @@ test('applyEvent alone does not log — the reason commitEvent exists and caller
   assert.equal(logless.events.length, 0, 'a caller that applies without appending breaks replay silently — so commitEvent is the only public path');
 });
 
-test('CommitExecuted times the send per registered recipient — the 24h cap reads this (§2.9)', () => {
+test('CommitExecuted times the send per registered recipient — the 24h cap reads this (section 2.9)', () => {
   const s = freshState();
   commitEvent(s, member('wa:62811'));
   commitEvent(s, exec({ recipients: ['wa:62811'] }));
@@ -51,7 +51,7 @@ test('CommitExecuted times the send per registered recipient — the 24h cap rea
   assert.equal(s.commitsByMember.size, 1, 'a recipient-less internal commit invents no member');
 });
 
-test('CommitExecuted counts partner sends per origin — the counter §2.11\'s cap reads', () => {
+test('CommitExecuted counts partner sends per origin — the counter section 2.11\'s cap reads', () => {
   const s = freshState();
   commitEvent(s, exec({ partner: 'kopdar-sebelah' }));
   assert.equal(s.crossPromoByEvent.get('kopdar-12'), 1, 'keyed by origin id, because the cap is per event lifecycle');
@@ -65,7 +65,7 @@ test('CommitExecuted counts partner sends per origin — the counter §2.11\'s c
   assert.equal(s.crossPromoByEvent.size, 2);
 });
 
-test('refusals and escalations are outcomes: logged, and they move no other state (§1.2)', () => {
+test('refusals and escalations are outcomes: logged, and they move no other state (section 1.2)', () => {
   const s = freshState();
   commitEvent(s, { type: 'CommitRefused', actionClass: 'draft.promote', agent: 'engagement', code: 'grant_not_found', at: 7 });
   commitEvent(s, { type: 'EscalationRaised', purpose: 'sponsor tier disagreement', to: 'organiser', cardId: 'card-9', at: 8 });
@@ -91,7 +91,7 @@ test('replay of an empty log is exactly a fresh state; the seq follows the last 
   commitEvent(s, exec({ recipients: ['wa:62811'] }));
   const reborn = replay(s.events);
   assert.equal(reborn.seq, 2);
-  assert.deepEqual(reborn.events, s.events, 'the log is part of state (§1.2), so the fold carries it');
+  assert.deepEqual(reborn.events, s.events, 'the log is part of state (section 1.2), so the fold carries it');
   assert.deepEqual(reborn.commitsByMember.get('wa:62811'), [5]);
 });
 

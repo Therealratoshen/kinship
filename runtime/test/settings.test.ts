@@ -12,7 +12,7 @@
  *
  *   - a value the pack **declared** may only ever be equal or stricter. Weaker → `pack_invalid`.
  *   - a value the pack **omitted** inherits the org's floor, and provenance says `org`.
- *   - an autonomy ceiling genuinely narrows, because narrowing is what §1.7 already does — and it
+ *   - an autonomy ceiling genuinely narrows, because narrowing is what section 1.7 already does — and it
  *     may not widen, and may not say `never` (that is the pack's to declare: invariant #1).
  *
  * The consequence worth naming out loud, because it is the whole design: **an org can never change
@@ -71,7 +71,7 @@ test('with no org tier, resolution is the identity: the pack keeps every number 
   assert.equal(r.orgKey, null);
 });
 
-test('every effective guardrail gets exactly one provenance row — who set this is answerable (§1.2)', () => {
+test('every effective guardrail gets exactly one provenance row — who set this is answerable (section 1.2)', () => {
   const rows = resolve({ pack: packWith({}) }).provenance.filter((p) => p.tier === 'guardrail');
   assert.deepEqual(rows.map((r) => r.key).sort(), [
     'defaults_deny', 'identity_disclosure', 'member_message_cap_per_24h', 'report_aggregation_floor',
@@ -154,7 +154,7 @@ test('an org autonomy ceiling narrows a pack class, and cannot widen one', () =>
   const pack = packWith({});
   const r = resolve({ pack, org: ORG });
   assert.equal(resolveAutonomy({ pack, role: 'engagement', actionClass: 'commit.channel-post', state: freshState(), answers: {}, settings: r }), 'draft',
-    'the pack says opt-in-auto; the org holds it at draft — §1.7 narrowing, not a new mechanism');
+    'the pack says opt-in-auto; the org holds it at draft — section 1.7 narrowing, not a new mechanism');
   const widened = resolve({ pack, org: parseOrg('schema: kinship-org/v1\nkey: wide\nname: Wide\nhuman_seats:\n  - organiser\nagent_roles: []\nautonomy_ceiling:\n  draft.promote: opt-in-auto\n') });
   assert.equal(resolveAutonomy({ pack, role: 'engagement', actionClass: 'draft.promote', state: freshState(), answers: {}, settings: widened }), 'draft',
     'draft stays draft: a ceiling is a ceiling, never a floor');
@@ -183,7 +183,7 @@ test('a pack agent may not be named something the org holds as a human seat', ()
     assert.match(msg, /organiser/, 'names the colliding role');
     assert.match(msg, /seat/);
     return true;
-  }, 'otherwise the four seat-gated acts would accept an agent as the human (§2.7)');
+  }, 'otherwise the four seat-gated acts would accept an agent as the human (section 2.7)');
 });
 
 test('a shatter freeze still beats an org ceiling that would allow auto — narrowing composes, never races', () => {
@@ -192,7 +192,7 @@ test('a shatter freeze still beats an org ceiling that would allow auto — narr
   ctx.state.shatter.set('wa:group-1', { channel: 'wa:group-1', trippedAt: 1, ref: 'a-member' });
   const r = resolve({ pack, org: ORG });
   assert.equal(resolveAutonomy({ pack, role: 'engagement', actionClass: 'commit.channel-post', state: ctx.state, answers: {}, channel: 'wa:group-1', settings: { ...r, autonomyCeiling: { 'commit.channel-post': 'opt-in-auto' } } }), 'draft',
-    'a permissive ceiling + a live complaint = draft, because both narrowings are intersections (§1.7)');
+    'a permissive ceiling + a live complaint = draft, because both narrowings are intersections (section 1.7)');
 });
 
 test('the engine sees the org tier: an attempt the pack would auto-run becomes a card', () => {
@@ -248,7 +248,7 @@ test('the settings report names the third tier as unbuilt instead of pretending 
   assert.ok(s.limits.some((l) => /clamp|never change|cannot change/i.test(l)), 'and the report says plainly what the org tier cannot do');
 });
 
-test('settings replay identically — the artefact is a fold of the log plus the pack, nothing else (§1.2)', () => {
+test('settings replay identically — the artefact is a fold of the log plus the pack, nothing else (section 1.2)', () => {
   const fleet = new Fleet({ ...packWith({}), org: ORG }, {}, DAY);
   fleet.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } });
   fleet.decideCard('card-1', { verdict: 'reject', by: 'organiser', why: 'too early' });
@@ -274,7 +274,7 @@ test('a ladder rung whose `by` is an agent role refuses to resolve — the fleet
     assert.match(msg, /removal/, 'names the rung, so the fix is not a hunt through the file');
     assert.match(msg, /moderator/, 'names the actor it rejected');
     assert.match(msg, /organiser/, 'names the seat that is allowed');
-    assert.match(msg, /seat/, 'and the rule it broke (§2.7)');
+    assert.match(msg, /seat/, 'and the rule it broke (section 2.7)');
     return true;
   });
 });
@@ -317,7 +317,7 @@ test('a rung whose `via` is a tool the fleet declares refuses to resolve — the
 
 test('a ladder with one rung refuses to resolve — one step is a binary, not a graduated response (D37)', () => {
   // Ostrom's fourth design principle for long-surviving commons is a *graduated* response, and the
-  // research file that led here (§2 of COMMUNITY-GOVERNANCE-PATTERNS) found this pack deliberately
+  // research file that led here (section 2 of COMMUNITY-GOVERNANCE-PATTERNS) found this pack deliberately
   // had none. A one-rung ladder is that gap with a block around it, so the shape check counts.
   const pack = { ...packWith({}), sanctionLadder: [{ ...RUNG_REMOVAL }] };
   assert.throws(() => resolve({ pack }), (e: unknown) => {

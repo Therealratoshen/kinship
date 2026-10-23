@@ -8,7 +8,7 @@ import { makePack } from './helpers.ts';
 import {disclosureLine} from '../src/disclosure.ts';
 
 /**
- * The runner is §1.6's owner of a run. Phase 1's scheduler is the organiser's own Paperclip
+ * The runner is section 1.6's owner of a run. Phase 1's scheduler is the organiser's own Paperclip
  * instance (D10), so this runtime ships only the half that has to be *right*: meter the run, stop
  * at the cap with partial results kept, never retry, and record each refusal as an outcome rather
  * than a crash. It executes commits the caller already holds — it does not invent proposals.
@@ -40,7 +40,7 @@ const fleetWithGrant = (maxActions: number) => {
 
 const executedCount = (f: Fleet) => f.state.events.filter((e) => e.type === 'CommitExecuted').length;
 
-test('a run under the cap executes everything it is handed and reports no truncation (§1.6)', () => {
+test('a run under the cap executes everything it is handed and reports no truncation (section 1.6)', () => {
   const f = fleetWithGrant(15);
   const out = runActions(f, [internal(1), internal(2), internal(3)]);
   assert.equal(out.executed, 3);
@@ -53,7 +53,7 @@ test('a run under the cap executes everything it is handed and reports no trunca
   assert.deepEqual(out.outcomes.map((o) => o.result), ['executed', 'executed', 'executed']);
 });
 
-test('the crossing action is dropped, the actions before it stand, and the tail is never attempted (§1.6)', () => {
+test('the crossing action is dropped, the actions before it stand, and the tail is never attempted (section 1.6)', () => {
   const f = fleetWithGrant(3);
   const out = runActions(f, [internal(1), internal(2), internal(3), internal(4), internal(5)]);
   assert.equal(out.executed, 3, 'partial results are kept — truncation is not a rollback');
@@ -67,7 +67,7 @@ test('the crossing action is dropped, the actions before it stand, and the tail 
   assert.deepEqual(out.notAttempted, [internal(5)], 'the organiser can see exactly what the run did not do — and it will not be retried');
 });
 
-test('a refused action is an outcome, not a crash — and it still costs a metered action (§1.2 / §1.6)', () => {
+test('a refused action is an outcome, not a crash — and it still costs a metered action (section 1.2 / section 1.6)', () => {
   const f = Fleet.boot(pack(15), ANSWERS, DAY); // no grants at all
   const out = runActions(f, [internal(1), internal(2)]);
   assert.equal(out.executed, 0);
@@ -92,7 +92,7 @@ test('the runner cannot deliver to a member: every recipient-bearing action refu
   assert.equal(out.executed, 0);
 });
 
-test('a second call is a second run: an exhausted run stops itself, not the process (§1.6)', () => {
+test('a second call is a second run: an exhausted run stops itself, not the process (section 1.6)', () => {
   const f = fleetWithGrant(2);
   const first = runActions(f, [internal(1), internal(2), internal(3)]);
   assert.equal(first.truncated, true);
@@ -102,7 +102,7 @@ test('a second call is a second run: an exhausted run stops itself, not the proc
   assert.equal(executedCount(f), 4);
 });
 
-test('a caller may hand ONE run across calls, so a tick can be bounded rather than multiplied (§1.6)', () => {
+test('a caller may hand ONE run across calls, so a tick can be bounded rather than multiplied (section 1.6)', () => {
   const f = fleetWithGrant(2);
   const tick = createRun();
   const first = runActions(f, [internal(1), internal(2)], tick);
@@ -116,7 +116,7 @@ test('a caller may hand ONE run across calls, so a tick can be bounded rather th
   assert.equal(second.cap, 2, 'and the report still names the same cap, because the cap is the pack\'s, not the handle\'s');
 });
 
-test('the report says what the cap bounds, so "15" is never read as a fleet ceiling (§1.6)', () => {
+test('the report says what the cap bounds, so "15" is never read as a fleet ceiling (section 1.6)', () => {
   const f = fleetWithGrant(15);
   assert.equal(runActions(f, [internal(1)]).capScope, 'this_call',
     'no handle handed in ⇒ the cap is one call\'s, and the reader is told so');
@@ -128,7 +128,7 @@ test('the report says what the cap bounds, so "15" is never read as a fleet ceil
     'the same handle on a second call is a bound that spans calls — the scope must be visible either way');
 });
 
-test('the runner leaves no trace outside the event log: replay still deep-equals (§1.2)', () => {
+test('the runner leaves no trace outside the event log: replay still deep-equals (section 1.2)', () => {
   const f = fleetWithGrant(3);
   runActions(f, [internal(1), internal(2), internal(3), internal(4)]);
   const reborn = Fleet.replay(f.events, ANSWERS, pack(3));

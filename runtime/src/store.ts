@@ -1,8 +1,8 @@
 /**
  * The state store: a fresh state, an append-only event log, and the hash that binds approvals
- * to revisions (§1.5). State is only ever mutated by `applyEvent` (apply.ts) — domain code
+ * to revisions (section 1.5). State is only ever mutated by `applyEvent` (apply.ts) — domain code
  * validates and *emits* events; it never mutates maps directly. That is what makes
- * `Fleet.replay(events)` produce a state deep-equal to the live one (§1.2), and it is the
+ * `Fleet.replay(events)` produce a state deep-equal to the live one (section 1.2), and it is the
  * property the replay test asserts rather than trusts.
  */
 import { createHash } from 'node:crypto';
@@ -40,7 +40,7 @@ export function freshState(): FleetState {
  * Append to the log. Monotonic seq; events are stored as structured clones of the payload.
  * The deep copy is the audit guarantee, not a nicety: `CommitExecuted` carries `recipients`,
  * an array the caller keeps holding. With a shallow spread a later `push` to that array
- * rewrites what the log says happened (§1.2 — the record must show the state *at commit
+ * rewrites what the log says happened (section 1.2 — the record must show the state *at commit
  * time*, and replay must fold exactly what was appended).
  */
 export function append(state: FleetState, event: Omit<LoggedEvent, 'seq'>): LoggedEvent {

@@ -1,5 +1,5 @@
 /**
- * §2.9 the member as a subject. Everything in this file exists because the alternative is
+ * section 2.9 the member as a subject. Everything in this file exists because the alternative is
  * unfalsifiable until it has already cost the community: a member who discovers they were
  * contacted past their stop, or named in a sponsor report, does not file a complaint — they
  * leave, and the dashboard reads that as normal churn.
@@ -33,14 +33,14 @@ export function suppressMember(
   });
 }
 
-/** The mandatory pre-commit check. Unknown ≠ clear: fail closed is the whole point (§2.9). */
+/** The mandatory pre-commit check. Unknown ≠ clear: fail closed is the whole point (section 2.9). */
 export function assertContactable(state: FleetState, memberRef: string): void {
   if (!state.members.has(memberRef)) {
-    refuse('suppression_unknown', 'spec §2.9 / FR-5.2',
+    refuse('suppression_unknown', 'spec section 2.9 / FR-5.2',
       `member \`${memberRef}\` has no row — absent suppression is unknown, and unknown is held`);
   }
   if (state.suppressions.has(memberRef)) {
-    refuse('member_suppressed', 'spec §2.9 / FR-5.2',
+    refuse('member_suppressed', 'spec section 2.9 / FR-5.2',
       `member \`${memberRef}\` said stop — it beats any grant, any lane, any autonomy level`);
   }
 }
@@ -57,7 +57,7 @@ export function assertWithinCap(ctx: Ctx, _memberRef: string, at: number, recent
   const cap = effectiveGuardrails(ctx).memberMessageCapPer24h;
   const inWindow = recentCommitTimes.filter((t) => at - t < DAY_MS).length;
   if (inWindow >= cap) {
-    refuse('member_cap_exceeded', 'spec §2.9 / FR-5.5',
+    refuse('member_cap_exceeded', 'spec section 2.9 / FR-5.5',
       `${inWindow} member-facing commits in the last 24h; the cap (${cap}) is the member's, not the lane's`);
   }
 }
@@ -68,7 +68,7 @@ export function assertSendHour(memberTz: string, at: number): void {
     timeZone: memberTz, hour: 'numeric', hour12: false,
   }).format(new Date(at)));
   if (hour >= 21 || hour < 8) {
-    refuse('quiet_hours', 'spec §2.9 / FR-5.5',
+    refuse('quiet_hours', 'spec section 2.9 / FR-5.5',
       `${String(hour).padStart(2, '0')}:00 in ${memberTz} — cadence and hours belong to the recipient`);
   }
 }
@@ -80,7 +80,7 @@ export function assertSendHour(memberTz: string, at: number): void {
 export function assertAggregateOnly(ctx: Ctx, cohortSize: number, namedRefs: string[]): void {
   const floor = effectiveGuardrails(ctx).reportAggregationFloor;
   if (cohortSize < floor && namedRefs.length > 0) {
-    refuse('report_below_floor', 'spec §2.9 / FR-5.3',
+    refuse('report_below_floor', 'spec section 2.9 / FR-5.3',
       `cohort of ${cohortSize} is under the floor (${floor}) and ${namedRefs.length} member(s) are named — refuse to assemble`);
   }
 }
