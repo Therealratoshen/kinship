@@ -38,7 +38,7 @@ import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
 import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
 import type {
-  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeRow,
+  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeAction, WakeRow,
 } from './types.ts';
 
 export interface AttemptArgs {
@@ -57,6 +57,25 @@ export interface AttemptArgs {
 export interface AttemptResult {
   disposition: 'card' | 'auto';
   card: Card | null;
+}
+
+/** What happened when a wake fired. */
+export interface WakeOutcome {
+  /** The wake row existed and was fired. */
+  fired: boolean;
+  /**
+   * `attempted` — the wake carried an action and it went through the gate.
+   * `refused` — the action was refused, and the refusal is an outcome, not a crash.
+   * `no-action` — a timer and nothing more.
+   * `not-found` — there was no such wake.
+   */
+  result: 'attempted' | 'refused' | 'no-action' | 'not-found';
+  /** The card the attempt produced, when it produced one. */
+  card?: Card;
+  /** The refusal code, when the attempt was refused. */
+  code?: string;
+  /** The engine's sentence, when there is one. */
+  reason?: string;
 }
 
 export interface CommitArgs {
@@ -368,14 +387,6 @@ export class Fleet {
 
   // --- members, inputs, lifecycle, budgets -----------------------------------------------------------
 
-  registerMember(ref: string, tz: string): void {
-    registerMember(this.ctx(), ref, tz);
-  }
-
-  suppressMember(ref: string, source: 'member' | 'organiser'): void {
-    suppressMember(this.ctx(), ref, { source });
-  }
-
   /** Wrap a member message (section 2.7). Returns the quarantined value; the log keeps metadata only. */
   registerInput(memberRef: string, text: string): QuarantinedInput {
     return wrapMemberInput(this.ctx(), { memberRef, text });
@@ -420,7 +431,7 @@ export class Fleet {
     checkoutEvent(this.ctx(), eventId, agentId);
   }
 
-  scheduleWake(opts: { purpose: string; nextCheckAt: number; eventId?: string }): WakeRow {
+  scheduleWake(opts: { purpose: string; nextCheckAt: number; eventId?: string; action?: WakeAction }): WakeRow {
     return scheduleWake(this.ctx(), opts);
   }
 
@@ -428,8 +439,49 @@ export class Fleet {
     return assertWakeBacked(this.ctx(), purpose, eventId);
   }
 
-  fireWake(wakeId: string): void {
-    fireWake(this.ctx(), wakeId);
+  /**
+   * Fire a wake, and attempt the action it carries (D60).
+   *
+   * This is the seam the runtime was missing: it could schedule a timer and judge a card, and nothing
+   * connected the two — the caller handed the copy in, one `--text-id` at a time. A wake now carries
+   * the lane, the agent, the phase and the copy, so firing it *is* the fleet taking the action.
+   *
+   * The attempt goes through `attempt`, so every refusal that applies to a hand-fed action applies
+   * here too, and the refusal is an outcome rather than a crash: a batch of wakes that meets one
+   * refused action does not lose the rest (the runner's own rule, applied to timers). A phase-origin
+   * claim is taken first, because "one reminder per event per phase" is structural (the pack's
+   * `reminder-schedule` skill) and not a courtesy the second timer extends.
+   */
+  /**
+   * Register a member of this community, and record a stop if they asked for one.
+   *
+   * A member with no row cannot be contacted at all — "absent suppression is unknown, and unknown is
+   * held" (FR-5.2) — so a community that wants a send checked has to say who its members are. The
+   * host owns the list (it is the community's own file); the runtime owns what a row means.
+   */
+  registerMember(ref: string, tz: string): void {
+    registerMember(this.ctx(), ref, tz);
+  }
+
+  /** Record that a member has said stop. A stop beats any grant, any lane, any autonomy level. */
+  suppressMember(ref: string, source: 'member' | 'organiser'): void {
+    suppressMember(this.ctx(), ref, { source });
+  }
+
+  fireWake(wakeId: string): WakeOutcome {
+    const row = fireWake(this.ctx(), wakeId);
+    if (row === undefined) return { fired: false, result: 'not-found' };
+    const action = row.action;
+    if (action === undefined) return { fired: true, result: 'no-action' };
+    const eventId = row.eventId ?? row.id;
+    try {
+      claimPhaseOrigin(this.ctx(), eventId, 'event', eventId, action.phase, action.agent);
+      const res = this.attempt({ ...action, origin: { kind: 'event', id: eventId } });
+      return { fired: true, result: 'attempted', ...(res.card !== null ? { card: res.card } : {}) };
+    } catch (e) {
+      if (e instanceof KinshipError) return { fired: true, result: 'refused', code: e.code, reason: e.message };
+      throw e;
+    }
   }
 
   setBudget(eventId: string, ceilingIdr: number | null): void {

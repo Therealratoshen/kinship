@@ -22,7 +22,7 @@ const ANSWERS = [
 ].join('\n');
 
 /** A temp copy of the pack, the org manifest beside it, a config that answers it, and a temp log root. */
-function aHost(): { opts: HostOptions; dir: string; configFile: string } {
+function aHost(): { opts: HostOptions; dir: string; configFile: string; planFile: string } {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-host-'));
   // The org manifest has to sit beside the pack: the loader walks up for it, and booting floorless
   // is refused on purpose (PKG-58) — so a temp tree without one is not a pack that boots.
@@ -31,12 +31,20 @@ function aHost(): { opts: HostOptions; dir: string; configFile: string } {
   cpSync(PACK, packDir, { recursive: true });
   const configFile = join(dir, 'pack.local.yaml');
   writeFileSync(configFile, ANSWERS + '\n');
+  // The community's own working file: their copy, their next event, their members. The shipped
+  // example is the plan the test runs, so the example a new user copies is the example that is tested.
+  const planFile = join(dir, 'pack.local.plan.yaml');
+  cpSync(join(PACK, 'pack.local.plan.example.yaml'), planFile);
   return {
-    opts: { packDir, configFile, logRoot: join(dir, 'logs'), tickMs: 1000, watch: false, command: 'run' },
+    opts: { packDir, configFile, planFile, logRoot: join(dir, 'logs'), tickMs: 1000, watch: false, command: 'run' },
     dir,
     configFile,
+    planFile,
   };
 }
+
+/** The moment of the example event — the point where both of its reminders are due. */
+const EVENT_MOMENT = '2026-11-07T19:00:00+07:00';
 
 test('the config reader takes a flat key: value document and strips the quotes', () => {
   const answers = parseAnswers('a: "one"\nb: two\n# a whole-line comment\nc: "has # a hash"\nd: plain # a trailing comment\n');
@@ -174,4 +182,73 @@ test('the CLI refuses an approve without a why — a verdict without a why is no
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// --- the fleet runs: plan, schedule, fire, decide, publish (D60) ------------------------------------------
+
+test('a plan reads what the fleet would do, and writes nothing', () => {
+  const { opts, dir } = aHost();
+  const out = runCommand({ ...opts, command: 'plan' });
+  assert.ok(out.some((l) => l.includes('2 action(s) planned')), out.join('\n'));
+  assert.ok(out.some((l) => l.includes('draft.reminder@t-minus-1')), 'the T-1 reminder is planned');
+  assert.equal(readEvents(join(dir, 'logs', 'kinshipai', 'bundled', 'event-ops', 'kopdar', 'events.jsonl')).length, 0,
+    'a plan is a read — it writes no rows');
+});
+
+test('running the fleet schedules the timers, fires them, and leaves the cards on a human\'s desk', () => {
+  const { opts } = aHost();
+  const out = runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  assert.ok(out.some((l) => l.includes('scheduled: draft.reminder@t-minus-1')), out.join('\n'));
+  assert.ok(out.some((l) => l.includes('card-') && l.includes('waiting on a human')), 'a card is waiting on a human');
+  assert.ok(out.some((l) => l.includes('2 to decide')), 'and the inbox says so');
+});
+
+test('a second run does not schedule the same promise twice', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const second = runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  assert.ok(second.some((l) => l.includes('already scheduled')), second.join('\n'));
+  assert.ok(!second.some((l) => l.startsWith('  scheduled:')), 'and nothing new was scheduled');
+});
+
+test('the human can say no, and the reason is the record', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const out = runCommand({ ...opts, command: 'approve', cardId: 'card-1', why: 'terlalu awal', verdict: 'reject' });
+  assert.ok(out.some((l) => l.includes('is now rejected')), out.join('\n'));
+});
+
+test('publishing an approved card is refused by the transport gate — phase 1 ships no transport (D21)', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  runCommand({ ...opts, command: 'approve', cardId: 'card-2', why: 'tanggal dan tempat sudah benar' });
+  const out = runCommand({ ...opts, command: 'publish', cardId: 'card-2', recipients: ['wa:62811'] });
+  assert.ok(out.some((l) => l.includes('refused: no_transport')), out.join('\n'));
+});
+
+test('publishing to a member who has said stop is refused before the transport gate, and says so', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  runCommand({ ...opts, command: 'approve', cardId: 'card-2', why: 'tanggal dan tempat sudah benar' });
+  const out = runCommand({ ...opts, command: 'publish', cardId: 'card-2', recipients: ['wa:62813'] });
+  assert.ok(out.some((l) => l.includes('refused: member_suppressed')), out.join('\n'));
+});
+
+test('publishing an unapproved card is refused — the human decides first', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  assert.throws(
+    () => runCommand({ ...opts, command: 'publish', cardId: 'card-2', recipients: ['wa:62811'] }),
+    /not approved/,
+  );
+});
+
+test('publishing needs the member named — the host does not know the community\'s members', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  runCommand({ ...opts, command: 'approve', cardId: 'card-2', why: 'tanggal dan tempat sudah benar' });
+  assert.throws(
+    () => runCommand({ ...opts, command: 'publish', cardId: 'card-2' }),
+    /--recipient/,
+  );
 });

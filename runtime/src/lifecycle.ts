@@ -8,7 +8,7 @@
  */
 import { refuse } from './errors.ts';
 import { PHASES } from './types.ts';
-import type { Ctx, FleetEvent, FleetState, Phase, WakeRow } from './types.ts';
+import type { Ctx, FleetEvent, FleetState, Phase, WakeAction, WakeRow } from './types.ts';
 
 const PHASE_INDEX = new Map<string, number>(PHASES.map((p, i) => [p, i]));
 
@@ -60,13 +60,14 @@ export function checkoutEvent(ctx: Ctx, eventId: string, agentId: string): void 
   ctx.commit({ type: 'EventCheckedOut', eventId, agent: agentId, at: ctx.now() });
 }
 
-export function scheduleWake(ctx: Ctx, opts: { purpose: string; nextCheckAt: number; eventId?: string }): WakeRow {
+export function scheduleWake(ctx: Ctx, opts: { purpose: string; nextCheckAt: number; eventId?: string; action?: WakeAction }): WakeRow {
   const row: WakeRow = {
     id: `wake-${ctx.state.wakes.size + 1}`,
     purpose: opts.purpose,
     nextCheckAt: opts.nextCheckAt,
     attempts: 0,
     ...(opts.eventId !== undefined ? { eventId: opts.eventId } : {}),
+    ...(opts.action !== undefined ? { action: opts.action } : {}),
     scheduledAt: ctx.now(),
   };
   ctx.commit({ type: 'WakeScheduled', row, at: ctx.now() });
@@ -81,10 +82,19 @@ export function assertWakeBacked(ctx: Ctx, purpose: string, eventId?: string): W
   refuse('ghost_watcher', 'spec section 1.3', `a promise to follow up on \`${purpose}\` needs a persisted wake row — prose is not a waiting path`);
 }
 
-export function fireWake(ctx: Ctx, wakeId: string): void {
+/**
+ * Fire a wake.
+ *
+ * The row it fired is returned, because the row is what carries the action (D60): the caller — the
+ * engine, which owns the gate — reads the action off the row and attempts it through the same path
+ * any other attempt takes, so every refusal still applies to a timer-driven action exactly as it
+ * applies to a hand-fed one. A wake with no action is a timer and nothing more, and says so.
+ */
+export function fireWake(ctx: Ctx, wakeId: string): WakeRow | undefined {
   const w = ctx.state.wakes.get(wakeId);
-  if (!w) return;
+  if (!w) return undefined;
   ctx.commit({ type: 'WakeFired', wakeId, at: ctx.now() });
+  return w;
 }
 
 // --- the applier ---------------------------------------------------------------------------------

@@ -66,9 +66,9 @@ npx tsc -p runtime/tsconfig.json --noEmit
 
 CI runs that in a job of its own, so the runtime still installs nothing for whoever forks it.
 
-### Get a file you can hand to someone
+### Run it on your own community
 
-The checks above print results. The reference host writes a file.
+The checks above print results. The reference host runs the fleet and writes a file.
 
 ```bash
 cd adapters/reference && npm install --no-audit --no-fund && cd ../..
@@ -77,24 +77,64 @@ cd adapters/reference && npm install --no-audit --no-fund && cd ../..
 That is the only `npm install` in the repository. The host's one dependency is a path to
 `runtime/`, so npm creates a symlink and downloads nothing. `--offline` works too.
 
-The pack needs eight answers before it will boot. Copy the template and fill it in:
+**Two files, both gitignored, because both hold your community's own data.** The first is who you are;
+the second is what you are doing next.
 
 ```bash
-cp packs/kopdar-ops/pack.local.example.yaml packs/kopdar-ops/pack.local.yaml
-$EDITOR packs/kopdar-ops/pack.local.yaml
+cp packs/kopdar-ops/pack.local.example.yaml     packs/kopdar-ops/pack.local.yaml
+cp packs/kopdar-ops/pack.local.plan.example.yaml packs/kopdar-ops/pack.local.plan.yaml
+$EDITOR packs/kopdar-ops/pack.local.yaml         # eight answers: your name, your channels, your contacts
+$EDITOR packs/kopdar-ops/pack.local.plan.yaml    # your copy, your next event, your members
 ```
 
-The file is gitignored, because it holds your community's real name, channels and contacts.
+`pack.local.yaml` is the eight answers the pack needs before it will boot. `pack.local.plan.yaml` is
+your working file: **the copy you wrote** for each lane and phase, **the next event** with the facts
+your copy may use, and **your members** with the timezone that decides their own quiet hours.
 
-Now run the fleet:
+**Your copy is your copy.** There is no model in this repository. The runtime writes no member-facing
+text of its own and invents no fact. A `{slot}` with no value refuses the whole template rather than
+leaving a hole in a message, and a copy written for a lane your pack does not declare is refused too.
+
+Now run the fleet. `--now` is the moment the host acts as if it were, which is how you rehearse a
+week's worth of reminders without waiting a week.
+
+`plan` is a read. It writes nothing. It tells you what the fleet would do, and what is broken in your
+copy before the event rather than during it.
 
 ```bash
-node adapters/reference/src/host.ts run   --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
-
-node adapters/reference/src/host.ts draft   --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs   --class draft.reminder --agent event-ops   --text-id "Reminder: besok jam 19:00" --text-en "Reminder: tomorrow 19:00"
-
-node adapters/reference/src/host.ts verify   --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+node adapters/reference/src/host.ts plan --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs
 ```
+
+`run` schedules the timers, fires the ones that are due, and drafts the cards. The copy in them is
+yours, with your facts filled in and the disclosure line in the place you put it.
+
+```bash
+node adapters/reference/src/host.ts run --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs --now "2026-11-07T19:00:00+07:00"
+```
+
+Now you are the human in the loop, and you can say no:
+
+```bash
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --why "tanggal dan tempat sudah benar"
+
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-1 --verdict reject --why "terlalu awal, kita umumkan besok"
+```
+
+And then you try to publish, and the gate stops you:
+
+```bash
+node adapters/reference/src/host.ts publish --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --recipient wa:62811
+```
+
+```
+refused: no_transport
+  [no_transport] (D21 / D11) phase 1 ships no channel transport — delivery is the organiser's hand;
+  the authorization is left intact and the refusal is logged
+```
+
+**That refusal is the product.** Phase 1 ships no channel transport, so every member-facing commit
+stops at `no_transport` and the log records that it stopped. A member who has said stop is stopped
+earlier still, at `member_suppressed`.
 
 Two files appear under `logs/kinshipai/bundled/event-ops/kopdar/`:
 
@@ -103,9 +143,11 @@ events.jsonl     one row per action, in order — this is exactly what replay re
 manifest.json    what a reader needs to know before opening the log
 ```
 
-The host sends nothing. Every member-facing commit stops at `no_transport` (D21), and the log records
-that it stopped. So the artefact is a record of what the fleet proposed and what it refused, which is
-the thing phase 1 is for.
+Check the log is honest:
+
+```bash
+node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+```
 
 The manifest states the privacy position inside the file: member identifiers are in the log, member
 message text is not, and the draft copy is. It carries a digest of your eight answers rather than

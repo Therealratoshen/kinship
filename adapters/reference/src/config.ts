@@ -15,6 +15,7 @@
  *     rather than ignored — a typo'd need that silently did nothing is worse than a loud failure.
  */
 import { readFileSync } from 'node:fs';
+import { parseCommunityPlan, type CommunityEvent, type CommunityMember, type CommunityTemplate } from 'kinship-runtime/src/plan.ts';
 
 /** One `key: value` pair, unquoted. */
 export type Answers = Record<string, string>;
@@ -90,4 +91,29 @@ export function assertAnswersMatchNeeds(answers: Answers, needs: readonly string
       throw new Error(`\`${key}\` is not a need this pack declares — the pack asks for ${needs.join(', ')}`);
     }
   }
+}
+
+
+/**
+ * The community's own plan: the copy they wrote, and their next event.
+ *
+ * It is a **separate file** from the answers, and that is not tidiness — the two have different
+ * lifetimes. The answers are the community's identity and change when the community does; the plan is
+ * the community's *work* and changes every event. Splitting them means the file a person edits before
+ * each event is not the file that holds their permanent settings, and a copy-paste of one cannot
+ * silently overwrite the other.
+ *
+ * The runtime owns the reader (`parseCommunityPlan`), so the shape is checked in one place and the
+ * host does not grow a second parser. Nothing in `runtime/` reads this file — the host reads it and
+ * hands the plan to the runtime in memory, exactly as it hands over the answers.
+ */
+export interface CommunityPlan {
+  templates: CommunityTemplate[];
+  event: CommunityEvent | null;
+  members: CommunityMember[];
+}
+
+export function readPlan(file: string | null): CommunityPlan {
+  if (file === null) return { templates: [], event: null, members: [] };
+  return parseCommunityPlan(readFileSync(file, 'utf8'));
 }

@@ -861,6 +861,68 @@ is narrower and checkable — that a community may declare a pair the runtime im
 carried in both of its languages, that the disclosure gate holds in each of them, and that the runtime's
 own cards are written in them too.
 
+### 2.18 The fleet runs on the community's own words
+
+Everything above is machinery for judging an action. None of it decided **what to do**. The runtime could
+adjudicate a card, meter a run, schedule and fire a timer, and put a card in front of a human — and the
+*caller* handed it the copy, one `--text-id` at a time, on a command line. A host that invented the
+drafts would be inventing behaviour the pack does not have, so the host did not think. The result was a
+control plane that could judge a card and never produce one, and a "production mode" that was a script
+somebody had written by hand.
+
+**So the community's own words became the fleet's instructions, and the runtime learned to read them.**
+
+A community's working file carries three things: **the copy** (per lane, per phase, in the languages the
+pack declares), **the next event** (when it is, and the facts the copy may draw on), and **the members**
+(who they are, and who has said stop). The file is the community's and is gitignored, like the eight
+answers — the runtime never reads it from disk; the host reads it and hands it over in memory.
+
+Four rules, each with a test that can fail:
+
+1. **The copy is the community's, and it is filled from facts the community supplied.** The runtime writes
+   no member-facing copy of its own and invents no fact. A `{slot}` with no value is **not** a blank left
+   in a message — it refuses the template, because a message with a hole in it ships a lie about a venue
+   by leaving the venue out.
+2. **A lane the pack does not declare is not attempted.** `agents.*.autonomy_by_class` is the inventory of
+   what this community's fleet may do. A copy written for a class no agent declares has nobody to hold it.
+3. **Only a timer-backed phase gets a timer.** The pack's `event-lifecycle` skill says a phase moves "on a
+   named condition: a human verdict, a fired timer with a persisted wake row, or a deliverable that
+   regenerated successfully — **never on elapsed time alone**." So `t-minus-7` and `t-minus-1` get wakes,
+   and every other phase is refused a clock it is not allowed to have. **The rule is kept, not bent.**
+4. **The disclosure is present before approval, and the community put it there.** The `{disclosure}` slot
+   is filled with the runtime's canonical line for that language, in the place *the community* put it; a
+   copy without the slot is refused at plan time — which is before the event, rather than at the commit
+   that would have refused it anyway.
+
+**And the timer is local.** "T-1d" means one day before the event *at the event's own local time*: the
+shift is applied to the calendar date in the offset the community wrote, and the offset is carried across
+unchanged. Subtracting 24 hours from an instant would put a reminder on the wrong local hour twice a
+year — the same wall-clock rule section 2.13's coverage window is held to, applied to the timer for the
+same reason.
+
+**What a scheduled wake now carries.** A wake used to be a bare promise — "I will look at this on
+Thursday" — with nothing on the other end of it, so firing it produced a log line and no work. **A wake
+now carries the action it will attempt**: the lane, the agent, the phase and the copy. Firing it *is* the
+fleet taking that action, through the same gate any hand-fed action goes through, so every refusal still
+applies — and the phase-origin claim is taken first, because "one reminder per event per phase" is
+structural (the pack's `reminder-schedule` skill) and not a courtesy the second timer extends.
+
+**What this is NOT.** It is not a model. There is no language model anywhere in this repository, and there
+is not going to be one: the copy is the community's, the facts are the community's, the rules are the
+pack's, and the runtime's job is to refuse what does not add up. A model would have made the copy better
+and the *guarantees* worse, because a guarantee about a sentence nobody wrote is not a guarantee.
+
+**What it does not change.** No transport ships, so every member-facing commit still refuses at
+`no_transport` (D21) — and now a **new user can watch that happen**: plan, run, approve, publish, and the
+gate stops the send with the authorization left intact. Nothing member-facing sends, and no autonomy
+class changed.
+
+`[UNVERIFIED]` Whether a community's own copy in the fleet's hands reads well to its members is untestable
+here: phase 1 sends nothing (D21), no dated event exists (D9), and no pack declares its own templates yet.
+What this section claims is narrower and checkable — that a community's copy, its facts and its members
+can be read, that a lane the pack does not declare is refused, that a template with a hole is refused, that
+a timer-backed phase produces a wake that attempts its action, and that a human may still say no.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -958,7 +1020,7 @@ grant (section 1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 10,552 as of 2026-10-22, split 4,829 domain code / 5,117 tests / 606 tour. The count is re-run whenever a
+prints 11,496 as of 2026-10-23, split 5,442 domain code / 5,448 tests / 606 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -975,6 +1037,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | section 1.2 audit replay: append-only log, `replay` deep-equality, readable `#seq` timeline, refusals as records | `src/store.ts` (`append` stores a **structured clone**, so a caller mutating its payload afterwards cannot rewrite history), `src/apply.ts`, `src/engine.ts` (`auditTimeline`, `logRefusal`) | `test/store.test.ts`, `test/apply.test.ts`, `test/replay.test.ts`, `test/engine.test.ts` |
 | section 1.2 read side (PRD **FR-1.15**, and the first enforcement of **FR-1.11**): the fleet's condition is one dated, positioned snapshot derived only from rows already logged — freezes, queue depth *and card age*, budget state with `null` for an unset ceiling, overdue wakes, refusals counted by code, idle agents — carrying no member identifier and naming what it refuses to measure | `src/health.ts` (`deriveHealth`, exposed as `Fleet.health()`; `withhold()` reuses `partner.ts`'s registry scan), `src/engine.ts` (the method appends nothing) | `test/health.test.ts` (15 cases: purity across two calls, replay deep-equality of the *read*, `retire` at 3 cycles vs `watch` at 1, prefixed/bare/clean substitution controls, the two-integer member block and the `unmeasured` field), `runtime/tour.ts` (3 of the 11 guarantees that existed at D30; the tour now prints 22 — the number in these read-side rows is recomputed per pass, never carried) |
 | section 1.3 no ghost watchers: a promise to follow up requires a persisted wake row | `src/lifecycle.ts` (`scheduleWake`, `assertWakeBacked`) | `test/lifecycle.test.ts` |
+| section 2.18 the fleet runs on the community's own words: the copy is the community's, a hole in it refuses the template, a lane the pack does not declare is refused, only a timer-backed phase gets a timer, and a scheduled wake carries the action it will attempt (D60) | `src/plan.ts` (`parseCommunityPlan`, `renderCopy`, `planWakes`, `shiftLocalDays` — the planner is pure: the host reads the community's file and hands the plan over in memory), `src/lifecycle.ts` (`scheduleWake` takes the action; `fireWake` returns the row it fired), `src/engine.ts` (`fireWake` attempts the bound action through the same gate, and takes the phase-origin claim first), `src/members.ts` (`registerMember`, `suppressMember`), `adapters/reference/src/host.ts` (`plan`, `run`, `publish`; `--plan`, `--now`, `--verdict`, `--recipient`) | `test/plan.test.ts` (18 cases), `test/lifecycle.test.ts`, `test/engine.test.ts` (the wake→attempt path, the 409 that keeps a second timer from sending twice, and the refusal that is an outcome), `adapters/reference/test/host.test.ts` (18 cases: plan writes nothing, a second run does not schedule the same promise twice, the human may reject, and the publish refusal) |
 | section 1.4 exclusive ownership; the 409 that is never retried | `src/lifecycle.ts` (`claimPhaseOrigin`, `checkoutEvent`) | `test/lifecycle.test.ts` |
 | section 1.5 revision-bound approvals; edit consumes the live authorization, v2 re-queues, `stale_target` | `src/cards.ts` (revision hash over both languages) | `test/cards.test.ts`, `test/engine.test.ts` |
 | section 1.6 bounded work: unset ceiling refuses, warn-then-hard-stop raises a card, event-scoped, run cap truncates — **and the cap names its own scope** | `src/budget.ts`, `src/runner.ts` (`runActions(fleet, actions, run?)` meters every attempted action, stops at the first crossing with partial results kept, drops the tail without attempting it; the run is the caller's handle, so `report.capScope` is `'this_call'` or `'shared_run'` — D38) | `test/budget.test.ts`, `test/runner.test.ts` (9 cases, two of them the shared-handle bound and the scope label), `runtime/tour.ts` (`one_handle_bounds_the_tick_across_calls`) |

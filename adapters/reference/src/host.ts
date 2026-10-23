@@ -23,9 +23,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fleet } from 'kinship-runtime/src/engine.ts';
+import { KinshipError } from 'kinship-runtime/src/errors.ts';
 import { loadPack } from 'kinship-runtime/src/pack.ts';
 import type { LoggedEvent, NeedAnswers, Packed } from 'kinship-runtime/src/types.ts';
-import { readAnswers, assertAnswersMatchNeeds } from './config.ts';
+import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } from './config.ts';
+import { planWakes, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
 import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
 
 export interface HostOptions {
@@ -37,7 +39,20 @@ export interface HostOptions {
   /** Whether to keep ticking. A host that only ticks on demand is a demo; one that ticks is a host. */
   watch: boolean;
   /** The command to run. */
-  command: 'run' | 'tick' | 'draft' | 'approve' | 'verify';
+  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan';
+  /**
+   * The community's plan file — their own copy and their next event.
+   *
+   * Absent means the community has written no copy yet, and the fleet has nothing to say. That is a
+   * state, not an error: a host with no plan still boots, still verifies its log, still answers
+   * `approve`.
+   */
+  planFile?: string | null;
+  /**
+   * The clock override: the moment the host is to act as if it were. A rehearsal needs one, because
+   * a community that cannot wait seven days for its own T-7 reminder cannot test anything.
+   */
+  now?: number | null;
   cardId?: string;
   why?: string;
   /** For `draft`: the lane, the agent, and the copy the operator hands the runtime. */
@@ -45,6 +60,10 @@ export interface HostOptions {
   agent?: string;
   /** The copy, keyed by language code — the operator hands one per language the pack declares. */
   text: Record<string, string>;
+  /** For `approve`: the verdict. A host that could only say yes would not be a human in the loop. */
+  verdict?: 'approve' | 'edit' | 'reject';
+  /** For `publish`: who the message is for. The host does not know the community's members. */
+  recipients?: string[];
 }
 
 /** Everything the host knows about the community it is running for. */
@@ -56,6 +75,8 @@ export interface Host {
   manifestPath: string;
   /** The rows already on disk when this host started. */
   onDisk: LoggedEvent[];
+  /** The community's plan, read from their own file. */
+  plan: CommunityPlan;
 }
 
 /**
@@ -67,17 +88,24 @@ export function bootHost(opts: HostOptions): Host {
   const pack = loadPack(opts.packDir);
   const answers = readAnswers(opts.configFile);
   assertAnswersMatchNeeds(answers, pack.needs);
+  const plan = readPlan(opts.planFile ?? null);
 
   const dir = logDirFor(opts.logRoot, pack.key);
   const eventsPath = join(dir, 'events.jsonl');
   const manifestPath = join(dir, 'manifest.json');
   const onDisk = readEvents(eventsPath);
 
+  const startAt = opts.now ?? Date.now();
   const fleet = onDisk.length > 0
     ? Fleet.replay(onDisk, answers, pack)
-    : Fleet.boot(pack, answers, Date.now());
+    : Fleet.boot(pack, answers, startAt);
 
-  return { pack, answers, fleet, eventsPath, manifestPath, onDisk };
+  // A replay takes its clock from the log, because the log is what happened. A `--now` still wins,
+  // because a rehearsal is the operator saying "act as if it were this moment" — and `advance` is a
+  // plain addition, so the clock lands exactly there whether it moved forward or back.
+  if (opts.now !== null && opts.now !== undefined) fleet.advance(opts.now - fleet.now());
+
+  return { pack, answers, fleet, eventsPath, manifestPath, onDisk, plan };
 }
 
 /** The rows the fleet has produced since the last write. */
@@ -165,11 +193,17 @@ export function parseArgs(argv: readonly string[]): HostOptions {
   const packDir = flag('pack');
   if (packDir === null) throw new Error('--pack <dir> is required — the pack folder the fleet runs');
   const logRoot = flag('log') ?? 'logs';
+  const nowRaw = flag('now');
+  if (nowRaw !== null && Number.isNaN(Date.parse(nowRaw))) {
+    throw new Error(`--now must be an ISO 8601 moment (e.g. 2026-11-07T19:00:00+07:00) — got \`${nowRaw}\``);
+  }
   const tickMs = Number(flag('tick-ms') ?? '5000');
   if (!Number.isInteger(tickMs) || tickMs <= 0) throw new Error('--tick-ms must be a positive whole number of milliseconds');
   return {
     packDir,
     configFile: flag('config'),
+    planFile: flag('plan'),
+    now: nowRaw === null ? null : Date.parse(nowRaw),
     logRoot,
     tickMs,
     watch: has('watch'),
@@ -183,7 +217,29 @@ export function parseArgs(argv: readonly string[]): HostOptions {
     // flag for a language the pack does not declare is a mistake the runtime refuses, not one the
     // host papers over.
     text: collectText(argv),
+    verdict: readVerdict(flag('verdict')),
+    recipients: collectRecipients(argv),
   };
+}
+
+/** The verdict a human reached. `approve` is the default because that is what a host is for. */
+function readVerdict(v: string | null): 'approve' | 'edit' | 'reject' {
+  if (v === null) return 'approve';
+  if (v === 'approve' || v === 'edit' || v === 'reject') return v;
+  throw new Error(`--verdict must be approve, edit or reject — got \`${v}\``);
+}
+
+/** Every `--recipient <id>` on the command line. The host does not know the community's members. */
+function collectRecipients(argv: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] !== '--recipient') continue;
+    const value = argv[i + 1];
+    if (value === undefined) throw new Error('--recipient needs the member it is for');
+    out.push(value);
+    i++;
+  }
+  return out;
 }
 
 /** Every `--text-<code> value` on the command line, as a map keyed by the code. */
@@ -200,13 +256,143 @@ function collectText(argv: readonly string[]): Record<string, string> {
   return out;
 }
 
+/**
+ * Register the community's own members, so a send can be checked at all.
+ *
+ * A member with no row cannot be contacted — "absent suppression is unknown, and unknown is held"
+ * (FR-5.2). So the community's file carries its members, and the host registers them before the
+ * fleet acts. Registration is idempotent, and a member who has said stop is recorded as a stop: the
+ * runtime holds that over any grant, any lane, any autonomy level.
+ */
+export function registerMembers(host: Host): string[] {
+  const out: string[] = [];
+  for (const m of host.plan.members) {
+    host.fleet.registerMember(m.ref, m.tz);
+    if (m.suppressed) host.fleet.suppressMember(m.ref, 'member');
+    out.push(`  ${m.ref} (${m.tz})${m.suppressed ? ' — has said stop' : ''}`);
+  }
+  return out;
+}
+
+/**
+ * What the community's plan says the fleet will do.
+ *
+ * The host asks the runtime; the runtime does not ask the host. The plan is computed from the pack,
+ * the answers, the community's own copy and their event — and the host prints the answer without
+ * writing anything, so `plan` is a read and `run` is the write.
+ */
+export function plannedFor(host: Host): { wakes: PlannedWake[]; problems: PlanProblem[] } {
+  return planWakes({
+    templates: host.plan.templates,
+    event: host.plan.event,
+    pack: host.pack,
+    answers: host.answers,
+  });
+}
+
+/** The plan, in the operator's words: what is broken, and what would happen. */
+export function planView(host: Host): string[] {
+  const { wakes, problems } = plannedFor(host);
+  const out: string[] = [];
+  if (host.plan.templates.length === 0) {
+    out.push('no plan — this community has written no copy yet, so the fleet has nothing to say');
+    return out;
+  }
+  if (problems.length > 0) {
+    out.push(`${problems.length} problem(s) — nothing is scheduled until these are fixed:`);
+    for (const p of problems) out.push(`  [${p.code}] ${p.template}: ${p.detail}`);
+  }
+  if (wakes.length > 0) {
+    out.push(`${wakes.length} action(s) planned:`);
+    for (const w of wakes) {
+      const due = w.nextCheckAt <= host.fleet.now();
+      out.push(`  ${w.purpose}`);
+      out.push(`      at ${new Date(w.nextCheckAt).toISOString()}${due ? '  (due now)' : ''}`);
+      out.push(`      copy: ${w.action.text[host.pack.locale[0]!] ?? '(none)'}`);
+    }
+  } else if (problems.length === 0) {
+    out.push('nothing planned — the templates you wrote are not timer-backed phases');
+  }
+  return out;
+}
+
+/**
+ * Schedule the planned wakes, skipping any that already exist.
+ *
+ * A wake that is already scheduled is not scheduled twice: the promise is in the log, and a second
+ * row for the same promise would be two promises.
+ */
+export function schedulePlan(host: Host, opts: HostOptions): string[] {
+  const { wakes, problems } = plannedFor(host);
+  if (problems.length > 0) return [];
+  const already = new Set([...host.fleet.state.wakes.values()].map((w) => w.purpose));
+  const out: string[] = [];
+  for (const w of wakes) {
+    if (already.has(w.purpose)) {
+      out.push(`  already scheduled: ${w.purpose}`);
+      continue;
+    }
+    host.fleet.scheduleWake({
+      purpose: w.purpose,
+      nextCheckAt: w.nextCheckAt,
+      eventId: w.eventId,
+      action: w.action,
+    });
+    out.push(`  scheduled: ${w.purpose} at ${new Date(w.nextCheckAt).toISOString()}`);
+  }
+  return out;
+}
+
+/**
+ * Fire the wakes that are due, and report what each one did.
+ *
+ * A refusal is an outcome, not a crash: one refused action does not lose the rest of the batch, which
+ * is the runner's own rule applied to timers.
+ */
+export function fireDue(host: Host): string[] {
+  const out: string[] = [];
+  const due = host.fleet.health().wakes.overdue;
+  for (const w of due) {
+    const fired = host.fleet.fireWake(w.id);
+    if (fired.result === 'attempted') {
+      out.push(`  ${w.purpose} → ${fired.card !== undefined ? `card ${fired.card.id}, waiting on a human` : 'ran on its own lane'}`);
+    } else if (fired.result === 'refused') {
+      out.push(`  ${w.purpose} → refused: ${fired.code ?? 'unknown'}`);
+    } else if (fired.result === 'no-action') {
+      out.push(`  ${w.purpose} → fired (no action attached)`);
+    }
+  }
+  return out;
+}
+
 /** Run one command and return what to print. */
 export function runCommand(opts: HostOptions): string[] {
   const host = bootHost(opts);
   const out: string[] = [];
   switch (opts.command) {
+    case 'plan': {
+      // A read. Nothing is written, nothing is scheduled, nothing is sent.
+      out.push(...planView(host));
+      break;
+    }
     case 'run': {
       out.push(`host up — pack ${host.pack.key}, ${host.onDisk.length} rows on disk`);
+      const registered = registerMembers(host);
+      if (registered.length > 0) {
+        out.push('members:');
+        out.push(...registered);
+      }
+      const scheduled = schedulePlan(host, opts);
+      if (scheduled.length > 0) {
+        out.push('scheduled:');
+        out.push(...scheduled);
+        persist(host, opts);
+      }
+      const fired = fireDue(host);
+      if (fired.length > 0) {
+        out.push('fired:');
+        out.push(...fired);
+      }
       const written = persist(host, opts);
       out.push(written === 0 ? 'no new rows' : `appended ${written} row(s)`);
       out.push(...operatorView(host));
@@ -215,6 +401,7 @@ export function runCommand(opts: HostOptions): string[] {
     case 'tick': {
       const fired = tick(host, opts);
       out.push(...fired);
+      out.push(...fireDue(host));
       const written = persist(host, opts);
       out.push(`appended ${written} row(s)`);
       out.push(...operatorView(host));
@@ -245,7 +432,51 @@ export function runCommand(opts: HostOptions): string[] {
       if (opts.cardId === undefined || opts.why === undefined) {
         throw new Error('approve needs --card <id> and --why "<reason>" — a verdict without a why is not a record');
       }
-      out.push(approve(host, opts.cardId, opts.why));
+      const verdict = opts.verdict ?? 'approve';
+      const card = host.fleet.decideCard(opts.cardId, {
+        verdict,
+        by: 'organiser',
+        why: opts.why,
+        ...(verdict === 'edit' ? { newText: opts.text } : {}),
+      });
+      out.push(`card ${card.id} is now ${card.status}, decided by ${card.decidedBy}`);
+      persist(host, opts);
+      break;
+    }
+    case 'publish': {
+      // The last step of the loop, and the one that shows the product: the message is ready, the
+      // human has approved it, and the transport gate stops it anyway (D21). The refusal is not a
+      // bug in the host — it is the phase-1 lock, and it is logged like any other refusal.
+      if (opts.cardId === undefined) throw new Error('publish needs --card <id>');
+      if (opts.recipients === undefined || opts.recipients.length === 0) {
+        throw new Error('publish needs --recipient <member-id> (repeat it for more) — the host does not know your community\'s members, so you name them');
+      }
+      registerMembers(host);
+      const card = host.fleet.state.cards.get(opts.cardId);
+      if (card === undefined) throw new Error(`no card \`${opts.cardId}\` — the fleet has no such card`);
+      if (card.status !== 'approved') {
+        throw new Error(`card \`${card.id}\` is \`${card.status}\`, not approved — a human approves it first, with a why`);
+      }
+      try {
+        host.fleet.commit({
+          actionClass: card.actionClass,
+          agent: card.agent,
+          origin: card.origin,
+          phase: card.phase,
+          recipients: opts.recipients,
+          onBehalfOf: host.answers['escalation_contact'] ?? 'organiser',
+          authorizationToken: `auth-${card.id}`,
+          text: card.revision.text,
+        });
+        out.push(`published to ${opts.recipients.join(', ')} — the transport gate did not stop it, which should not happen in phase 1`);
+      } catch (e) {
+        if (e instanceof KinshipError) {
+          out.push(`refused: ${e.code}`);
+          out.push(`  ${e.message}`);
+        } else {
+          throw e;
+        }
+      }
       persist(host, opts);
       break;
     }
@@ -258,7 +489,7 @@ export function runCommand(opts: HostOptions): string[] {
       break;
     }
     default:
-      throw new Error(`unknown command \`${opts.command}\` — run, tick, draft, approve or verify`);
+      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, draft, approve, publish or verify`);
   }
   return out;
 }

@@ -1,0 +1,92 @@
+# pack.local.plan.example.yaml — naskah dan acara komunitasmu.
+#
+# Salin berkas ini menjadi `pack.local.plan.yaml` di sebelahnya, lalu isi. Berkas itu di-gitignore:
+# suaramu adalah milikmu, dan ia tidak pernah masuk ke repositori.
+#
+# **Berkas ini BERBEDA dengan `pack.local.yaml`.** Yang satu adalah identitas komunitasmu (nama, kanal,
+# kontak — jarang berubah). Yang ini adalah **pekerjaan** komunitasmu: naskah yang kamu tulis untuk
+# jalur yang kamu pakai, dan acara berikutnya. Satu diganti setiap acara, yang lain tidak. Dua berkas
+# supaya menyalin satu tidak diam-diam menimpa yang lain.
+#
+# Kalau kamu lebih suka naskahmu berbahasa Inggris saja, hapus blok `id` — tapi runtime
+# menjalankan dua bahasa, dan naskah yang hanya satu bahasa berarti bahasa yang lain tidak pernah
+# melihat pesanmu.
+#   - `templates:` — naskahmu, satu per jalur dan per fase. Ini SUARAMU, bukan milik runtime.
+#     Runtime tidak menulis naskahmu dan tidak mengarang satu pun kalau ini kosong.
+#   - `event:` — acara berikutnya: kapan, dan fakta-fakta yang boleh dipakai naskahmu.
+#
+# Every `templates:` entry is:
+#
+#   action_class:  the lane this copy is for. It must be a class one of the pack's agents declares —
+#                  a copy written for a lane that does not exist has nobody to hold it.
+#   phase:         when it belongs. Only `t-minus-7` and `t-minus-1` have a timer; the other phases
+#                  move on a human's verdict, so a timer there would break the pack's own rule.
+#   agent:         which agent of the pack takes it.
+#   copy:          your words, per language the pack declares, in the order the pack declares them.
+#
+# **The slots.** A `{name}` in your copy is filled from the event's facts, from the community's name,
+# from the event's local date and time, and from `{disclosure}`. A slot with no value is NOT left blank
+# in your message — the planner refuses the whole template and tells you which slot had no value. A
+# message with a hole in it goes out with the hole, so it does not go out.
+#
+# **The disclosure.** `{disclosure}` is filled with the runtime's canonical line for that language, in
+# the place YOU put it. The runtime never adds a line you did not ask for — but a copy without the
+# disclosure is refused before it reaches a human, because the commit would have refused it anyway.
+#
+# The copy may be a block (`|`) so it can be more than one line. A promo is three lines, not one.
+
+templates:
+  - action_class: draft.reminder
+    phase: t-minus-1
+    agent: event-ops
+    copy:
+      id: |-
+        Halo {community_name}! Besok {date} jam {time} di {venue}.
+        Daftar di sini: {registration}
+        Sampai jumpa!
+        {disclosure}
+      en: |-
+        Hi {community_name}! Tomorrow {date} at {time}, at {venue}.
+        Sign up here: {registration}
+        See you there!
+        {disclosure}
+
+  - action_class: draft.reminder
+    phase: t-minus-7
+    agent: event-ops
+    copy:
+      id: |-
+        {community_name} — minggu depan {date} jam {time} di {venue}.
+        Masih bisa ikut: {registration}
+        {disclosure}
+      en: |-
+        {community_name} — next week, {date} at {time}, at {venue}.
+        You can still join: {registration}
+        {disclosure}
+
+# The next event. `starts_at` is a local time WITH its offset, because a timer that crosses a
+# daylight-saving change must still fire at the local hour the community wrote.
+#
+# Any key under `event:` becomes a fact your copy may use, so add `date_long: "7 November 2026"` if
+# your community says the date that way. `date` and `time` are derived from `starts_at` for you.
+# The community's own members. A member with no row cannot be contacted at all — "absent suppression
+# is unknown, and unknown is held" (FR-5.2) — so a community that wants a send checked says who its
+# members are. `tz` is the member's OWN timezone, because their quiet hours are theirs (FR-5.5).
+#
+# `suppressed: true` records a member who asked to stop. A stop beats any grant, any lane, any
+# autonomy level, and the runtime holds it.
+members:
+  - ref: wa:62811
+    tz: Asia/Jakarta
+  - ref: wa:62812
+    tz: Asia/Jakarta
+  - ref: wa:62813
+    tz: Europe/Berlin
+    suppressed: true
+
+event:
+  id: kopdar-2026-11-07
+  starts_at: "2026-11-07T19:00:00+07:00"
+  venue: "Studio Satu, Sudirman"
+  registration: "bit.ly/kopdar-november"
+  date_long: "7 November 2026"

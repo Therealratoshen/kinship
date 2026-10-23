@@ -396,3 +396,71 @@ test('a wake is only a waiting path while it is in the future — the engine ref
   assert.throws(() => f.assertWakeBacked('chase rsvp non-responders', 'kopdar-12'), /ghost_watcher/,
     'a wake that went due unfired is a broken promise, not a waiting path — the organiser must be told, not reassured');
 });
+
+// --- firing a wake attempts the action it carries (D60) --------------------------------------------------
+
+test('firing a wake that carries an action drafts the card, and a human is waiting on it', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.fired, true);
+  assert.equal(out.result, 'attempted');
+  assert.equal(out.card?.actionClass, 'draft.reminder');
+  assert.equal(out.card?.phase, 't-minus-1');
+  assert.equal(f.inbox().counts.verdict, 1, 'the card is on a human\'s desk, not in the void');
+});
+
+test('firing a wake with no action fires the timer and attempts nothing', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({ purpose: 'chase rsvp non-responders', nextCheckAt: DAY + 1_000 });
+  const out = f.fireWake(w.id);
+  assert.equal(out.fired, true);
+  assert.equal(out.result, 'no-action');
+  assert.equal(f.inbox().counts.verdict, 0);
+});
+
+test('a wake whose action names a class the agent does not declare is refused, and the refusal is logged', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'draft.promote@x:kopdar-1',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-1',
+    action: { actionClass: 'draft.promote', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.result, 'refused');
+  assert.equal(out.code, 'class_unavailable');
+  assert.ok(f.state.events.some((e) => e.type === 'CommitRefused'), 'a refusal is logged, not swallowed');
+  assert.equal(f.inbox().counts.verdict, 0, 'and nothing reached a member');
+});
+
+test('one reminder per event per phase — the second timer for the same phase is a 409, not a second card', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#a', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#b', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo again', en: 'hello again' } },
+  });
+  assert.equal(f.fireWake(a.id).result, 'attempted');
+  const second = f.fireWake(b.id);
+  assert.equal(second.result, 'refused');
+  assert.equal(second.code, 'conflict_409');
+  assert.equal(f.inbox().counts.verdict, 1, 'the community got one reminder, not two');
+});
+
+test('firing a wake that was never scheduled is not-found, and changes nothing', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const before = f.state.events.length;
+  const out = f.fireWake('wake-999');
+  assert.equal(out.fired, false);
+  assert.equal(out.result, 'not-found');
+  assert.equal(f.state.events.length, before);
+});

@@ -98,6 +98,20 @@ Real names, channels, and any member data go in `packs/kopdar-ops/pack.local.yam
 (`.gitignore:4`). A pack that carries state is a pack that leaks someone's attendee list into the next deploy
 (**PACK.md** note 3).
 
+**And your community's working data goes in a second file, `packs/kopdar-ops/pack.local.plan.yaml`, which
+is gitignored for the same reason.** That one is not a set of answers — it is your *work*: the copy you
+wrote for each lane and phase, the next event with the facts your copy may use, and your members with
+the timezone that decides their own quiet hours. It is a separate file because the two have different
+lifetimes: the answers are who your community is and change rarely, the plan is what your community is
+doing next and changes every event. Start from `pack.local.plan.example.yaml`, which is the plan the
+reference host's own tests run.
+
+**The copy is yours.** There is no model in this repository, and the runtime writes no member-facing text
+of its own. A `{slot}` with no value refuses the whole template — a message with a hole in it ships a
+lie about a venue by leaving the venue out — and a copy written for a lane this pack does not declare is
+refused too. The `{disclosure}` slot is filled with the runtime's canonical line for that language, in
+the place *you* put it, because the disclosure is the one thing that may not be improvised.
+
 **Provider keys go nowhere in this folder — not even in `pack.local.yaml`.** The model key is yours, held by
 the host that runs the model (`spec/HOST-CONTRACT.md` seam 1, **D33**); Kinship meters cost through
 `recordSpend` and never sees the credential. `PKG-57` makes that a build failure rather than advice: any

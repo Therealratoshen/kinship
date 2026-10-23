@@ -122,6 +122,29 @@ export interface WakeRow {
   attempts: number;
   eventId?: string;
   scheduledAt: number;
+  /**
+   * The action this wake will attempt when it fires (D60).
+   *
+   * A wake used to be a bare promise — "I will look at this on Thursday" — with nothing on the other
+   * end of it, so firing it produced a log line and no work. The runtime could judge a card and
+   * schedule a timer, and nothing ever connected the two: the *caller* handed the copy in, one
+   * `--text-id` at a time.
+   *
+   * Binding the action to the row is what makes the timer do something, and it keeps the pack's
+   * `event-lifecycle` rule true rather than bending it: the phase moves on "a fired timer with a
+   * persisted wake row", and now the row carries the whole promise — the lane, the agent, the phase
+   * and the copy — so what fires is what was promised, and the log says so.
+   */
+  action?: WakeAction;
+}
+
+/** The action a scheduled wake attempts when it fires. */
+export interface WakeAction {
+  actionClass: string;
+  agent: string;
+  phase: Phase;
+  /** The copy, in the community's declared languages. */
+  text: LocaleText;
 }
 
 // --- section 1.6 budgets -------------------------------------------------------------------------------------

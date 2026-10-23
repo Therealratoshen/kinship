@@ -75,3 +75,41 @@ test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake ro
   fireWake(c, w.id);
   assert.equal(c.state.wakes.get(w.id)?.attempts, 1, 'the attempts counter exists, so "monitoring" is countable');
 });
+
+// --- the wake carries the action it will attempt (D60) ----------------------------------------------------
+
+test('a scheduled wake carries the action it will attempt, and the row records it', () => {
+  const c = ctx();
+  const w = scheduleWake(c, {
+    purpose: 'draft.reminder@t-minus-1:kopdar-12',
+    nextCheckAt: c.now() + 86_400_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(w.action?.actionClass, 'draft.reminder');
+  assert.equal(w.action?.phase, 't-minus-1');
+  assert.deepEqual(w.action?.text, { id: 'halo', en: 'hello' });
+});
+
+test('a wake with no action is still a wake — the promise is unchanged by what it will do', () => {
+  const c = ctx();
+  const w = scheduleWake(c, { purpose: 'chase rsvp non-responders', nextCheckAt: c.now() + 86_400_000 });
+  assert.equal(w.action, undefined);
+  assert.doesNotThrow(() => assertWakeBacked(c, 'chase rsvp non-responders'));
+});
+
+test('firing a wake returns the row it fired, so the caller can read the action off it', () => {
+  const c = ctx();
+  const w = scheduleWake(c, { purpose: 'chase rsvp non-responders', nextCheckAt: c.now() + 86_400_000 });
+  const fired = fireWake(c, w.id);
+  assert.equal(fired?.id, w.id);
+  assert.equal(fired?.action, undefined, 'a wake with no action is a timer and nothing more');
+  assert.equal(c.state.wakes.get(w.id)?.attempts, 1);
+});
+
+test('firing a wake that does not exist returns nothing, and logs nothing', () => {
+  const c = ctx();
+  const before = c.state.events.length;
+  assert.equal(fireWake(c, 'wake-999'), undefined);
+  assert.equal(c.state.events.length, before, 'a wake that was never scheduled cannot be fired');
+});
