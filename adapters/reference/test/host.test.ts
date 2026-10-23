@@ -263,3 +263,17 @@ test('the run cap bounds the tick: the wakes past the cap stay due for the next 
   assert.ok(!out.some((l) => l.includes('stopped at its cap')), 'two reminders is inside a cap of 15');
   assert.ok(out.some((l) => l.includes('waiting on a human')));
 });
+
+test('the digest command reports the day, per channel, and names nobody', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  runCommand({ ...opts, command: 'approve', cardId: 'card-2', why: 'tanggal dan tempat sudah benar' });
+  const out = runCommand({ ...opts, command: 'digest', now: Date.parse(EVENT_MOMENT) + 3_600_000 });
+  const text = out.join('\n');
+  assert.ok(text.includes('digest —'), text);
+  assert.ok(text.includes('2 draft(s)'), 'both reminders were drafted');
+  assert.ok(text.includes('1 approved'));
+  assert.ok(text.includes('kopdar-2026-11-07'), 'and the channel is named');
+  assert.ok(text.includes('NOT a summary of what members said to each other'), 'and the limit is stated');
+  assert.equal(text.includes('wa:62811'), false, 'the digest names nobody');
+});

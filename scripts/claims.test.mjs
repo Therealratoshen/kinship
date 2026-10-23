@@ -30,7 +30,7 @@ import { BANNED_CLAIMS, CLAIM_RULES, normalise, scanForClaims } from './claim-sc
 
 const ROOT = process.cwd();
 const PACK = join(ROOT, 'packs', 'kopdar-ops');
-const PRD = join(ROOT, 'PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md');
+const PRD = join(ROOT, 'docs', 'PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md');
 
 /** A phrase that is banned by PRD section 2.3 ("Fully autonomous 24/7 management" / "fully autonomous"). */
 const PHRASE = 'fully autonomous community management';

@@ -40,7 +40,7 @@ export interface HostOptions {
   /** Whether to keep ticking. A host that only ticks on demand is a demo; one that ticks is a host. */
   watch: boolean;
   /** The command to run. */
-  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan';
+  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest';
   /**
    * The community's plan file — their own copy and their next event.
    *
@@ -65,6 +65,8 @@ export interface HostOptions {
   verdict?: 'approve' | 'edit' | 'reject';
   /** For `publish`: who the message is for. The host does not know the community's members. */
   recipients?: string[];
+  /** For `digest`: the window, in milliseconds. Default 24 hours. */
+  windowMs?: number;
 }
 
 /** Everything the host knows about the community it is running for. */
@@ -236,6 +238,7 @@ export function parseArgs(argv: readonly string[]): HostOptions {
     // host papers over.
     text: collectText(argv),
     verdict: readVerdict(flag('verdict')),
+    windowMs: flag('window-ms') === null ? undefined : Number(flag('window-ms')),
     recipients: collectRecipients(argv),
   };
 }
@@ -478,6 +481,22 @@ export function runCommand(opts: HostOptions): string[] {
       persist(host, opts);
       break;
     }
+    case 'digest': {
+      // The community manager's day: what the fleet did, what a human decided, what was refused,
+      // and what is still waiting — per channel, over a window the caller names.
+      const windowMs = opts.windowMs ?? 24 * 3_600_000;
+      const d = host.fleet.digest(host.fleet.now(), windowMs);
+      out.push(`digest — ${new Date(d.from).toISOString()} → ${new Date(d.to).toISOString()}`);
+      out.push(`  ${d.totals.drafts} draft(s) · ${d.totals.approved} approved · ${d.totals.rejected} rejected · ${d.totals.edited} edited`);
+      out.push(`  ${d.totals.refusals} refusal(s) · ${d.totals.openThreads} open thread(s) · ${d.waiting} waiting on a human`);
+      for (const c of d.channels) {
+        out.push(`  ${c.channel}: ${c.drafts} draft(s), ${c.approved} approved, ${c.rejected} rejected, ${c.edited} edited`);
+      }
+      for (const [code, n] of Object.entries(d.refusalsByCode)) out.push(`  refused: ${code} ×${n}`);
+      out.push(`  scope: ${d.scope}`);
+      for (const n of d.notMeasured) out.push(`  not measured: ${n}`);
+      break;
+    }
     case 'publish': {
       // The last step of the loop, and the one that shows the product: the message is ready, the
       // human has approved it, and the transport gate stops it anyway (D21). The refusal is not a
@@ -524,7 +543,7 @@ export function runCommand(opts: HostOptions): string[] {
       break;
     }
     default:
-      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, draft, approve, publish or verify`);
+      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, digest, draft, approve, publish or verify`);
   }
   return out;
 }

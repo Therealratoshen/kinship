@@ -227,7 +227,7 @@ The gating mechanism is real: every member-facing commit refuses with `no_transp
 
 ## For community operators
 
-The [PRD](PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md) and [execution plan](PLAN.md) cover the full product case. The [design-thinking folder](design-thinking/) documents the research that produced the spec. The [CONTRIBUTING.md](CONTRIBUTING.md) explains the append-only decision rule and how to contribute.
+The [PRD](docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md) and [execution plan](PLAN.md) cover the full product case. The [design-thinking folder](docs/design-thinking/) documents the research that produced the spec. The [CONTRIBUTING.md](CONTRIBUTING.md) explains the append-only decision rule and how to contribute.
 
 Read **[ROADMAP.md](ROADMAP.md) before opening a feature PR**: it lists what is *not* complete, and for each
 gap says whether a contributor can close it or it is an owner decision. Contributor behaviour is governed by
@@ -269,4 +269,4 @@ MIT. See [LICENSE](LICENSE).
 One honest caveat while PRD section 12-**Q4** stays the owner's open decision: MIT is what these files and this
 README already state, and Q4 is where it becomes a ratified commitment rather than a working default. The
 reasoning is written up as a question with a recommendation in
-[LICENSE-MEMO-2026-10-18.md](LICENSE-MEMO-2026-10-18.md), not as a decision.
+[LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md), not as a decision.
