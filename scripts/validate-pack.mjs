@@ -139,6 +139,37 @@ const fmList = (text, key) => {
   return m[1].split('\n').map((l) => stripComment(l).trim().replace(/^-\s+/, '').replace(/^["']|["']$/g, '')).filter(Boolean);
 };
 // Extract an indent-scoped block from a YAML-subset file.
+/**
+ * The sub-blocks of a LIST inside a block — `coverage.windows`, where each `-` starts one.
+ * Mirrors the runtime's own reader (`runtime/src/pack.ts`), because two readers with different ideas
+ * of "what a list looks like" is how a gate ends up checking a file the runtime never sees.
+ */
+const listBlocks = (lines, outerKey, listKey) => {
+  const outerIdx = lines.findIndex((l) => new RegExp(`^${outerKey}:\\s*(#.*|)$`).test(l));
+  if (outerIdx === -1) return [];
+  const listRe = new RegExp(`^\\s*${listKey}:\\s*(#.*|)$`);
+  const listIdx = lines.findIndex((l, i) => i > outerIdx && listRe.test(l));
+  if (listIdx === -1) return [];
+  const out = [];
+  let current = null;
+  for (let i = listIdx + 1; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.trim() === '') continue;
+    if (l.length - l.trimStart().length === 0) break;
+    const t = l.trim();
+    if (t.startsWith('- ')) {
+      current = [];
+      out.push(current);
+      const rest = t.slice(2);
+      if (rest.trim() !== '') current.push(rest);
+      continue;
+    }
+    if (current === null) continue;
+    current.push(stripComment(l).trimEnd());
+  }
+  return out;
+};
+
 const block = (lines, startIdx, indent) => {
   const out = [];
   for (let i = startIdx + 1; i < lines.length; i++) {
@@ -336,28 +367,43 @@ export function validatePack(dir, opts = {}) {
         try { new Intl.DateTimeFormat('en-GB', { timeZone: tz }); }
         catch { add('PKG-65', `\`coverage.timezone: ${tz}\` is not an IANA zone — the window is a statement about that zone's local calendar`); }
       }
-      const daysRaw = cov.get('days');
-      if (daysRaw === undefined || daysRaw === '') {
-        add('PKG-65', 'a staffed window with no `days:` — a shift needs the weekdays it covers');
-      } else {
-        for (const d of daysRaw.split(',').map((x) => x.trim().toLowerCase())) {
-          if (!['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].includes(d)) {
-            add('PKG-65', `\`coverage.days:\` names \`${d}\` — expected local weekday names (sun..sat)`);
-          }
-        }
-      }
+      // The staffed windows, as a LIST — a community's week may be SPLIT (the UAE's federal government
+      // works Monday–Thursday and a HALF day on Friday, with Saturday and Sunday as the weekend —
+      // u.ae and the DGHR FAQ, read 2026-10-23), and one window cannot say that.
       const mins = (raw) => {
         const m = /^(\d{1,2}):(\d{2})$/.exec(raw ?? '');
         if (m === null) return null;
         const h = Number(m[1]), mi = Number(m[2]);
         return h > 23 || mi > 59 ? null : h * 60 + mi;
       };
-      const opens = mins(cov.get('opens'));
-      const closes = mins(cov.get('closes'));
-      if (opens === null || closes === null) {
-        add('PKG-65', '`coverage.opens:`/`coverage.closes:` must be `HH:MM` local times — the window is read as a local wall clock');
-      } else if (opens >= closes) {
-        add('PKG-65', '`coverage.opens:` is not before `coverage.closes:` — a shift that closes before it opens is not a shift');
+      const windows = listBlocks(ml, 'coverage', 'windows');
+      if (windows.length === 0) {
+        add('PKG-65', 'a staffed window with no `windows:` — a community that is staffed at all has at least one window, and a split week has more than one');
+      }
+      for (const w of windows) {
+        const wm = new Map();
+        for (const line of w) {
+          const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(line.trim());
+          if (kv === null) continue;
+          wm.set(kv[1], stripComment(kv[2]).trim().replace(/^["']|["']$/g, ''));
+        }
+        const daysRaw = wm.get('days');
+        if (daysRaw === undefined || daysRaw === '') {
+          add('PKG-65', 'a staffed window with no `days:` — a shift needs the weekdays it covers');
+        } else {
+          for (const d of daysRaw.split(',').map((x) => x.trim().toLowerCase())) {
+            if (!['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].includes(d)) {
+              add('PKG-65', `\`coverage.windows[].days:\` names \`${d}\` — expected local weekday names (sun..sat)`);
+            }
+          }
+        }
+        const opens = mins(wm.get('opens'));
+        const closes = mins(wm.get('closes'));
+        if (opens === null || closes === null) {
+          add('PKG-65', '`coverage.windows[].opens:`/`closes:` must be `HH:MM` local times — the window is read as a local wall clock');
+        } else if (opens >= closes) {
+          add('PKG-65', 'a window\'s `opens:` is not before its `closes:` — a shift that closes before it opens is not a shift');
+        }
       }
     }
   }

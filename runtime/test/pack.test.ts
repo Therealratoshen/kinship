@@ -347,19 +347,21 @@ const withCoverageBlock = (body: string): string => {
   return target;
 };
 
+/** One staffed window, in the file's spelling. */
+const WINDOW = (days: string, opens: string, closes: string): string =>
+  `  windows:\n    - days: ${days}\n      opens: "${opens}"\n      closes: "${closes}"`;
+
 test('the shipped pack parses its coverage window into the numbers the file states', () => {
   const p = loadPack(PACK_DIR);
   assert.deepEqual(p.coverage, {
     mode: 'staffed',
     timezone: 'Asia/Jakarta',
-    days: [1, 2, 3, 4, 5],
-    opens: 9 * 60,
-    closes: 18 * 60,
+    windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }],
   });
 });
 
 test('a coverage window with no timezone refuses to load — business hours without a zone is not a commitment', () => {
-  const target = withCoverageBlock('  mode: staffed\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: staffed\n${WINDOW('mon,tue', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -375,7 +377,7 @@ test('a coverage window with no timezone refuses to load — business hours with
 });
 
 test('a coverage window that closes before it opens refuses to load', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon', '18:00', '09:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -407,7 +409,7 @@ test('a coverage window with an unrecognised mode refuses to load', () => {
 });
 
 test('a coverage window with an unknown weekday refuses to load', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon,funday', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -458,7 +460,7 @@ test('a 24/7 community that names its zone keeps it', () => {
 });
 
 test('a coverage block with an unknown key refuses to load — a key the runtime does not read is a key the community believes it wrote', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon', '09:00', '18:00')}\n  dayz: mon`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -474,7 +476,7 @@ test('a coverage block with an unknown key refuses to load — a key the runtime
 });
 
 test('`mode: always` alongside a shift the runtime cannot have refuses to load — the file may not disagree with itself', () => {
-  const target = withCoverageBlock('  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: always\n${WINDOW('mon', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -515,22 +517,25 @@ test('the parser refuses an unknown mode, on its own door', () =>
   parserRefuses('  mode: whenever\n  timezone: Asia/Jakarta', /mode/));
 
 test('the parser refuses a staffed window with no zone, on its own door', () =>
-  parserRefuses('  mode: staffed\n  days: mon\n  opens: "09:00"\n  closes: "18:00"', /timezone/));
+  parserRefuses('  mode: staffed\n  windows:\n    - days: mon\n      opens: "09:00"\n      closes: "18:00"', /timezone/));
 
 test('the parser refuses an unknown weekday, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"', /days|funday/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon,funday\n      opens: "09:00"\n      closes: "18:00"', /days|funday/));
 
 test('the parser refuses hours that are not HH:MM, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "9 in the morning"\n  closes: "18:00"', /opens|closes/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "9 in the morning"\n      closes: "18:00"', /opens|closes/));
 
 test('the parser refuses a shift that closes before it opens, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"', /opens|closes/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "18:00"\n      closes: "09:00"', /opens|closes/));
 
 test('the parser refuses a key the window does not have, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon', /dayz/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "09:00"\n      closes: "18:00"\n  dayz: mon', /dayz/));
 
 test('the parser refuses a line it cannot read, on its own door', () =>
   parserRefuses('  mode: staffed\n  ??? not a key\n  timezone: Asia/Jakarta', /cannot read/));
+
+test('the parser refuses a community with no window at all, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta', /windows/));
 
 test('the parser refuses a block written twice, on its own door', () => {
   assert.throws(
@@ -569,8 +574,8 @@ test('the parser refuses a window written in a shape it cannot read, rather than
 
 test('the parser reads a well-formed window, and one with no window at all', () => {
   assert.deepEqual(
-    parse('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"'),
-    { mode: 'staffed', timezone: 'Asia/Jakarta', days: [1, 2], opens: 540, closes: 1080 },
+    parse('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon,tue\n      opens: "09:00"\n      closes: "18:00"'),
+    { mode: 'staffed', timezone: 'Asia/Jakarta', windows: [{ days: [1, 2], opens: 540, closes: 1080 }] },
   );
   assert.equal(parseCoverage('locale: [id, en]\n', 'test/pack'), undefined, 'no block means no promise');
 });

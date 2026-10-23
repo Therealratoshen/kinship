@@ -416,7 +416,11 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  fork wires the nudge rung to \`telegram | send\` (a declared tool) → boot ${s.toolLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.toolLadderObs.message)?.[0] ?? s.toolLadderObs.code}` : 'ACCEPTED (the ladder became a send lane!)'}`);
 
   hr('4c. The community\'s coverage window — the hours a human is on duty, and what waited past them');
-  console.log(`  the pack declares: ${s.health.community.coverage?.mode === 'staffed' ? `${s.health.community.coverage.timezone}, ${s.health.community.coverage.days.length} days, opens ${Math.floor(s.health.community.coverage.opens / 60)}:00, closes ${Math.floor(s.health.community.coverage.closes / 60)}:00` : '(no window declared)'}`);
+  const cov = s.health.community.coverage;
+  const covText = cov?.mode === 'staffed'
+    ? `${cov.timezone}, ${cov.windows.length} window(s): ${cov.windows.map((w) => `${w.days.length} days, ${Math.floor(w.opens / 60)}:00–${Math.floor(w.closes / 60)}:00`).join('; ')}`
+    : '(no window declared)';
+  console.log(`  the pack declares: ${covText}`);
   console.log(`  on duty at the moment of the read: ${s.health.community.onDutyNow === null ? 'unknown (the pack declares no window — null, not zero)' : s.health.community.onDutyNow ? 'yes' : 'no'}`);
   console.log(`  obligations that outlived a staffed shift: ${s.health.community.missedShift === null ? 'unknown' : s.health.community.missedShift.count} — ${s.health.community.missedShift?.note ?? 'a pack with no window cannot say'}`);
   console.log(`  a pack with no window reads: coverage ${s.noCoverageHealth.community.coverage === null ? 'null' : 'set'}, on duty ${s.noCoverageHealth.community.onDutyNow === null ? 'null' : 'set'}, missed ${s.noCoverageHealth.community.missedShift === null ? 'null' : 'set'} — silence is not a number`);

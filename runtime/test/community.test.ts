@@ -45,9 +45,7 @@ const DAY = 86_400_000;
 const JAKARTA = (over: Partial<Extract<CommunityCoverage, { mode: 'staffed' }>> = {}): CommunityCoverage => ({
   mode: 'staffed',
   timezone: 'Asia/Jakarta',
-  days: [1, 2, 3, 4, 5], // 0 = Sunday
-  opens: 9 * 60,
-  closes: 18 * 60,
+  windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }], // 0 = Sunday
   ...over,
 });
 
@@ -151,7 +149,7 @@ test('the window keeps its local meaning across a DST transition — no offset i
   // Europe/London moves to BST on 2026-03-29. A staffed 09:00–18:00 window must still open at
   // 09:00 local on both sides of the change; a stored UTC offset would open it at 08:00 local
   // after the switch.
-  const cov: CommunityCoverage = { mode: 'staffed', timezone: 'Europe/London', days: [0, 1, 2, 3, 4, 5, 6], opens: 9 * 60, closes: 18 * 60 };
+  const cov: CommunityCoverage = { mode: 'staffed', timezone: 'Europe/London', windows: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: 9 * 60, closes: 18 * 60 }] };
   assert.equal(isOnDuty(cov, local('Europe/London', 2026, 3, 28, 9, 0)), true, 'the Saturday before the change');
   assert.equal(isOnDuty(cov, local('Europe/London', 2026, 3, 30, 9, 0)), true, 'the Monday after the change — still 09:00 local');
 });
@@ -330,13 +328,13 @@ test('the shift list is read against the LOCAL weekday — a UTC date would put 
   // 19:00 on Sunday in UTC), is off duty — the local date is Monday. Read against the UTC date it would
   // be Sunday, and the community would be "on duty" on a day it never staffed. The other direction
   // too: 00:30 on Tuesday in Jakarta is 17:30 on Monday in UTC.
-  const sundayOnly = JAKARTA({ days: [0], opens: 0, closes: 24 * 60 - 1 });
+  const sundayOnly = JAKARTA({ windows: [{ days: [0], opens: 0, closes: 24 * 60 - 1 }] });
   const jakartaMonday2am = local('Asia/Jakarta', 2026, 7, 20, 2, 0); // local Monday 02:00
   assert.equal(new Date(jakartaMonday2am).getUTCDay(), 0, 'the UTC day is Sunday');
   assert.equal(isOnDuty(sundayOnly, jakartaMonday2am), false,
     'the local day is Monday, and Monday is not a staffed day — a UTC date would read Sunday and say "on duty"');
 
-  const mondayOnly = JAKARTA({ days: [1], opens: 0, closes: 24 * 60 - 1 });
+  const mondayOnly = JAKARTA({ windows: [{ days: [1], opens: 0, closes: 24 * 60 - 1 }] });
   const jakartaTuesday0030 = local('Asia/Jakarta', 2026, 7, 21, 0, 30); // local Tuesday 00:30
   assert.equal(new Date(jakartaTuesday0030).getUTCDay(), 1, 'the UTC day is Monday');
   assert.equal(isOnDuty(mondayOnly, jakartaTuesday0030), false,
@@ -345,7 +343,7 @@ test('the shift list is read against the LOCAL weekday — a UTC date would put 
   // And across TWO zones, because the day formatter is CACHED per zone — so a cache that leaked
   // between zones would hand the second community the first community's calendar. New York on the
   // local Tuesday is already the Wednesday in Jakarta, so a leaked formatter reads the wrong weekday.
-  const nyTuesdayOnly = JAKARTA({ timezone: 'America/New_York', days: [2], opens: 0, closes: 24 * 60 - 1 });
+  const nyTuesdayOnly = JAKARTA({ timezone: 'America/New_York', windows: [{ days: [2], opens: 0, closes: 24 * 60 - 1 }] });
   const nyTuesday2100 = local('America/New_York', 2026, 7, 21, 21, 0); // local Tuesday 21:00
   assert.equal(new Date(nyTuesday2100).getUTCDay(), 3, 'the UTC day is Wednesday, and in Jakarta it is already the Wednesday');
   assert.equal(isOnDuty(nyTuesdayOnly, nyTuesday2100), true,

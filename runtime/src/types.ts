@@ -283,6 +283,26 @@ export interface PackedGuardrails {
  * reported as `null` when the pack did not say — an invented "UTC" would be a claim about a
  * community nobody described.
  */
+/**
+ * One staffed window: the local weekdays it covers, and the hours it opens and closes.
+ *
+ * **A community's week may be SPLIT.** One window can only say "these days, these hours", and a split
+ * week is not exotic — the UAE's federal government works Monday–Thursday 07:30–15:30 and **Friday
+ * 07:30–12:00, a half day**, with **Saturday and Sunday** as the weekend (u.ae and the DGHR "New Weekly
+ * Work System" FAQ, read 2026-10-23; effective 1 January 2022; Sharjah's weekend differs again). So does
+ * a church, a school, a makerspace with a Saturday session. Reading one window for such a community
+ * would say it is on duty on Friday evening and off duty on Saturday morning — both exactly backwards,
+ * and a confident number built on the wrong calendar is worse than no number.
+ */
+export interface CoverageWindow {
+  /** Local weekdays this window covers, 0 = Sunday. */
+  days: number[];
+  /** Minutes from local midnight when the shift opens. */
+  opens: number;
+  /** Minutes from local midnight when the shift closes. */
+  closes: number;
+}
+
 export type CommunityCoverage =
   | {
       mode: 'always';
@@ -293,12 +313,12 @@ export type CommunityCoverage =
       mode: 'staffed';
       /** IANA zone. The window is a statement about this zone's local calendar, never a stored offset. */
       timezone: string;
-      /** Local weekdays the community is staffed, 0 = Sunday. */
-      days: number[];
-      /** Minutes from local midnight when the shift opens. */
-      opens: number;
-      /** Minutes from local midnight when the shift closes. */
-      closes: number;
+      /**
+       * The staffed windows, **at least one**. A community with a split week declares more than one —
+       * and the windows are the community's own calendar, not the runtime's: two emirates in one country
+       * have different weekends, and nothing in the code has an opinion about either.
+       */
+      windows: CoverageWindow[];
     };
 
 export interface Packed {

@@ -20,7 +20,7 @@ import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
 import { SUPPORTED_LOCALES, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
-import type { Autonomy, CommunityCoverage, CommunityPosture, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
+import type { Autonomy, CommunityCoverage, CommunityPosture, CoverageWindow, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
 
@@ -43,6 +43,74 @@ function block(yaml: string, key: string): string[] {
     if (l.trim() === '') continue;
     if ((l.length - l.trimStart().length) === 0) break; // next top-level key
     out.push(stripComment(l).trimEnd());
+  }
+  return out;
+}
+
+/**
+ * The SCALAR keys of a block — `key: value` lines at the block's own indent.
+ *
+ * A block may hold a LIST as well as scalars (`coverage.windows`), and the list's items are
+ * indented deeper. Reading them as scalars would see `- days: mon` as a malformed line, so the
+ * scalars are read at the block's own indent and the list is read separately.
+ */
+function blockScalars(yaml: string, key: string): Map<string, string> {
+  const lines = yaml.split('\n');
+  const idx = lines.findIndex((l) => new RegExp(`^${key}:\\s*(#.*|)$`).test(l));
+  const out = new Map<string, string>();
+  if (idx === -1) return out;
+  let baseIndent: number | null = null;
+  for (let i = idx + 1; i < lines.length; i++) {
+    const l = lines[i]!;
+    if (l.trim() === '') continue;
+    const indent = l.length - l.trimStart().length;
+    if (indent === 0) break; // the next top-level key
+    if (baseIndent === null) baseIndent = indent;
+    if (indent !== baseIndent) continue; // a nested list or map — not a scalar of this block
+    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(stripComment(l).trim());
+    if (kv === null) continue; // a comment, or a line this reader does not claim
+    out.set(kv[1]!, kv[2]!.trim().replace(/^["']|["']$/g, ''));
+  }
+  return out;
+}
+
+/**
+ * The sub-blocks of a LIST inside a block — `coverage.windows`, where each `-` starts one.
+ *
+ * The pack format's list form is a YAML list of maps, so a window is a `-` line followed by its
+ * indented keys. Each returned entry is that window's own key/value lines, and the caller reads them
+ * the way it reads any other block. A list written WITHOUT `-` markers is not a list this reader
+ * understands, and it is refused rather than half-read — a window that silently lost its days is a
+ * window nobody is on duty for.
+ */
+function listBlocks(yaml: string, key: string, listKey: string, packKey: string): string[][] {
+  const lines = yaml.split('\n');
+  const outerIdx = lines.findIndex((l) => new RegExp(`^${key}:\\s*(#.*|)$`).test(l));
+  if (outerIdx === -1) return [];
+  const listRe = new RegExp(`^\\s*${listKey}:\\s*(#.*|)$`);
+  const listIdx = lines.findIndex((l, i) => i > outerIdx && listRe.test(l));
+  if (listIdx === -1) return [];
+
+  const out: string[][] = [];
+  let current: string[] | null = null;
+  for (let i = listIdx + 1; i < lines.length; i++) {
+    const l = lines[i]!;
+    if (l.trim() === '') continue;
+    const indent = l.length - l.trimStart().length;
+    if (indent === 0) break; // the next top-level key
+    const t = l.trim();
+    if (t.startsWith('- ')) {
+      current = [];
+      out.push(current);
+      const rest = t.slice(2);
+      if (rest.trim() !== '') current.push(rest);
+      continue;
+    }
+    if (current === null) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` writes a \`${listKey}:\` list whose entries are not marked with \`-\` — a list this reader cannot see the shape of is a list it would half-read`);
+    }
+    current.push(stripComment(l).trimEnd());
   }
   return out;
 }
@@ -168,7 +236,7 @@ function parseAgents(yaml: string): Record<string, PackedAgent> {
 const FLOOR_NAMES = ['report_aggregation_floor', 'member_message_cap_per_24h', 'identity_disclosure', 'defaults'];
 
 /** The keys a `coverage:` block may carry, in the spelling the file uses. */
-const COVERAGE_KEYS: ReadonlySet<string> = new Set(['mode', 'timezone', 'days', 'opens', 'closes']);
+const COVERAGE_KEYS: ReadonlySet<string> = new Set(['mode', 'timezone', 'windows', 'days', 'opens', 'closes']);
 
 /**
  * The `coverage:` key as a file writes it — the key alone, or the key with a trailing comment.
@@ -287,14 +355,19 @@ export function parseCoverage(yaml: string, packKey: string): CommunityCoverage 
     return undefined; // an unstated staffing promise is not a promise
   }
 
-  const map = new Map<string, string>();
+  // The block's own scalars — `mode`, `timezone` — read at the block's indent, so the list's items
+  // are not mistaken for them. A line this reader cannot read is a line the runtime cannot evaluate,
+  // so it is refused rather than skipped: a window that silently lost its days is a window nobody
+  // is on duty for.
+  const map = blockScalars(yaml, 'coverage');
   for (const l of lines) {
-    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l.trim());
-    if (kv === null) {
+    if (l.trim() === '' || l.trim().startsWith('- ')) continue;
+    const indent = l.length - l.trimStart().length;
+    if (indent === 0) continue;
+    if (!/^([A-Za-z_][\w-]*):\s*(.*)$/.test(stripComment(l).trim()) && stripComment(l).trim() !== '') {
       refuse('pack_invalid', 'coverage parse gate',
         `pack \`${packKey}\` has a \`coverage:\` line this parser cannot read: \`${l.trim()}\` — a window the runtime cannot evaluate is a window that would read as "never on duty" and turn every later number into a quiet lie`);
     }
-    map.set(kv[1]!, kv[2]!.trim().replace(/^["']|["']$/g, ''));
   }
 
   // An unknown key is refused, not skipped — the same rule the sanction ladder follows (D37). A
@@ -317,11 +390,10 @@ export function parseCoverage(yaml: string, packKey: string): CommunityCoverage 
     // with itself — the same fault the duplicate-block rule refuses — so they are refused rather
     // than quietly dropped. The zone is kept when the pack names one and is `null` when it does
     // not: an invented "UTC" would be a claim about a community nobody described.
-    for (const key of ['days', 'opens', 'closes']) {
-      if (map.has(key)) {
-        refuse('pack_invalid', 'coverage parse gate',
-          `pack \`${packKey}\` declares \`coverage.mode: always\` and also writes \`coverage.${key}\` — a community staffed around the clock has no shift to open or close, so the file is disagreeing with itself. Drop the \`${key}\` line or declare \`mode: staffed\``);
-      }
+    if (map.has('windows') || map.has('days') || map.has('opens') || map.has('closes')) {
+      const which = map.has('windows') ? 'windows' : map.has('days') ? 'days' : map.has('opens') ? 'opens' : 'closes';
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` declares \`coverage.mode: always\` and also writes \`coverage.${which}\` — a community staffed around the clock has no shift to open or close, so the file is disagreeing with itself. Drop the \`${which}\` line or declare \`mode: staffed\``);
     }
     const zone = map.get('timezone');
     if (zone !== undefined) {
@@ -346,34 +418,55 @@ export function parseCoverage(yaml: string, packKey: string): CommunityCoverage 
       `pack \`${packKey}\` declares \`coverage.timezone: ${timezone}\`, which is not an IANA zone — the window is a statement about that zone's local calendar, so an unreadable zone is an unreadable window`);
   }
 
-  const daysRaw = map.get('days');
-  if (daysRaw === undefined || daysRaw === '') {
+  // The staffed windows. A community's week may be SPLIT — the UAE's federal government works
+  // Monday–Thursday and a HALF day on Friday, with Saturday and Sunday as the weekend (u.ae and the
+  // DGHR FAQ, read 2026-10-23) — and one window cannot say that. So the block carries a LIST.
+  const windowBlocks = listBlocks(yaml, 'coverage', 'windows', packKey);
+  if (windowBlocks.length === 0) {
     refuse('pack_invalid', 'coverage parse gate',
-      `pack \`${packKey}\` declares a staffed window with no \`days:\` — a shift needs the weekdays it covers`);
+      `pack \`${packKey}\` declares a staffed window with no \`windows:\` — a community that is staffed at all has at least one window, and a split week has more than one`);
   }
-  const days: number[] = [];
-  for (const raw of daysRaw.split(',')) {
-    const name = raw.trim().toLowerCase();
-    const day = WEEKDAYS[name];
-    if (day === undefined) {
-      refuse('pack_invalid', 'coverage parse gate',
-        `pack \`${packKey}\` names \`${raw.trim()}\` in \`coverage.days:\` — expected local weekday names (sun..sat)`);
+  const windows: CoverageWindow[] = [];
+  for (const w of windowBlocks) {
+    const wm = new Map<string, string>();
+    for (const l of w) {
+      if (l.trim() === '') continue;
+      const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l.trim());
+      if (kv === null) {
+        refuse('pack_invalid', 'coverage parse gate',
+          `pack \`${packKey}\` has a \`coverage.windows:\` line this parser cannot read: \`${l.trim()}\` — a window the runtime cannot evaluate is a window nobody can be on duty for`);
+      }
+      wm.set(kv[1]!, kv[2]!.trim().replace(/^["']|["']$/g, ''));
     }
-    if (!days.includes(day)) days.push(day);
+    const daysRaw = wm.get('days');
+    if (daysRaw === undefined || daysRaw === '') {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` declares a staffed window with no \`days:\` — a shift needs the weekdays it covers`);
+    }
+    const days: number[] = [];
+    for (const raw of daysRaw.split(',')) {
+      const name = raw.trim().toLowerCase();
+      const day = WEEKDAYS[name];
+      if (day === undefined) {
+        refuse('pack_invalid', 'coverage parse gate',
+          `pack \`${packKey}\` names \`${raw.trim()}\` in \`coverage.windows[].days:\` — expected local weekday names (sun..sat)`);
+      }
+      if (!days.includes(day)) days.push(day);
+    }
+    const opens = localTimeToMinutes(wm.get('opens'));
+    const closes = localTimeToMinutes(wm.get('closes'));
+    if (opens === null || closes === null) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` declares a staffed window whose \`opens:\`/\`closes:\` are not \`HH:MM\` local times — the window is read as a local wall clock, so anything else cannot be evaluated`);
+    }
+    if (opens >= closes) {
+      refuse('pack_invalid', 'coverage parse gate',
+        `pack \`${packKey}\` declares a window that opens at \`${wm.get('opens')}\` and closes at \`${wm.get('closes')}\` — a shift that closes before it opens is not a shift (an overnight window would need its own rule, not a backwards one)`);
+    }
+    windows.push({ days: days.sort((a, b) => a - b), opens, closes });
   }
 
-  const opens = localTimeToMinutes(map.get('opens'));
-  const closes = localTimeToMinutes(map.get('closes'));
-  if (opens === null || closes === null) {
-    refuse('pack_invalid', 'coverage parse gate',
-      `pack \`${packKey}\` declares a staffed window whose \`opens:\`/\`closes:\` are not \`HH:MM\` local times — the window is read as a local wall clock, so anything else cannot be evaluated`);
-  }
-  if (opens >= closes) {
-    refuse('pack_invalid', 'coverage parse gate',
-      `pack \`${packKey}\` declares \`coverage.opens: ${map.get('opens')}\` and \`coverage.closes: ${map.get('closes')}\` — a shift that closes before it opens is not a shift (an overnight window would need its own rule, not a backwards one)`);
-  }
-
-  return { mode: 'staffed', timezone, days: days.sort((a, b) => a - b), opens, closes };
+  return { mode: 'staffed', timezone, windows };
 }
 
 /**

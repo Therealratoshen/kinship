@@ -50,9 +50,7 @@ const ANSWERS = { community_name: 'AI Builders ID' };
 const JAKARTA = (over: Partial<Extract<CommunityCoverage, { mode: 'staffed' }>> = {}): CommunityCoverage => ({
   mode: 'staffed',
   timezone: 'Asia/Jakarta',
-  days: [1, 2, 3, 4, 5], // 0 = Sunday
-  opens: 9 * 60,
-  closes: 18 * 60,
+  windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }], // 0 = Sunday
   ...over,
 });
 

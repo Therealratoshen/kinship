@@ -141,9 +141,16 @@ posture:
 coverage:
   mode: staffed
   timezone: Asia/Jakarta
-  days: mon,tue,wed,thu,fri
-  opens: "09:00"
-  closes: "18:00"
+  # The staffed windows, as a LIST — because a community's week may be SPLIT. One window can only
+  # say "these days, these hours"; the UAE's federal government works Monday–Thursday and a HALF day
+  # on Friday, with Saturday and Sunday as the weekend (u.ae and the DGHR "New Weekly Work System" FAQ,
+  # read 2026-10-23), and so does a church or a makerspace with a Saturday session. A single window
+  # would say such a community is on duty on Friday evening and off duty on Saturday morning — both
+  # exactly backwards. (D57)
+  windows:
+    - days: mon,tue,wed,thu,fri
+      opens: "09:00"
+      closes: "18:00"
 
 budgets:
   llm_per_event_idr: null                # REAL field, UNSET value. Owner's call — PRD §12-Q9.

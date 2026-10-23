@@ -550,35 +550,35 @@ const withCoverage = (dir, body) => {
  */
 test('a staffed coverage window with a zone, days and hours passes', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon,tue,wed,thu,fri', '  opens: "09:00"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  windows:', '    - days: mon,tue,wed,thu,fri', '      opens: "09:00"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.equal(r.ok, true, `a well-formed window must pass: ${r.errors.join('\n  ')}`);
   }));
 
 test('a coverage window with no timezone fails — business hours without a zone is not a commitment (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  days: mon,tue', '  opens: "09:00"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  windows:', '    - days: mon,tue', '      opens: "09:00"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'an unzoned window must be refused');
   }));
 
 test('a coverage window with no days fails (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  opens: "09:00"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  windows:', '    - opens: "09:00"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'a shift needs the weekdays it covers');
   }));
 
 test('a coverage window that closes before it opens fails (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon', '  opens: "18:00"', '  closes: "09:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  windows:', '    - days: mon', '      opens: "18:00"', '      closes: "09:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'a shift that closes before it opens is not a shift');
   }));
 
 test('a coverage window with an unknown weekday fails (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon,funday', '  opens: "09:00"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  windows:', '    - days: mon,funday', '      opens: "09:00"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'a weekday the runtime cannot read is a day nobody is on duty for');
   }));
@@ -592,14 +592,14 @@ test('a coverage window with an unrecognised mode fails (PKG-65)', () =>
 
 test('a coverage window with an unknown timezone fails — an unreadable zone is an unreadable window (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Middle/Earth', '  days: mon', '  opens: "09:00"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Middle/Earth', '  windows:', '    - days: mon', '      opens: "09:00"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'the window is a statement about that zone\'s local calendar');
   }));
 
 test('a coverage window with hours that are not HH:MM fails (PKG-65)', () =>
   inCopy((dir) => {
-    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon', '  opens: "9 in the morning"', '  closes: "18:00"']);
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  windows:', '    - days: mon', '      opens: "9 in the morning"', '      closes: "18:00"']);
     const r = validatePack(dir);
     assert.ok(codes(r).includes('PKG-65'), 'the window is read as a local wall clock');
   }));
@@ -615,7 +615,7 @@ test('a coverage block with an unknown key is NOT this gate\'s judgement — the
   inCopy((dir) => {
     const f = machine(dir);
     const text = readFileSync(f, 'utf8');
-    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, 'coverage:\n  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon\n\n'));
+    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, 'coverage:\n  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "09:00"\n      closes: "18:00"\n  dayz: mon\n\n'));
     const r = validatePack(dir);
     // `rules/pack-format.mdc` rule 8: an unknown key is READING strictness, and reading strictness
     // lives in `runtime/src/pack.ts` alone. A refusal here would run FIRST and make the parser's own

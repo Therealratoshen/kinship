@@ -141,6 +141,12 @@ than a score:
 
 - **It is a local wall clock, never a stored UTC offset.** 09:00 stays 09:00 on both sides of a daylight-saving
   change.
+- **The week may be SPLIT.** The block carries a **list** of windows, each with its own days and hours, because
+  a community's week is not always one span. The **UAE** federal government works Monday–Thursday 07:30–15:30
+  and **Friday 07:30–12:00 — a half day** — with Saturday and Sunday as the weekend (u.ae and the DGHR "New
+  Weekly Work System" FAQ, read 2026-10-23), and Sharjah's weekend is Friday–Sunday. **There is no country
+  table in the runtime**: *your* community declares its windows, and a pack for a different community declares
+  different days without any code changing.
 - **Only a shift whose end has passed counts as missed.** An obligation raised at 10:00 and still open at 12:00
   is *inside* the shift ending at 18:00 — the clock pauses outside coverage. A question raised Friday evening and
   still open Monday morning is **not** a miss.

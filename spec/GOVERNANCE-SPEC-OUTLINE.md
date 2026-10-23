@@ -775,6 +775,44 @@ pack nobody has written yet. What this section claims is narrower and checkable 
 declare how it is run, that the runtime resolves it against its org, that the fleet is held to it, and
 that the effective posture is reported with the provenance that says which file decided.
 
+### 2.16 A split working week: a community's hours may differ by the day
+
+§2.13 gave the community one staffed window: a zone, the days, the hours. **One window can only say
+"these days, these hours"** — and a community whose week is split cannot be said at all.
+
+A split week is not exotic, and it is not a matter of taste:
+
+- The **UAE** federal government works **Monday–Thursday 07:30–15:30** and **Friday 07:30–12:00 — a
+  half day** — with **Saturday and Sunday** as the weekend (u.ae, the official UAE government platform,
+  and the DGHR "New Weekly Work System" FAQ; read 2026-10-23; the system took effect 1 January 2022).
+  **Dubai and most emirates** follow the federal pattern. **Sharjah does not**: it works Monday–Thursday
+  only — a four-day week — with **Friday, Saturday *and* Sunday** as the weekend. So even inside one
+  country, the weekend is not one thing.
+- A church, a school, a makerspace with a Saturday session, a community with a members-only evening —
+  all the same shape.
+
+**So the window becomes a LIST of windows**, and each window carries its own days and hours. A one-window
+community is the list of one, and it reads exactly as it always did — the shipped pack's Monday–Friday
+09:00–18:00 is unchanged in meaning.
+
+**And the thing that would go wrong without it.** A community whose weekend is Saturday–Sunday, read by
+a runtime that assumed the Western week, would be told it is **on duty on Friday evening** and **off duty
+on Saturday morning** — both exactly backwards. A staffing promise measured against the wrong calendar is
+worse than no promise, because it produces a confident number.
+
+**This is a general capability with a primary-sourced example — not a country table.** The runtime still
+does not know what Dubai is, or what the UAE's working week is, and §2.15's rule holds: the **community
+declares** its own windows and the runtime reads them. A pack for a Sharjah community would declare
+Friday–Sunday off, and **nothing in the code would have to change** — which is exactly the point of
+declaring rather than looking up. The UAE facts are the *evidence* that a split week is a real shape
+worth supporting; they are not a table the runtime carries.
+
+`[UNVERIFIED]` Whether any community's split week changes its behaviour is untestable here: phase 1 sends
+nothing (D21), no dated event exists (D9), and no pack has yet declared a split week. What this section
+claims is narrower and checkable — that a community can declare different hours for different days, that
+the runtime reads each window's own days and hours, and that a shift which ended on a SHORT day is a shift
+that ended.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -872,7 +910,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 9,960 as of 2026-10-22, split 4,511 domain code / 4,850 tests / 599 tour. The count is re-run whenever a
+prints 10,214 as of 2026-10-22, split 4,631 domain code / 4,980 tests / 603 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -907,6 +945,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §1.2 read side, **third artefact** (D35): the *tier stack* itself as a dated, positioned read — what each effective guardrail value is, which file put it there (`pack` / `org` / `default`), which org floor a pack-level value is holding above, what the resolved autonomy ceiling allows per action class, the seat set, the recognised agent roles, and the limits it refuses to exceed. A settings *write* would be a fifth governing actor, so `Fleet.settings()` appends nothing and replays identical | `src/settings.ts` (`deriveSettings`, exposed as `Fleet.settings()` through `src/engine.ts`, which appends nothing), `src/pack.ts` (`Packed.declared` — the set of keys the pack itself wrote, which is what makes provenance a fact rather than a guess) | `test/settings.test.ts` (27 cases as of D37 — was 20 when this row was written: incl. purity across two calls and replay deep-equality *of the read*, provenance sourced from the keys the pack actually wrote rather than the ones it merely did not override, and the seat-collision refusal that stops a pack from handing itself a human act by naming an agent `organiser`) |
 | §2.13 the community's coverage window (PRD **FR-5.12**, `DECISIONS.md` **D54**): a pack may declare the hours a human is **on duty** for it, and the health read reports the window, the duty state at the moment of the read, and how many obligations outlived a staffed shift. Evaluated as a **local wall clock** in the community's own zone (never a stored UTC offset, so 09:00 stays 09:00 across a DST change); **only a shift whose end has passed counts as missed**, so the clock pauses outside coverage; a gap spanning a closed window is not a miss. **Absence is legal and reads as `null`, never `0`** — an unstated staffing promise is an unknown duty state, and zero would claim the community was never on duty. Not the member's quiet hours: that clock is the member's (FR-5.5) and answers a different question. The two modes are a **discriminated union** — `always` is a 24/7 community with no window at all, and a file writing `days:` beside `mode: always` is refused as self-contradictory | `src/community.ts` (`isOnDuty`, `shiftCompletedBetween`, `deriveCoverageVerdict` — the arithmetic never converts an instant to UTC), `src/types.ts` (`CommunityCoverage`, the union), `src/pack.ts` (`parseCoverage` — the strict reader: unknown mode, no zone, unknown weekday, non-`HH:MM` hours, a backwards shift, an unknown key, a duplicate block, a self-contradicting `always`), `src/health.ts` (the `community` section of the snapshot, derived from the same four obligation kinds `inbox` lists), `scripts/validate-pack.mjs` **PKG-65** (the *shape*, in CI — the reading strictness stays in the parser, or the parser's own door becomes unreachable), `packs/kopdar-ops/.kinship.yaml` (the shipped window: `Asia/Jakarta`, Mon–Fri, 09:00–18:00) | `test/community.test.ts` (16 cases: the duty window by community timezone, `always` mode, the weekend gap that is not a miss, both ends of the shift-end boundary, the local-**day** half of the wall-clock rule, the DST-local-meaning case, the health read's shape, the null-not-zero case, the member-identifier sweep, and the pure-read/replay property), `test/pack.test.ts` (the boot-door refusals **and** the parser's own door called directly — nine refusals proved with the *parser's* message, because `loadPack` runs the validator first and a boot-level test can only ever see PKG-65's), `scripts/validate-pack.test.mjs` (14 new coverage cases of that file's 67, incl. the duplicate-block refusal, the POSITIVE CONTROL that a pack with no window passes, and the case that proves the validator does NOT shadow the parser's unknown-key door), `runtime/tour.ts` (`health_reports_the_communitys_coverage_window`, `health_reports_an_unknown_duty_state_as_null`) |
 | §2.15 the community's operating posture (PRD **FR-5.14**, `DECISIONS.md` **D56**): a community declares **how it is run** — `contact` (may the fleet approach a member who did not ask: `never` · `asked_only` · `open`) and `openness` (is it discoverable, may the fleet post publicly: `closed` · `open`) — and the runtime holds the fleet to it. **There is no country table and never will be**: a `country → posture` lookup would be a stereotype in code and a rule nobody in that community chose. Resolved org → pack, and the pack may only be **stricter** — a looser pack is refused, not clamped. **Absence is not permission**: no posture declared means the conservative default (`asked_only` / `closed`). The gates are the 1:1 member classes (`commit.individual-message`, `commit.template-send`) and `commit.channel-post`; the contact gate sits *after* the member's own protections, so a posture can only ever be an additional limit | `src/posture.ts` (`assertPostureContact`, `isOneToOneClass`), `src/types.ts` (`CommunityPosture`, `DEFAULT_POSTURE`), `src/pack.ts` (`parsePosture` — the strict reader), `src/org.ts` (`parseOrgPosture` — the org's most-permissive floor), `src/settings.ts` (`resolveSettings` — org → pack, refuse never clamp; the provenance rows), `src/engine.ts` (the two gates), `orgs/kinshipai.yaml` (`posture:`), `packs/kopdar-ops/.kinship.yaml` (`posture:`) | `test/posture.test.ts` (9 cases: the contact gate at all three levels, the openness gate, the conservative default, the org floor refused and honoured, and the provenance), `runtime/tour.ts` (`the_community_declares_its_own_posture`) |
+| §2.16 a split working week (PRD **FR-5.15**, `DECISIONS.md` **D57**): the staffed window becomes a **LIST** of windows, each with its own days and hours, because a community's week may be split — the UAE's federal government works Monday–Thursday and a **half day** on Friday, with Saturday and Sunday as the weekend (u.ae and the DGHR FAQ, read 2026-10-23), and Sharjah's weekend is Friday–Sunday. A one-window community is the list of one and reads exactly as before. **A general capability with a primary-sourced example, not a country table**: the community declares its own windows and the runtime reads them | `src/types.ts` (`CoverageWindow`, and `CommunityCoverage.windows`), `src/community.ts` (`isOnDuty` and `shiftCompletedBetween` over the list), `src/pack.ts` (`parseCoverage` + `listBlocks` — the list reader), `scripts/validate-pack.mjs` **PKG-65** (the same list, read the same way), `packs/kopdar-ops/.kinship.yaml` (`coverage.windows:`) | `test/windows.test.ts` (6 cases: the UAE split week, the weekend the COMMUNITY declares rather than the runtime assuming, a short day's shift ending, a question inside the long part of the day, the weekend between a half day and the next full day, and a one-window community reading exactly as it did), `test/community.test.ts` (the one-window cases, unchanged in meaning) |
 | Host boundary: what `runtime/` may not own (PRD **FR-1.17**, `DECISIONS.md` D32/D33) — no third-party package, no network builtin or network global, no dynamic `import()`, no `node:fs` outside `pack.ts`; and a credential-shaped prefix in any pack file fails the shape gate | `runtime/test/boundary.test.ts` (the scanner: scope `runtime/src/**`, comments stripped so prose about a transport is not a transport), `scripts/validate-pack.mjs` **PKG-57**, `runtime/package.json` (an empty dependency set is itself asserted), semantics in **`spec/HOST-CONTRACT.md`** | `test/boundary.test.ts` (6 cases — one positive control per rule, a legal-file control, and an anti-vacuity check that the scanned module list is non-empty), `scripts/validate-pack.test.mjs` (a key-shaped string fails the build; a 48-hex revision hash and a `$KINSHIP_HOST_TOKEN` placeholder pass; a PEM block fails) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end
