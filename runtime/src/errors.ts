@@ -35,6 +35,8 @@ export const REFUSAL_CODES = [
   'pack_invalid', // §2.7/D15/FR-1.18 — a pack that fails the validator, or goes below its org's floor, never instantiates
   'org_invalid', // FR-1.18/D35 — an organisation manifest that is not shaped right cannot hold a floor for anyone
   'idempotent_hit', // §1.5 — same idempotencyKey returned the existing card
+  'thread_invalid', // §2.14/FR-5.13 — a thread closed with no note, or closed twice, is not a record
+  'posture_refused', // §2.15/FR-5.14 — the community's own posture says the fleet may not do this
 ] as const;
 
 export type RefusalCode = (typeof REFUSAL_CODES)[number];

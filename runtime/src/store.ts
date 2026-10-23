@@ -29,6 +29,7 @@ export function freshState(): FleetState {
     commitsByMember: new Map(),
     crossPromoByEvent: new Map(),
     inputs: new Map(),
+    threads: new Map(),
     cardCount: 0,
     grantCount: 0,
     events: [],

@@ -29,7 +29,10 @@
  * parser that guesses is a trust boundary with holes.
  */
 import { refuse } from './errors.ts';
-import type { Autonomy, PackedGuardrails, PackedOrg } from './types.ts';
+import type { Autonomy, CommunityPosture, PackedGuardrails, PackedOrg } from './types.ts';
+
+/** The keys a `posture:` block may carry — the same vocabulary a pack uses. */
+const POSTURE_KEYS: ReadonlySet<string> = new Set(['contact', 'openness']);
 
 export const ORG_SCHEMA = 'kinship-org/v1';
 
@@ -152,5 +155,41 @@ export function parseOrg(yaml: string, origin = 'the manifest'): PackedOrg {
     autonomyCeiling[k] = v as Autonomy;
   }
 
-  return { schema: ORG_SCHEMA, key: key!, ...(name !== null ? { name } : {}), humanSeats, agentRoles, floors, autonomyCeiling };
+  // The operator's most-PERMISSIVE posture for the communities under this org. A pack may be
+  // stricter; a pack that tries to be looser is refused, not clamped. Absent means the org said
+  // nothing, and the conservative default applies.
+  const posture = parseOrgPosture(yaml, key!);
+
+  return { schema: ORG_SCHEMA, key: key!, ...(name !== null ? { name } : {}), humanSeats, agentRoles, floors, autonomyCeiling, ...(posture !== undefined ? { posture } : {}) };
+}
+
+/**
+ * The org's `posture:` block — the most permissive posture the communities under this org may run.
+ *
+ * The same vocabulary as a pack's, read by the same strictness: an unknown key is refused rather than
+ * ignored, because a floor that silently does not apply is exactly the decorative rule this repo keeps
+ * recording (D24, D28, D29).
+ */
+function parseOrgPosture(yaml: string, orgKey: string): CommunityPosture | undefined {
+  const lines = topBlock(yaml, 'posture');
+  if (lines.length === 0) return undefined;
+  const map = new Map<string, string>();
+  for (const { k, v } of lines) {
+    if (!POSTURE_KEYS.has(k)) {
+      refuse('org_invalid', 'org shape gate',
+        `org \`${orgKey}\`: \`posture.${k}\` is a key it does not have — the runtime reads \`contact\` and \`openness\` and nothing else`);
+    }
+    map.set(k, v.trim().replace(/^["']|["']$/g, ''));
+  }
+  const contact = map.get('contact') ?? 'asked_only';
+  if (contact !== 'never' && contact !== 'asked_only' && contact !== 'open') {
+    refuse('org_invalid', 'org shape gate',
+      `org \`${orgKey}\`: \`posture.contact: ${contact}\` — expected \`never\`, \`asked_only\` or \`open\``);
+  }
+  const openness = map.get('openness') ?? 'closed';
+  if (openness !== 'closed' && openness !== 'open') {
+    refuse('org_invalid', 'org shape gate',
+      `org \`${orgKey}\`: \`posture.openness: ${openness}\` — expected \`closed\` or \`open\``);
+  }
+  return { contact, openness };
 }

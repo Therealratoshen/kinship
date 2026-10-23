@@ -36,6 +36,7 @@
  */
 import { memberIdentifierTokens } from './partner.ts';
 import { deriveCoverageVerdict, type DueObligation } from './community.ts';
+import { openThreads } from './threads.ts';
 import type { CommunityCoverage, FleetState, Packed } from './types.ts';
 
 /**
@@ -117,6 +118,14 @@ export interface HealthReport {
     coverage: CommunityCoverage | null;
     onDutyNow: boolean | null;
     missedShift: { count: number; note: string } | null;
+    /**
+     * Questions the community owes an answer to, right now (§2.14 / FR-5.13).
+     *
+     * A **count**, because a list of them would be a list of people. The oldest one's age is the
+     * number a community can act on, and it is `null` — never `0` — when nothing is open.
+     */
+    openThreads: number;
+    oldestThreadAgeMs: number | null;
   };
   /** What this snapshot cannot say, and why. A health read that implies omniscience is a lie. */
   unmeasured: string[];
@@ -236,6 +245,11 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
   // reaching a report that gets pasted into a group chat. "Which obligation" is what `inbox()` is
   // for — and `inbox()` runs the identifier sweep. Two artefacts, two jobs, one sweep.
   const obligations: DueObligation[] = [
+    // An open thread is a question the community owes an answer to, and it is the most
+    // community-facing obligation there is: everything else on this list is the fleet's own
+    // housekeeping, and a question still open when a staffed shift ended is the community failing to
+    // keep its word to a member.
+    ...openThreads(state).map((t): DueObligation => ({ dueAt: t.raisedAt })),
     ...waiting.map((c): DueObligation => ({ dueAt: c.createdAt })),
     ...[...state.authorizations.values()]
       .filter((a) => a.consumedAt === undefined)
@@ -245,7 +259,13 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
       .map((r): DueObligation => ({ dueAt: r.trippedAt })),
     ...overdue.map((w): DueObligation => ({ dueAt: w.dueAgeMs > 0 ? now - w.dueAgeMs : now })),
   ];
-  const community = deriveCoverageVerdict(pack.coverage ?? null, obligations, now);
+  const verdict = deriveCoverageVerdict(pack.coverage ?? null, obligations, now);
+  const open = openThreads(state);
+  const community = {
+    ...verdict,
+    openThreads: open.length,
+    oldestThreadAgeMs: open.length > 0 ? now - open[0]!.raisedAt : null,
+  };
 
   return {
     derivedAt: now,

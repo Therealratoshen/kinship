@@ -16,6 +16,7 @@ import { applyLifecycle } from './lifecycle.ts';
 import { applyCards } from './cards.ts';
 import { applyBudget } from './budget.ts';
 import { applyContainment } from './containment.ts';
+import { applyThreads } from './threads.ts';
 
 export function applyEvent(state: FleetState, event: LoggedEvent): void {
   switch (event.type) {
@@ -55,6 +56,10 @@ export function applyEvent(state: FleetState, event: LoggedEvent): void {
       return;
     case 'MemberInputReceived':
       applyContainment(state, event);
+      return;
+    case 'ThreadOpened':
+    case 'ThreadAnswered':
+      applyThreads(state, event);
       return;
     case 'CommitExecuted':
     case 'CommitRefused':

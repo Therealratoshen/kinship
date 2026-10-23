@@ -164,6 +164,8 @@ export type FleetEvent =
   | { type: 'ShatterTripped'; channel: string; ref: string; at: number }
   | { type: 'ShatterReleased'; channel: string; by: string; at: number }
   | { type: 'MemberInputReceived'; inputId: string; memberRef: string; textHash: string; at: number }
+  | { type: 'ThreadOpened'; thread: Thread; at: number }
+  | { type: 'ThreadAnswered'; threadId: string; by: string; note: string; at: number }
   | { type: 'EscalationRaised'; purpose: string; to: string; cardId: string; at: number };
 
 export type LoggedEvent = FleetEvent & { seq: number };
@@ -189,6 +191,38 @@ export interface InputRecord {
   memberRef: string;
   textHash: string;
   receivedAt: number;
+}
+
+/**
+ * A question the community owes an answer to — a member asked something, and nobody has answered it
+ * yet.
+ *
+ * **This is the community-facing row, and the reason it exists is a gap the inbox named itself.**
+ * `inbox.ts` could say how many member inputs arrived and how many produced an undecided card, but
+ * **not which message is unanswered** — the input→card link is severed on purpose (§1.2/§1.7). So
+ * `standing-engagement`'s promise to "hold the thread" had nothing behind it. A thread is that
+ * missing primitive: a debt to a member, with a date on it, tracked as a row so it can be aged and
+ * measured against the community's own staffed hours.
+ *
+ * **What it never holds.** Not the words — the log stores a hash of every member input and never the
+ * text (§2.7), and a thread holds no text either. Not the asker in any read: `memberRef` lives in
+ * the log and the state, and every read sweeps it. What it holds instead is a **pointer** — an opaque
+ * handle the host can resolve, the way an inbox item is "a pointer, not the payload".
+ */
+export interface Thread {
+  id: string;
+  /** The member who asked, when the host knows it. In the log and the state; a READ NEVER PRINTS IT. */
+  memberRef: string | null;
+  /** An opaque handle the host can resolve — a message id, a link. Never the words themselves. */
+  pointer: string | null;
+  /** When the question was raised. */
+  raisedAt: number;
+  /** When it was answered. Absent means open. */
+  answeredAt?: number;
+  /** Who answered it. */
+  answeredBy?: string;
+  /** How it was answered. Never empty: an answer with no note is not a record. */
+  note?: string;
 }
 
 // --- pack shape (parsed .kinship.yaml — see pack.ts) --------------------------------------------------------------
@@ -281,6 +315,12 @@ export interface Packed {
    * "always on duty" — an absent window is not a promise.
    */
   coverage?: CommunityCoverage;
+  /**
+   * How this community is run. `undefined` means the pack said nothing, and the conservative
+   * default applies — absence is not permission, and a fork that deleted the block did not decide to
+   * be open.
+   */
+  posture?: CommunityPosture;
   /** The org tier this pack names, if any. `null` means the pack is its own top tier (§1.7). */
   organisation?: string | null;
   /** The manifest `loadPack` resolved for that key — present only when `organisation` is set. */
@@ -310,6 +350,39 @@ export type NeedAnswers = Record<string, string>;
  * depend on which folder a fork started from. `floors` holds only the keys the file names — an org
  * holds what it declares, no more.
  */
+/**
+ * How this community is run — its operating posture.
+ *
+ * **There is no country table.** The runtime does not know that one country tolerates more nudging
+ * than another, and this type does not teach it: a `country → posture` lookup would be a stereotype
+ * baked into code, and worse, it would be a rule **nobody in that community chose**. The only
+ * authority on a community's manners is the community. So the community declares its posture and the
+ * runtime holds the fleet to it — and a pack in one place and a pack in another may declare different
+ * postures, because that is the *community's* call, not the runtime's.
+ *
+ * Two axes, because every axis has to gate something concrete or it is a decoration:
+ *
+ *  - **`contact`** — may the fleet approach a member who did not ask? `never` (no 1:1 member message
+ *    at all), `asked_only` (1:1 only to a member who has spoken to the community or has an open
+ *    question), `open` (anyone, still subject to the per-24h cap, quiet hours and suppression). This
+ *    is the "people here tolerate being nudged" / "people here do not" axis, and it is about PEOPLE.
+ *  - **`openness`** — is the community discoverable, and may the fleet post publicly? `closed` refuses
+ *    `commit.channel-post` outright; `open` allows it, still at the class's own autonomy level. This
+ *    is the "some accounts should be private" axis.
+ *
+ * **The direction of resolution is the same as everywhere else: a pack may only be STRICTER than its
+ * org.** A pack that tries to be looser is refused, not clamped (spec §1.10, "refuse, never clamp").
+ */
+export interface CommunityPosture {
+  /** How the fleet may approach a member who did not ask. `never` · `asked_only` · `open`. */
+  contact: 'never' | 'asked_only' | 'open';
+  /** Whether the community is discoverable and the fleet may post publicly. `closed` · `open`. */
+  openness: 'closed' | 'open';
+}
+
+/** The posture in force when neither file declares one: absence is not permission. */
+export const DEFAULT_POSTURE: CommunityPosture = { contact: 'asked_only', openness: 'closed' };
+
 export interface PackedOrg {
   schema: string; // 'kinship-org/v1'
   key: string;
@@ -321,6 +394,11 @@ export interface PackedOrg {
   floors: Partial<PackedGuardrails>;
   /** Per action class, exact keys only, and never `never` — absence is the pack's to declare. */
   autonomyCeiling: Record<string, Autonomy>;
+  /**
+   * The operator's most-PERMISSIVE posture for the communities under this org. A pack may be
+   * stricter; a pack that tries to be looser is refused, not clamped.
+   */
+  posture?: CommunityPosture;
 }
 
 /** Which file the effective value came from. `default` means neither file named it. */
@@ -329,7 +407,7 @@ export type SettingSource = 'pack' | 'org' | 'default';
 /** One row of "who set this, and what it beat" — §1.2 says why is part of the product. */
 export interface ProvenanceRow {
   key: string;
-  tier: 'guardrail' | 'seat' | 'ceiling';
+  tier: 'guardrail' | 'seat' | 'ceiling' | 'posture';
   effective: string | number | boolean;
   source: SettingSource;
   note: string;
@@ -343,6 +421,8 @@ export interface ResolvedSettings {
   humanSeats: string[];
   agentRoles: string[];
   autonomyCeiling: Record<string, Autonomy>;
+  /** The operating posture in force — how this community is run (see CommunityPosture). */
+  posture: CommunityPosture;
   provenance: ProvenanceRow[];
   limits: string[];
 }
@@ -393,6 +473,8 @@ export interface FleetState {
   crossPromoByEvent: Map<string, number>;
   /** Arrival metadata for member inputs — text hash only, never the text (see InputRecord). */
   inputs: Map<string, InputRecord>;
+  /** Open and answered questions — a community's debts to its members (see Thread). */
+  threads: Map<string, Thread>;
   cardCount: number;
   grantCount: number;
   events: LoggedEvent[];

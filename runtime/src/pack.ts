@@ -20,7 +20,7 @@ import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
 import { SUPPORTED_LOCALES, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
-import type { Autonomy, CommunityCoverage, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
+import type { Autonomy, CommunityCoverage, CommunityPosture, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
 
@@ -193,6 +193,53 @@ function localTimeToMinutes(raw: string | undefined): number | null {
   const minutes = Number(m[2]);
   if (hours > 23 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+/** The keys a `posture:` block may carry, in the spelling the file uses. */
+const POSTURE_KEYS: ReadonlySet<string> = new Set(['contact', 'openness']);
+
+/**
+ * The `posture:` block — how this community is run.
+ *
+ * Parsed here, refused here, for the same reason as the coverage block: this file is the only reader
+ * of a pack folder, and the gate that matters is the one a fork cannot skip by not running CI.
+ *
+ * **A pack declares a posture; it does not get one handed to it.** There is no country table in this
+ * runtime and there never will be: a `country → posture` lookup would be a stereotype in code, and
+ * worse, a rule nobody in that community chose. The community is the only authority on its own
+ * manners.
+ */
+function parsePosture(yaml: string, packKey: string): CommunityPosture | undefined {
+  const lines = block(yaml, 'posture');
+  if (lines.length === 0) return undefined; // the pack said nothing; the conservative default applies
+
+  const map = new Map<string, string>();
+  for (const l of lines) {
+    const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l.trim());
+    if (kv === null) {
+      refuse('pack_invalid', 'posture parse gate',
+        `pack \`${packKey}\` has a \`posture:\` line this parser cannot read: \`${l.trim()}\` — a posture the runtime cannot evaluate is a posture the fleet would ignore, and a community's manners are not something to guess at`);
+    }
+    map.set(kv[1]!, kv[2]!.trim().replace(/^["']|["']$/g, ''));
+  }
+
+  const unknown = [...map.keys()].filter((k) => !POSTURE_KEYS.has(k));
+  if (unknown.length > 0) {
+    refuse('pack_invalid', 'posture parse gate',
+      `pack \`${packKey}\` writes \`posture.${unknown[0]}\`, a key it does not have — the runtime reads ${[...POSTURE_KEYS].map((k) => `\`${k}\``).join(' and ')} and nothing else, so a line it cannot read is not skipped: a posture whose file and whose parsed shape disagree is exactly the document this repo refuses to boot`);
+  }
+
+  const contact = map.get('contact') ?? 'asked_only';
+  if (contact !== 'never' && contact !== 'asked_only' && contact !== 'open') {
+    refuse('pack_invalid', 'posture parse gate',
+      `pack \`${packKey}\` declares \`posture.contact: ${contact}\` — expected \`never\` (no 1:1 member message at all), \`asked_only\` (only to a member who asked or spoke) or \`open\``);
+  }
+  const openness = map.get('openness') ?? 'closed';
+  if (openness !== 'closed' && openness !== 'open') {
+    refuse('pack_invalid', 'posture parse gate',
+      `pack \`${packKey}\` declares \`posture.openness: ${openness}\` — expected \`closed\` (not discoverable, no public posts) or \`open\``);
+  }
+  return { contact, openness };
 }
 
 /**
@@ -389,6 +436,7 @@ export function loadPack(dir: string): Packed {
   const needs = blockList(block(yaml, 'needs'));
   const agents = parseAgents(yaml);
   const coverage = parseCoverage(yaml, key);
+  const posture = parsePosture(yaml, key);
 
   const llmRaw = budgets.get('llm_per_event_idr');
   const llmPerEventIdr = llmRaw !== undefined && /^\d+$/.test(llmRaw) ? Number(llmRaw) : null; // null stays null: the unset ceiling refuses (§12-Q9)
@@ -444,6 +492,10 @@ export function loadPack(dir: string): Packed {
     // A pack that declared no coverage window reads back as absent, not as a default window: an
     // unstated staffing promise is not a promise, and the reads report the duty state as unknown.
     ...(coverage !== undefined ? { coverage } : {}),
+    // A pack that declared no posture reads back as absent, not as a default: the conservative
+    // default is applied by the RESOLVER, where the org's floor can still supply it and the
+    // provenance can say which file decided.
+    ...(posture !== undefined ? { posture } : {}),
     // A pack that declared no ladder reads back as `undefined`, not as `[]` and not as a default ladder:
     // the runtime has no business supplying norms a community never wrote down (D37).
     ...(sanctionLadder.length > 0 ? { sanctionLadder } : {}),

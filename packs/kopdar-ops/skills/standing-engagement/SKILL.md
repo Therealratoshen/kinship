@@ -41,10 +41,29 @@ The coverage window is what makes this lane honest. `engagement` may only answer
 the pack declares (`coverage:` in `.kinship.yaml`), and the health read says plainly when a question sat
 unanswered past a staffed shift. Outside the window, the right output is a handoff, not a guess.
 
-**Assertion.** `assert every standing-engagement output carries the disclosure line && every answer it drafts is inside the pack's staffed window`.
+**Holding the thread is a runtime primitive now, not a promise in prose.** A question a member asked is
+opened as a **thread** — a row with a date on it, held in the organiser's inbox until it is answered
+(`spec` §2.14 / PRD **FR-5.13**). The lane's job is to *open* the thread when it judges a message to be a
+question, to keep it open, and to close it with a note of how it was answered. What the lane never does is
+decide on its own that something was a question and leave it untracked: **an untracked question is the
+failure this lane exists to prevent**, and it is invisible in every read the runtime has.
 
-**The second half is a rule the lane follows, not a property the runtime checks** — phase 1 sends nothing
-(D21) and the coverage window is a record rather than a gate (D54, `ROADMAP.md`). It is written here as a
-rule for the agent to keep, and it is written as one that would be *false* today if it were read as a
-checked property: no message is sent at all, so "no message was sent outside the window" is true for the
-wrong reason. The wording above is the one that would still be meaningful the day a transport exists.
+A thread holds no text and no name in any read — the log keeps a hash of every member message and never
+the words, and the asker is swept out of every list. The lane gets the member's timezone from the thread
+so it can honour that member's own quiet hours; it never gets to quote them.
+
+**And the community's own `posture:` decides how hard the lane may push** (spec §2.15). This pack declares
+`contact: open`, so the lane may reach a member who has not asked it anything — a member who has not
+heard from us in three weeks is one we have lost. A community that declared `contact: never` would get a
+lane that only ever answers, and the runtime would refuse the approach rather than trusting the agent
+to be discreet about it. **There is no country table**: the lane reads what this community declared
+about itself, and not what anybody thinks communities from here are like.
+
+**Assertion.** `assert every standing-engagement output carries the disclosure line && every question it judges to be a question is opened as a thread, and every thread it closes carries a note`.
+
+**The second half is a rule the lane follows, and the runtime's part of it IS checked.** The runtime
+holds the thread, ages it, lists it in the inbox, and refuses an answer with no note — that is code, and
+`runtime/test/thread.test.ts` holds it. What is *not* checked is the lane's judgement that a given
+message is a question, because a judgement the runtime cannot see is a judgement a human has to check.
+The coverage window remains a record rather than a gate (D54, `ROADMAP.md`), so "inside the staffed hours"
+is still the lane's rule to keep, not a refusal the runtime makes.

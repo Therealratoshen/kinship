@@ -51,6 +51,17 @@ floors:
   identity_disclosure: required          # spec §2.8 — outside the escalation path, unconfigurable
   defaults: deny                         # spec §1.1 — an unset class is `never`, in every pack
 
+# The operator's most-PERMISSIVE posture for the communities under this org. A pack may be STRICTER;
+# a pack that tries to be looser is refused, not clamped — the same rule the floors above follow.
+#
+# There is deliberately NO country table here and no lookup by region: the runtime does not know that
+# one place tolerates being approached more than another, and a rule nobody in the community chose is
+# a stereotype in code. A community declares its own posture (spec §2.15) and this file says how far
+# any of them may go.
+posture:
+  contact: open        # may a community refuse individual outreach? yes — a pack may say `never`
+  openness: open       # may a community be discoverable? yes — a pack may say `closed`
+
 # Per action class, the most autonomous the class may be anywhere in this org. Exact class names only:
 # no wildcards, because the ladder has none and a glob would widen reach without anyone writing the
 # class down (§1.1). `commit.channel-post` is the class phase 1 exists to earn, so the org holds it at
