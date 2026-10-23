@@ -7,6 +7,8 @@
  * parameter properties) — that is what keeps the runtime dependency-free like the validator.
  */
 
+import type { LocaleText } from './locales.ts';
+
 // --- §1.1 the autonomy ladder -------------------------------------------------------------
 /** Per action class, never per agent. Absent from a class map behaves as `never`. */
 export type Autonomy = 'draft' | 'opt-in-auto' | 'never';
@@ -21,8 +23,17 @@ export type Phase = (typeof PHASES)[number];
 // --- content + people -----------------------------------------------------------------------
 /** Content a card binds to. The hash is the identity; text without its hash is not approvable. */
 export interface Revision {
-  textId: string; // Indonesian — the primary language is labelled first (pack locale: [id, en])
-  textEn: string;
+  /**
+   * The copy, in the community's declared languages — a map keyed by language code.
+   *
+   * It was `textId` / `textEn`, and the FIELD NAMES were the decision: this product serves
+   * Indonesian communities, written into the shape of every card, every revision hash and every log
+   * line. A community in English and Arabic could not be expressed, because the copy had already
+   * decided the answer. The map generalises to a third language without another field, and the
+   * languages themselves now live in `src/locales.ts` — one source of truth for the pair a pack may
+   * declare, the disclosure line, and the copy the runtime writes on its own.
+   */
+  text: LocaleText;
   hash: string;
 }
 

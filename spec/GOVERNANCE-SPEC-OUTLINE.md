@@ -813,6 +813,54 @@ claims is narrower and checkable — that a community can declare different hour
 the runtime reads each window's own days and hours, and that a shift which ended on a SHORT day is a shift
 that ended.
 
+### 2.17 The runtime speaks the community's language pair, not Indonesia's
+
+§2.15 gave a community the right to say how it is run. It could not yet say **what language it runs in**,
+and that was not an oversight — it was written into the shape of the code. Every card carried `textId` and
+`textEn`. Every revision hash was taken over those two strings. Every log line named them. **The field
+names were the decision**, and they said: this product serves Indonesian communities, in two languages,
+forever.
+
+That is why "cover Dubai" could not be a pack edit. A community in English and Arabic could not be
+*expressed*, let alone served, because the copy had already answered the question.
+
+**So the copy is now a map keyed by language code, and the pair is a pack-level declaration.**
+`runtime/src/locales.ts` is the single source of truth: the pairs a community may declare
+(`['id','en']` and `['en','ar']`), the canonical disclosure line in each language, and the copy the
+runtime writes **on its own** — the budget-stop card (§1.6) and the escalation card (§2.4) — in each of
+them.
+
+Three rules, each with a test that can fail:
+
+1. **Every declared language carries the canonical disclosure line, or the send refuses** (FR-5 / §2.8).
+   The rule was always true in spirit — "a member-facing send discloses itself" — and it is now true in
+   the community's own languages rather than in a fixed two. **The line is canonical, not a translation**:
+   a member in Arabic gets the *same promise* the English member gets, not an approximation of it.
+2. **The runtime's own cards are written in the community's languages.** A budget stop raised in
+   Indonesian to a community that reads English and Arabic is a card nobody can act on — and a card
+   nobody can act on is worse than no card, because it looks like a record of something happening.
+3. **The revision hash is taken in the pack's declared order**, not the order a caller happened to type
+   the keys in. The revision is the artefact; two calls carrying the same two strings are the same
+   revision however they were written, and different copy in *either* language is a different one.
+
+**And what this is NOT.** It is not a claim about a culture. Arabic is here because a community in Dubai
+needs it and the disclosure line has to be canonical in whatever language the community reads. What a
+community *tolerates* — whether it wants being approached, whether it is discoverable — is still the
+**posture** (§2.15), declared by the community, and still not a table this runtime carries.
+
+**The cost, stated plainly, because this one changed the log.** The card's revision now carries
+`text: { <language>: <copy> }` instead of `textId` / `textEn`. That is a **log-format change**: a log
+written by an earlier build does not replay against this one, and the reference host's `manifest.json`
+carries a `formatVersion` for exactly this reason. The revision hash's *inputs* are unchanged in kind —
+the same copy, joined in the pack's order — so an approval still binds to exactly the bytes that ship
+(§1.5), but a pack's own log must be re-written.
+
+`[UNVERIFIED]` Whether a community served in Arabic behaves differently is untestable here: phase 1 sends
+nothing (D21), no dated event exists (D9), and no pack declares the pair yet. What this section claims
+is narrower and checkable — that a community may declare a pair the runtime implements, that its copy is
+carried in both of its languages, that the disclosure gate holds in each of them, and that the runtime's
+own cards are written in them too.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -910,7 +958,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 10,214 as of 2026-10-22, split 4,631 domain code / 4,980 tests / 603 tour. The count is re-run whenever a
+prints 10,552 as of 2026-10-22, split 4,829 domain code / 5,117 tests / 606 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -946,6 +994,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §2.13 the community's coverage window (PRD **FR-5.12**, `DECISIONS.md` **D54**): a pack may declare the hours a human is **on duty** for it, and the health read reports the window, the duty state at the moment of the read, and how many obligations outlived a staffed shift. Evaluated as a **local wall clock** in the community's own zone (never a stored UTC offset, so 09:00 stays 09:00 across a DST change); **only a shift whose end has passed counts as missed**, so the clock pauses outside coverage; a gap spanning a closed window is not a miss. **Absence is legal and reads as `null`, never `0`** — an unstated staffing promise is an unknown duty state, and zero would claim the community was never on duty. Not the member's quiet hours: that clock is the member's (FR-5.5) and answers a different question. The two modes are a **discriminated union** — `always` is a 24/7 community with no window at all, and a file writing `days:` beside `mode: always` is refused as self-contradictory | `src/community.ts` (`isOnDuty`, `shiftCompletedBetween`, `deriveCoverageVerdict` — the arithmetic never converts an instant to UTC), `src/types.ts` (`CommunityCoverage`, the union), `src/pack.ts` (`parseCoverage` — the strict reader: unknown mode, no zone, unknown weekday, non-`HH:MM` hours, a backwards shift, an unknown key, a duplicate block, a self-contradicting `always`), `src/health.ts` (the `community` section of the snapshot, derived from the same four obligation kinds `inbox` lists), `scripts/validate-pack.mjs` **PKG-65** (the *shape*, in CI — the reading strictness stays in the parser, or the parser's own door becomes unreachable), `packs/kopdar-ops/.kinship.yaml` (the shipped window: `Asia/Jakarta`, Mon–Fri, 09:00–18:00) | `test/community.test.ts` (16 cases: the duty window by community timezone, `always` mode, the weekend gap that is not a miss, both ends of the shift-end boundary, the local-**day** half of the wall-clock rule, the DST-local-meaning case, the health read's shape, the null-not-zero case, the member-identifier sweep, and the pure-read/replay property), `test/pack.test.ts` (the boot-door refusals **and** the parser's own door called directly — nine refusals proved with the *parser's* message, because `loadPack` runs the validator first and a boot-level test can only ever see PKG-65's), `scripts/validate-pack.test.mjs` (14 new coverage cases of that file's 67, incl. the duplicate-block refusal, the POSITIVE CONTROL that a pack with no window passes, and the case that proves the validator does NOT shadow the parser's unknown-key door), `runtime/tour.ts` (`health_reports_the_communitys_coverage_window`, `health_reports_an_unknown_duty_state_as_null`) |
 | §2.15 the community's operating posture (PRD **FR-5.14**, `DECISIONS.md` **D56**): a community declares **how it is run** — `contact` (may the fleet approach a member who did not ask: `never` · `asked_only` · `open`) and `openness` (is it discoverable, may the fleet post publicly: `closed` · `open`) — and the runtime holds the fleet to it. **There is no country table and never will be**: a `country → posture` lookup would be a stereotype in code and a rule nobody in that community chose. Resolved org → pack, and the pack may only be **stricter** — a looser pack is refused, not clamped. **Absence is not permission**: no posture declared means the conservative default (`asked_only` / `closed`). The gates are the 1:1 member classes (`commit.individual-message`, `commit.template-send`) and `commit.channel-post`; the contact gate sits *after* the member's own protections, so a posture can only ever be an additional limit | `src/posture.ts` (`assertPostureContact`, `isOneToOneClass`), `src/types.ts` (`CommunityPosture`, `DEFAULT_POSTURE`), `src/pack.ts` (`parsePosture` — the strict reader), `src/org.ts` (`parseOrgPosture` — the org's most-permissive floor), `src/settings.ts` (`resolveSettings` — org → pack, refuse never clamp; the provenance rows), `src/engine.ts` (the two gates), `orgs/kinshipai.yaml` (`posture:`), `packs/kopdar-ops/.kinship.yaml` (`posture:`) | `test/posture.test.ts` (9 cases: the contact gate at all three levels, the openness gate, the conservative default, the org floor refused and honoured, and the provenance), `runtime/tour.ts` (`the_community_declares_its_own_posture`) |
 | §2.16 a split working week (PRD **FR-5.15**, `DECISIONS.md` **D57**): the staffed window becomes a **LIST** of windows, each with its own days and hours, because a community's week may be split — the UAE's federal government works Monday–Thursday and a **half day** on Friday, with Saturday and Sunday as the weekend (u.ae and the DGHR FAQ, read 2026-10-23), and Sharjah's weekend is Friday–Sunday. A one-window community is the list of one and reads exactly as before. **A general capability with a primary-sourced example, not a country table**: the community declares its own windows and the runtime reads them | `src/types.ts` (`CoverageWindow`, and `CommunityCoverage.windows`), `src/community.ts` (`isOnDuty` and `shiftCompletedBetween` over the list), `src/pack.ts` (`parseCoverage` + `listBlocks` — the list reader), `scripts/validate-pack.mjs` **PKG-65** (the same list, read the same way), `packs/kopdar-ops/.kinship.yaml` (`coverage.windows:`) | `test/windows.test.ts` (6 cases: the UAE split week, the weekend the COMMUNITY declares rather than the runtime assuming, a short day's shift ending, a question inside the long part of the day, the weekend between a half day and the next full day, and a one-window community reading exactly as it did), `test/community.test.ts` (the one-window cases, unchanged in meaning) |
+| §2.17 the runtime speaks the community's language pair, not Indonesia's (PRD **FR-5.16**, `DECISIONS.md` **D58**): the member-facing copy is a **map keyed by language code**, the pair is a pack-level declaration, and `src/locales.ts` is the single source of truth — the pairs a community may declare (`id+en`, `en+ar`), the canonical disclosure line in each, and the copy the runtime writes on its own (the budget-stop and escalation cards). Every declared language must carry the canonical line, or the send refuses (FR-5 / §2.8); the runtime's own cards are written in the community's languages; the revision hash is taken in the pack's declared order. **This changes the log format** — a revision carries `text: { <language>: <copy> }` instead of `textId`/`textEn` — and the tour is now inside the typecheck | `src/locales.ts` (`LOCALES`, `SUPPORTED_LOCALE_PAIRS`, `localeIsSupported`, `localeCopy`, `localeTextForHash`), `src/disclosure.ts` (`disclosureLine`, `assertDisclosed` over the declared pair), `src/types.ts` (`LocaleText`), `src/cards.ts`, `src/engine.ts`, `src/partner.ts`, `src/inbox.ts`, `src/budget.ts`, `src/pack.ts` (the `locale:` gate), `runtime/tsconfig.json` (the tour is now typechecked) | `test/locales.test.ts` (5 cases: the pairs, an EN/AR community drafting a card with copy in both languages, the hash and the pack's order, the runtime's own budget-stop card in English and Arabic and NOT Indonesian, and a pair the runtime does not implement being refused), `test/disclosure.test.ts` (the canonical Arabic line, and the gate holding in a community's own pair) |
 | Host boundary: what `runtime/` may not own (PRD **FR-1.17**, `DECISIONS.md` D32/D33) — no third-party package, no network builtin or network global, no dynamic `import()`, no `node:fs` outside `pack.ts`; and a credential-shaped prefix in any pack file fails the shape gate | `runtime/test/boundary.test.ts` (the scanner: scope `runtime/src/**`, comments stripped so prose about a transport is not a transport), `scripts/validate-pack.mjs` **PKG-57**, `runtime/package.json` (an empty dependency set is itself asserted), semantics in **`spec/HOST-CONTRACT.md`** | `test/boundary.test.ts` (6 cases — one positive control per rule, a legal-file control, and an anti-vacuity check that the scanned module list is non-empty), `scripts/validate-pack.test.mjs` (a key-shaped string fails the build; a 48-hex revision hash and a `$KINSHIP_HOST_TOKEN` placeholder pass; a PEM block fails) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 import { LOW_TRUST_REPLACEMENT } from '../src/containment.ts';
 import { KinshipError } from '../src/errors.ts';
 
@@ -25,8 +25,7 @@ const pack = (classes: Record<string, Record<string, string>>, needs: string[] =
 };
 
 const draftBundle = (community = ANSWERS.community_name) => ({
-  textId: `Latihan mingguan tetap jalan ya.\n\n${disclosureLineId(community)}`,
-  textEn: `Weekly practice is still on.\n\n${disclosureLineEn(community)}`,
+  text: { id: `Latihan mingguan tetap jalan ya.\n\n${disclosureLine('id', community)}`, en: `Weekly practice is still on.\n\n${disclosureLine('en', community)}` },
 });
 
 test('boot refuses while a need is unanswered — a fleet that cannot name its human does not start (§2.7)', () => {
@@ -87,7 +86,7 @@ test('a stale authorization is dead at commit — edited approval, or wrong revi
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const card = fleet.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, ...draftBundle() }).card!;
   fleet.decideCard(card.id, { verdict: 'approve', by: 'organiser', why: 'ok' });
-  fleet.decideCard(card.id, { verdict: 'edit', by: 'organiser', why: 'venue moved', newTextId: 'v2 ID', newTextEn: 'v2 EN' });
+  fleet.decideCard(card.id, { verdict: 'edit', by: 'organiser', why: 'venue moved', newText: { id: 'v2 ID', en: 'v2 EN' } });
   assert.throws(() => fleet.commit({
     actionClass: 'draft.promote', agent: 'engagement', origin: card.origin, phase: card.phase,
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card.id}`, ...draftBundle(),
@@ -98,7 +97,7 @@ test('a stale authorization is dead at commit — edited approval, or wrong revi
   assert.throws(() => fleet.commit({
     actionClass: 'draft.promote', agent: 'engagement', origin: card3.origin, phase: card3.phase,
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card3.id}`,
-    textId: 'different content than approved', textEn: 'different content than approved',
+    text: { id: 'different content than approved', en: 'different content than approved' },
   }), /stale_target/, 'the token is bound to the revision hash, not to the card id');
   const auth = fleet.state.authorizations.get(`auth-${card3.id}`);
   assert.ok(auth && auth.consumedAt === undefined, 'the hash-mismatch refusal did not consume the authorization either');
@@ -204,8 +203,7 @@ test('an expired partner window refuses with its own code — the organiser is t
 // --- §2.11 / FR-6.1: copy travels, people do not ------------------------------------------------------
 
 const LEAKY = {
-  textId: 'Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi 62811',
-  textEn: "AIClub's meetup Saturday — if you have not registered yet, contact 62811",
+  text: { id: 'Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi 62811', en: "AIClub's meetup Saturday — if you have not registered yet, contact 62811" },
 };
 
 const partnerFleet = (promoLevel: 'draft' | 'opt-in-auto' = 'opt-in-auto') => {
@@ -332,11 +330,10 @@ test('a quarantined input quoted into a commit is the fixed string — the commi
   const r = fleet.attempt({
     actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
     triggerInput: input,
-    textId: `Ringkasan: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLineId(ANSWERS.community_name)}`,
-    textEn: `Summary: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+    text: { id: `Ringkasan: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Summary: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLine('en', ANSWERS.community_name)}` },
   });
   assert.ok(r.card, 'the proposal exists, quoting only the fixed string');
-  assert.ok(!r.card.revision.textId.includes('spam.example'), 'the member text never entered the revision');
+  assert.ok(!(r.card.revision.text.id ?? '').includes('spam.example'), 'the member text never entered the revision');
 });
 
 // --- the engine surface: behaviours only `Fleet` can show ------------------------------------------

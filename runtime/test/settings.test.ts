@@ -200,7 +200,7 @@ test('the engine sees the org tier: an attempt the pack would auto-run becomes a
   const fleet = new Fleet(pack, {}, DAY);
   const r = fleet.attempt({
     actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'halo', textEn: 'hello',
+    text: { id: 'halo', en: 'hello' },
   });
   assert.equal(r.disposition, 'card', 'org ceiling draft over pack opt-in-auto — the card is the visible proof the ceiling is enforced, not just reported');
 });
@@ -250,7 +250,7 @@ test('the settings report names the third tier as unbuilt instead of pretending 
 
 test('settings replay identically — the artefact is a fold of the log plus the pack, nothing else (§1.2)', () => {
   const fleet = new Fleet({ ...packWith({}), org: ORG }, {}, DAY);
-  fleet.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, textId: 'a', textEn: 'b' });
+  fleet.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } });
   fleet.decideCard('card-1', { verdict: 'reject', by: 'organiser', why: 'too early' });
   const replayed = Fleet.replay(fleet.events, {}, fleet.pack);
   assert.deepEqual(replayed.settings(), fleet.settings());

@@ -20,6 +20,7 @@ import { KinshipError, refuse } from './errors.ts';
 import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
 import { answerThread, openThread } from './threads.ts';
+import { localeCopy, localeTextForHash, type LocaleText } from './locales.ts';
 import { assertPostureContact, isOneToOneClass } from './posture.ts';
 import { answerableBy, assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
@@ -46,8 +47,8 @@ export interface AttemptArgs {
   origin: { kind: string; id: string };
   phase?: Phase | null;
   channel?: string;
-  textId: string;
-  textEn: string;
+  /** The copy, in the community's declared languages (FR-5.6). */
+  text: LocaleText;
   /** A member message that triggered this attempt — narrows any lane to draft (§2.7). */
   triggerInput?: QuarantinedInput;
   idempotencyKey?: string;
@@ -66,8 +67,8 @@ export interface CommitArgs {
   channel?: string;
   partner?: string;
   recipients: string[];
-  textId: string;
-  textEn: string;
+  /** The copy, in the community's declared languages (FR-5.6). */
+  text: LocaleText;
   /** The one-send token from an approved card (§1.5). Absent → a live grant is required (§1.8). */
   authorizationToken?: string;
   /** FR-5.1 — required for member-facing commits. */
@@ -212,7 +213,7 @@ export class Fleet {
         const c = this.ctx();
         const cardArgs: CreateCardArgs = {
           actionClass: args.actionClass, agent: args.agent, origin: args.origin,
-          phase: args.phase ?? null, textId: args.textId, textEn: args.textEn,
+          phase: args.phase ?? null, text: args.text,
           ...(args.idempotencyKey !== undefined ? { idempotencyKey: args.idempotencyKey } : {}),
           ...(args.triggerInput !== undefined ? { forcedBy: 'member_input' } : {}),
         };
@@ -237,7 +238,7 @@ export class Fleet {
       // approves a partner promo vouches for the copy's intent, not for a member's number travelling
       // toward a third party. It also runs ahead of the transport gate — `no_transport` is phase 1's
       // temporary lock and this rule is permanent, so the organiser learns the permanent one first.
-      if (args.partner !== undefined) assertNoMemberDataInPartnerCopy(this.st, args.textId, args.textEn);
+      if (args.partner !== undefined) assertNoMemberDataInPartnerCopy(this.st, args.text);
 
       // --- authorization or grant ------------------------------------------------------------------
       let grantId: string | undefined;
@@ -251,7 +252,7 @@ export class Fleet {
         if (auth && auth.actionClass !== args.actionClass) {
           refuse('stale_target', 'spec §1.5', `authorization \`${token}\` was issued for \`${auth.actionClass}\`, not \`${args.actionClass}\``);
         }
-        const revisionHash = hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`);
+        const revisionHash = hashText(localeTextForHash(args.text, this.pack.locale));
         if (auth && auth.revisionHash !== revisionHash) {
           refuse('stale_target', 'spec §1.5', 'the content is not the revision that was approved — approve the new revision first');
         }
@@ -311,7 +312,7 @@ export class Fleet {
 
       // --- disclosure + answerability ----------------------------------------------------------------
       if (args.recipients.length > 0) {
-        assertDisclosed(args.textId, args.textEn, this.answers['community_name'] ?? '');
+        assertDisclosed(args.text, this.answers['community_name'] ?? '', this.pack.locale);
         assertAnswerability(args.onBehalfOf);
         // --- the transport gate: the outermost lock (D21) -------------------------------------------
         refuse('no_transport', 'D21 / D11',
@@ -323,7 +324,7 @@ export class Fleet {
       if (authToken !== undefined) consumeAuthorization(c, authToken);
       c.commit({
         type: 'CommitExecuted', actionClass: args.actionClass, agent: args.agent, origin: args.origin,
-        phase: args.phase ?? null, revisionHash: hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`),
+        phase: args.phase ?? null, revisionHash: hashText(localeTextForHash(args.text, this.pack.locale)),
         onBehalfOf: answerableBy(args.onBehalfOf), recipients: args.recipients, transport: 'none',
         ...(args.channel !== undefined ? { channel: args.channel } : {}),
         ...(args.partner !== undefined ? { partner: args.partner } : {}),
@@ -358,8 +359,7 @@ export class Fleet {
   raiseEscalation(purpose: string, to: string): Card {
     const card = createCard(this.ctx(), {
       actionClass: 'engine.escalation', agent: 'engine', origin: { kind: 'escalation', id: purpose }, phase: null,
-      textId: `Eskalasi: ${purpose}. Butuh keputusan ${to}.`,
-      textEn: `Escalation: ${purpose}. Needs a decision from ${to}.`,
+      text: localeCopy(this.ctx(), 'escalation', (spec) => spec.escalation(purpose, to)),
       forcedBy: 'escalation',
     });
     this.ctx().commit({ type: 'EscalationRaised', purpose, to, cardId: card.id, at: this.t });

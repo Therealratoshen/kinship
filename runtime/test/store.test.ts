@@ -56,7 +56,7 @@ test('hashText is stable, 16 hex characters, and separates the two languages (§
   assert.equal(id, hashText('ingat kopdar'), 'same text, same hash — replay depends on this');
   assert.notEqual(id, hashText('Ingat Kopdar'), 'one letter is a different revision, and the approval goes stale');
   assert.notEqual(hashText('a'), hashText('b'));
-  // Indonesian-first pairing: the revision is (textId, textEn) joined, so swapping them is a new revision.
+  // The revision is the copy joined in the pack's declared language order, so swapping them is a new revision.
   const sep = '\n⁄⁄\n';
   assert.notEqual(hashText(`a${sep}b`), hashText(`b${sep}a`), 'a draft may not look unchanged by swapping languages');
 });

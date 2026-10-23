@@ -37,7 +37,7 @@ test('a hard stop never silently drops a scheduled phase â€” it raises a card (Â
   assert.throws(() => recordSpend(c, 'kopdar-12', 150_000, 'big batch'), /budget_hard_stop/);
   const stopCard = [...c.state.cards.values()].find((x) => x.forcedBy === 'budget_hard_stop');
   assert.ok(stopCard, 'the card exists');
-  assert.ok(stopCard && stopCard.revision.textId.includes('Rp 150000') && stopCard.revision.textId.includes('plafon'),
+  assert.ok(stopCard && (stopCard.revision.text.id ?? '').includes('Rp 150000') && (stopCard.revision.text.id ?? '').includes('plafon'),
     'the card names the rupiah figure and the ceiling, not a token count');
   assert.ok(c.state.events.some((e) => e.type === 'BudgetStopRaised'));
 });

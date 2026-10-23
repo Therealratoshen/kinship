@@ -27,7 +27,7 @@ import { Fleet } from '../src/engine.ts';
 import { makeCtx, makePack } from './helpers.ts';
 import { parseOrg } from '../src/org.ts';
 import { DEFAULT_HUMAN_SEATS, assertSeat } from '../src/roles.ts';
-import { disclosureLineEn, disclosureLineId } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 
 const DAY = 25_200_000; // 07:00 UTC = 14:00 WIB
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -56,7 +56,7 @@ test('the default seat set is exactly the one seat the runtime has always gated 
 test('the four human-only acts accept the seat and refuse a near-miss name', () => {
   for (const impostor of ['co-organiser', 'Organiser', 'organiser ', 'delegate', 'event-ops', 'member']) {
     const f = fleet();
-    const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, textId: 'a', textEn: 'b' }).card!;
+    const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } }).card!;
     assert.throws(() => f.decideCard(card.id, { verdict: 'approve', by: impostor, why: 'x' }), /not_the_human/, `${impostor} is not a seat`);
     assert.throws(() => f.issueGrant({ actionClass: 'draft.promote', kind: 'allow_once', by: impostor }), /not_the_human/);
     assert.throws(() => f.releaseShatter('wa:group-1', impostor), /not_the_human/);
@@ -67,7 +67,7 @@ test('the four human-only acts accept the seat and refuse a near-miss name', () 
 
 test('a seat refusal names the closed set and points at §12-Q12 — the reader is the owner', () => {
   const f = fleet();
-  const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, textId: 'a', textEn: 'b' }).card!;
+  const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } }).card!;
   try {
     f.decideCard(card.id, { verdict: 'approve', by: 'delegate', why: 'the organiser asked me to' });
     assert.fail('a delegate is not a seat while §12-Q12 is unanswered');
@@ -101,12 +101,12 @@ test('assertSeat is the single rule: it takes the ctx, so it can see the org tie
 test('A COMPLAINANT IS NOT AN ACTOR: tripShatter takes a member and does not seat-check it (§2.6)', () => {
   const f = fleet();
   assert.doesNotThrow(() => f.tripShatter('wa:group-1', 'wa:62812 — bu-dewi'));
-  const frozen = f.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, channel: 'wa:group-1', textId: 'a', textEn: 'b' });
+  const frozen = f.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, channel: 'wa:group-1', text: { id: 'a', en: 'b' } });
   assert.equal(frozen.disposition, 'card', 'and the freeze worked: the opt-in-auto lane is draft now (§1.7 narrowing)');
   try { f.releaseShatter('wa:group-1', 'wa:62812 — bu-dewi'); assert.fail('the complainant still cannot release their own freeze'); }
   catch (e) { assert.match(String(e), /not_the_human/); }
   f.releaseShatter('wa:group-1', 'organiser');
-  const thawed = f.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e2' }, channel: 'wa:group-1', textId: 'a', textEn: 'b' });
+  const thawed = f.attempt({ actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e2' }, channel: 'wa:group-1', text: { id: 'a', en: 'b' } });
   assert.equal(thawed.disposition, 'auto', 'released by the seat, and only then does the lane go back');
 });
 
@@ -128,7 +128,7 @@ test('ANSWERABILITY IS NOT AUTHORITY: on_behalf_of may be unattributable and is 
   assert.throws(() => f.commit({
     actionClass: 'commit.channel-post', agent: 'engagement', origin: { kind: 'event', id: 'e1' },
     recipients: ['wa:62811'], onBehalfOf: 'unattributable', channel: 'wa:group-1',
-    textId: `x\n\n${disclosureLineId(ANSWERS.community_name)}`, textEn: `y\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+    text: { id: `x\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `y\n\n${disclosureLine('en', ANSWERS.community_name)}` },
   }), /no_transport/, 'it reaches the transport gate, which is the most an unnamed human is allowed to get — not_the_human would mean the fleet invented an organiser');
 });
 
@@ -141,9 +141,9 @@ human_seats:
 agent_roles: []
 `);
   const f = new Fleet({ ...makePack({ engagement: { 'draft.promote': 'draft' } }), org: renamed }, {}, DAY);
-  const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, textId: 'a', textEn: 'b' }).card!;
+  const card = f.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } }).card!;
   assert.doesNotThrow(() => f.decideCard(card.id, { verdict: 'approve', by: 'ketua', why: 'waktu dan tempat benar' }));
   const other = fleet();
-  const card2 = other.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, textId: 'a', textEn: 'b' }).card!;
+  const card2 = other.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'e1' }, text: { id: 'a', en: 'b' } }).card!;
   assert.throws(() => other.decideCard(card2.id, { verdict: 'approve', by: 'ketua', why: 'x' }), /not_the_human/, 'and it is per-org: ketua is not a seat in the other one');
 });

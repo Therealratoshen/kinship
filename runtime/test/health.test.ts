@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
 import { HEALTH_WITHHELD_MEMBER_REF } from '../src/health.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 
 const ANSWERS = {
   community_name: 'AI Builders ID',
@@ -38,8 +38,7 @@ const DAY = 25_200_000;
 const pack = (classes: Record<string, Record<string, string>>) => makePack(classes);
 
 const bundle = () => ({
-  textId: `Latihan mingguan tetap jalan ya.\n\n${disclosureLineId(ANSWERS.community_name)}`,
-  textEn: `Weekly practice is still on.\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+  text: { id: `Latihan mingguan tetap jalan ya.\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Weekly practice is still on.\n\n${disclosureLine('en', ANSWERS.community_name)}` },
 });
 
 const TWO_AGENTS = {

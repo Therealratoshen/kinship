@@ -38,7 +38,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 import type { CommunityPosture, PackedOrg } from '../src/types.ts';
 
 // 14:00 in Jakarta — deliberately OUTSIDE the member's quiet hours (21:00–07:59 local, FR-5.5),
@@ -67,8 +67,7 @@ const ORG = (posture?: CommunityPosture): PackedOrg => ({
 
 const BUNDLE = {
   id: 'card-1',
-  textId: `Halo! Kopdar #7 Sabtu, 19:00 WIB, Ruang A.\n\n${disclosureLineId('AI Builders ID')}`,
-  textEn: `Hello! Kopdar #7 on Saturday, 19:00 WIB, Hall A.\n\n${disclosureLineEn('AI Builders ID')}`,
+  text: { id: `Halo! Kopdar #7 Sabtu, 19:00 WIB, Ruang A.\n\n${disclosureLine('id', 'AI Builders ID')}`, en: `Hello! Kopdar #7 on Saturday, 19:00 WIB, Hall A.\n\n${disclosureLine('en', 'AI Builders ID')}` },
 };
 
 /** A fleet with one member, a posture, and the grants a 1:1 / public commit needs. */

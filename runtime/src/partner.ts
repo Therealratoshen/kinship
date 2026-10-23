@@ -26,6 +26,7 @@
  * sentence around them.
  */
 import { refuse } from './errors.ts';
+import type { LocaleText } from './locales.ts';
 import type { FleetState } from './types.ts';
 
 /**
@@ -80,8 +81,10 @@ export function findMemberLeaks(state: FleetState, texts: string[]): MemberLeak[
  * partner — the only moment copy is travelling toward a third party. Pure check: it logs nothing and
  * mutates nothing; the engine owns the audit record for the refusal.
  */
-export function assertNoMemberDataInPartnerCopy(state: FleetState, textId: string, textEn: string): void {
-  const leaks = findMemberLeaks(state, [textId, textEn]);
+export function assertNoMemberDataInPartnerCopy(state: FleetState, text: LocaleText): void {
+  // Every declared language is scanned, not just two of them: a partner-facing copy in a language the
+  // scan skipped would carry a member's number straight to a third party.
+  const leaks = findMemberLeaks(state, Object.values(text));
   if (leaks.length === 0) return;
   const who = leaks.map((l) => (l.token === l.ref ? l.ref : `${l.ref} (written bare, as \`${l.token}\`)`)).join(', ');
   refuse('partner_data_leak', 'spec §2.11 / FR-6.1',

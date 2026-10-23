@@ -5,7 +5,7 @@ import { runActions } from '../src/runner.ts';
 import { createRun } from '../src/budget.ts';
 import { KinshipError } from '../src/errors.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 
 /**
  * The runner is §1.6's owner of a run. Phase 1's scheduler is the organiser's own Paperclip
@@ -28,8 +28,7 @@ const pack = (maxActions: number) => {
 const internal = (i: number): CommitArgs => ({
   actionClass: 'recap.assemble', agent: 'engagement',
   origin: { kind: 'event', id: `kopdar-${i}` }, recipients: [], onBehalfOf: 'organiser',
-  textId: `Rekap ${i}.\n\n${disclosureLineId(ANSWERS.community_name)}`,
-  textEn: `Recap ${i}.\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+  text: { id: `Rekap ${i}.\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Recap ${i}.\n\n${disclosureLine('en', ANSWERS.community_name)}` },
 });
 
 const fleetWithGrant = (maxActions: number) => {
@@ -87,8 +86,7 @@ test('the runner cannot deliver to a member: every recipient-bearing action refu
   const out = runActions(f, [{
     actionClass: 'remind.member', agent: 'engagement', channel: 'telegram',
     origin: { kind: 'event', id: 'kopdar-12' }, recipients: ['wa:62811'], onBehalfOf: 'organiser',
-    textId: `Ingat kopdar.\n\n${disclosureLineId(ANSWERS.community_name)}`,
-    textEn: `Kopdar reminder.\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+    text: { id: `Ingat kopdar.\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Kopdar reminder.\n\n${disclosureLine('en', ANSWERS.community_name)}` },
   }]);
   assert.deepEqual(out.outcomes.map((o) => o.code), ['no_transport'], 'phase 1 sends nothing, and the runner is no way around that');
   assert.equal(out.executed, 0);

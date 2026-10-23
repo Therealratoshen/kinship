@@ -104,7 +104,7 @@ function runStory() {
   // 2) Draft-only: an attempt is a CARD for a human to decide, never a send.
   const draft = fleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
-    phase: 't-minus-1', textId: REMINDER_ID, textEn: REMINDER_EN,
+    phase: 't-minus-1', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
 
   // 3) The organiser approves — then the commit still hits the transport gate, and the authorisation survives.
@@ -113,7 +113,7 @@ function runStory() {
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
     phase: 't-minus-1', recipients: ['wa:62811'], onBehalfOf: 'organiser',
     authorizationToken: draft.card ? `auth-${draft.card.id}` : 'auth-none',
-    textId: REMINDER_ID, textEn: REMINDER_EN,
+    text: { id: REMINDER_ID, en: REMINDER_EN },
   }));
 
   // 4) Cross-promotion without a partner_policy answer: the class is *absent*, not denied (spec §2.11).
@@ -122,7 +122,7 @@ function runStory() {
   const crossFleet = new Fleet(pack, noPartner, DAY);
   const cross = observe(() => crossFleet.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   }));
 
   // 5) A fork cannot widen a protection it did not write. Two shapes of the same rule, both through the
@@ -165,7 +165,7 @@ function runStory() {
   runnerFleet.issueGrant({ actionClass: 'draft.reminder', kind: 'allow_always', scope: 'the tour demo', by: 'organiser' });
   const action = (id: string): CommitArgs => ({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id },
-    recipients: [], onBehalfOf: 'organiser', textId: REMINDER_ID, textEn: REMINDER_EN,
+    recipients: [], onBehalfOf: 'organiser', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
   const runner = runActions(runnerFleet, [action('kopdar-1'), action('kopdar-2'), action('kopdar-3'), action('kopdar-4'), action('kopdar-5')]);
 
@@ -188,7 +188,7 @@ function runStory() {
   const leak = observe(() => fleet.commit({
     actionClass: 'promote.cross-community', agent: 'engagement', channel: 'telegram',
     origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
-    recipients: ['wa:62811'], onBehalfOf: 'organiser', textId: leakyId, textEn: leakyEn,
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', text: { id: leakyId, en: leakyEn },
   }));
 
   // 8) The fleet-condition snapshot (§1.2's read side): what the logged rows say about right now.
@@ -205,7 +205,7 @@ function runStory() {
   healthFleet.beginEvent('kopdar-12');
   healthFleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
-    phase: 't-minus-1', textId: REMINDER_ID, textEn: REMINDER_EN,
+    phase: 't-minus-1', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
   healthFleet.tripShatter('telegram', 'wa:62811');
   healthFleet.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-12' });
@@ -214,7 +214,10 @@ function runStory() {
   // The same read over a pack that declares NO coverage window — the honest null case. An unstated
   // staffing promise is an unknown duty state, and the read must say so rather than counting zero
   // (which would claim the community was never on duty — a different, and false, statement).
-  const noCoverageFleet = Fleet.boot({ ...pack, coverage: undefined }, ANSWERS, DAY);
+  // The pack WITHOUT its coverage window — the key omitted rather than set to `undefined`, because
+  // `exactOptionalPropertyTypes` says an absent optional is not the same as an explicit undefined.
+  const { coverage: _droppedCoverage, ...packWithoutCoverage } = pack;
+  const noCoverageFleet = Fleet.boot(packWithoutCoverage, ANSWERS, DAY);
   const noCoverageHealth = noCoverageFleet.health();
   // 9) The organiser's inbox over the same log: not counts, the list — and the fifth thing a count
   //    cannot show is the approved card whose send is still sitting with a human (D21).

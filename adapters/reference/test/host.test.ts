@@ -80,8 +80,7 @@ test('a drafted lane becomes a card on disk, and the file still verifies', () =>
       command: 'draft',
       actionClass: 'draft.reminder',
       agent: 'event-ops',
-      textId: 'Reminder: Kopdar besok jam 19:00.',
-      textEn: 'Reminder: Kopdar tomorrow at 19:00.',
+      text: { id: 'Reminder: Kopdar besok jam 19:00.', en: 'Reminder: Kopdar tomorrow at 19:00.' },
     });
     assert.ok(out.some((l) => l.includes('drafted into card')), out.join('\n'));
     const host = bootHost(opts);
@@ -117,8 +116,7 @@ test('a tampered log does not verify — and the host says why', () => {
         ...opts,
         command: 'draft',
         actionClass: 'draft.reminder',
-        textId: `Reminder ${i}.`,
-        textEn: `Reminder ${i}.`,
+        text: { id: `Reminder ${i}.`, en: `Reminder ${i}.` },
       });
     }
     const host = bootHost(opts);
@@ -141,8 +139,7 @@ test('the host sends nothing: the log holds no transport, and the claim is struc
       ...opts,
       command: 'draft',
       actionClass: 'draft.reminder',
-      textId: 'Reminder.',
-      textEn: 'Reminder.',
+      text: { id: 'Reminder.', en: 'Reminder.' },
     });
     const host = bootHost(opts);
     const text = readFileSync(host.eventsPath, 'utf8');

@@ -97,12 +97,12 @@ test('the partner gate holds on the real pack: cross-promo is unreachable until 
   const gated = new Fleet(loadPack(PACK_DIR), withoutPartner, DAY);
   assert.throws(() => gated.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   }), /class_unavailable/, 'partner_policy unset → the class is never, even though the pack declares it at draft');
   const open = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
   const r = open.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   });
   assert.equal(r.disposition, 'card', 'partner_policy answered → the class resolves to its declared draft');
 });
@@ -177,16 +177,14 @@ test('the real pack runs the draft-only story end to end, with its own guardrail
   const disclosureEn = `this message was sent by the automated assistant of AI Builders ID — not a human. reply here to escalate to the organiser.`;
   const r = fleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' }, phase: 't-minus-1',
-    textId: `Ingat ya besok kopdar!\n\n${disclosureId}`,
-    textEn: `Reminder: kopdar tomorrow!\n\n${disclosureEn}`,
+    text: { id: `Ingat ya besok kopdar!\n\n${disclosureId}`, en: `Reminder: kopdar tomorrow!\n\n${disclosureEn}` },
   });
   assert.equal(r.disposition, 'card');
   fleet.decideCard(r.card!.id, { verdict: 'approve', by: 'organiser', why: 'waktu dan tempat sudah benar' });
   assert.throws(() => fleet.commit({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' }, phase: 't-minus-1',
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${r.card!.id}`,
-    textId: `Ingat ya besok kopdar!\n\n${disclosureId}`,
-    textEn: `Reminder: kopdar tomorrow!\n\n${disclosureEn}`,
+    text: { id: `Ingat ya besok kopdar!\n\n${disclosureId}`, en: `Reminder: kopdar tomorrow!\n\n${disclosureEn}` },
   }), /no_transport/, 'the real pack cannot send either — no transport ships in phase 1');
 });
 

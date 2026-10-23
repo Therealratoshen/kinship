@@ -43,7 +43,7 @@
  */
 import { pendingCards, withholdMemberIdentifiers } from './health.ts';
 import { openThreads } from './threads.ts';
-import type { FleetState } from './types.ts';
+import type { Card, FleetState } from './types.ts';
 
 /**
  * The ways a promise can sit waiting on a human.
@@ -112,6 +112,19 @@ const ACTIONS: Record<InboxKind, string> = {
   thread: 'answer the open question — the words are in the channel, not in this list (§2.7)',
 };
 
+/**
+ * The copy a preview shows: the community's PRIMARY language — the first code in its declared pair.
+ *
+ * The organiser's own language is the one they read, and the pack declares the order, so the runtime
+ * does not have to guess. A member's other language is one click away in the card, which carries every
+ * declared language.
+ */
+function primaryCopy(card: Card): string {
+  const locale = card.revision.text;
+  const first = Object.keys(locale)[0];
+  return first === undefined ? '' : (locale[first] ?? '');
+}
+
 /** One line, so a host can print the list without knowing which fields are free text. */
 function preview(text: string): string {
   const flat = text.replace(/\s+/g, ' ').trim();
@@ -130,7 +143,7 @@ export function deriveInbox(state: FleetState, now: number): InboxReport {
       ref: card.id,
       ageMs: now - card.createdAt,
       action: ACTIONS.verdict,
-      detail: [card.actionClass, originOf(card.origin.kind, card.origin.id), `"${preview(sweep(card.revision.textId))}"`,
+      detail: [card.actionClass, originOf(card.origin.kind, card.origin.id), `"${preview(sweep(primaryCopy(card)))}"`,
         ...(card.forcedBy !== undefined ? [`forced by ${card.forcedBy}`] : [])].join(' · '),
     });
   }
@@ -147,7 +160,7 @@ export function deriveInbox(state: FleetState, now: number): InboxReport {
       ageMs: now - auth.issuedAt,
       action: ACTIONS.handoff,
       detail: [auth.actionClass, originOf(card.origin.kind, card.origin.id), `authorization ${auth.token}`,
-        `"${preview(sweep(card.revision.textId))}"`].join(' · '),
+        `"${preview(sweep(primaryCopy(card)))}"`].join(' · '),
     });
   }
 

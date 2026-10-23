@@ -43,8 +43,8 @@ export interface HostOptions {
   /** For `draft`: the lane, the agent, and the copy the operator hands the runtime. */
   actionClass?: string;
   agent?: string;
-  textId?: string;
-  textEn?: string;
+  /** The copy, keyed by language code — the operator hands one per language the pack declares. */
+  text: Record<string, string>;
 }
 
 /** Everything the host knows about the community it is running for. */
@@ -178,9 +178,26 @@ export function parseArgs(argv: readonly string[]): HostOptions {
     why: flag('why') ?? undefined,
     actionClass: flag('class') ?? undefined,
     agent: flag('agent') ?? undefined,
-    textId: flag('text-id') ?? undefined,
-    textEn: flag('text-en') ?? undefined,
+    // The copy comes in as `--text-<code>`, once per language the pack declares: `--text-id`,
+    // `--text-en`, `--text-ar`. The host does not know which languages exist — the PACK does — so a
+    // flag for a language the pack does not declare is a mistake the runtime refuses, not one the
+    // host papers over.
+    text: collectText(argv),
   };
+}
+
+/** Every `--text-<code> value` on the command line, as a map keyed by the code. */
+function collectText(argv: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (let i = 0; i < argv.length; i++) {
+    const m = /^--text-([A-Za-z]{2,3})$/.exec(argv[i]!);
+    if (m === null) continue;
+    const value = argv[i + 1];
+    if (value === undefined) throw new Error(`--text-${m[1]} needs the copy in that language`);
+    out[m[1]!] = value;
+    i++;
+  }
+  return out;
 }
 
 /** Run one command and return what to print. */
@@ -208,14 +225,14 @@ export function runCommand(opts: HostOptions): string[] {
       // the copy; the **runtime** decides whether that lane drafts a card, runs automatically, or
       // refuses. The host does not think — a host that invented drafts would be inventing behaviour
       // the pack does not have.
-      if (opts.textId === undefined || opts.textEn === undefined) {
-        throw new Error('draft needs --text-id and --text-en — the copy is the caller\'s, not the host\'s');
+      if (Object.keys(opts.text).length === 0) {
+        throw new Error('draft needs the copy — one --text-<code> per language the pack declares (the copy is the caller\'s, not the host\'s)');
       }
       const actionClass = opts.actionClass ?? 'draft.reminder';
       const result = host.fleet.attempt({
         actionClass, agent: opts.agent ?? 'event-ops',
         origin: { kind: 'operator', id: 'manual' },
-        textId: opts.textId, textEn: opts.textEn,
+        text: opts.text,
       });
       out.push(result.disposition === 'card'
         ? `${actionClass} drafted into card ${result.card!.id} — waiting on a human`

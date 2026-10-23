@@ -32,7 +32,7 @@ import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
 import { HEALTH_WITHHELD_MEMBER_REF } from '../src/health.ts';
 import { INBOX_PREVIEW_MAX } from '../src/inbox.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,9 +59,11 @@ const TWO_AGENTS = {
   moderator: { 'moderate.flag': 'draft' },
 };
 
-const bundle = (textEn = `Weekly practice is still on.\n\n${disclosureLineEn(ANSWERS.community_name)}`) => ({
-  textId: `Latihan mingguan tetap jalan ya.\n\n${disclosureLineId(ANSWERS.community_name)}`,
-  textEn,
+const bundle = (textEn = `Weekly practice is still on.\n\n${disclosureLine('en', ANSWERS.community_name)}`) => ({
+  text: {
+    id: `Latihan mingguan tetap jalan ya.\n\n${disclosureLine('id', ANSWERS.community_name)}`,
+    en: textEn,
+  },
 });
 
 const tryCard = (f: Fleet, id = 'kopdar-1') =>
@@ -200,7 +202,7 @@ test('a long draft is previewed, not dumped: withholding happens before the cut,
   f.registerMember('wa:62811', 'Asia/Jakarta');
   // The identifier sits past the cut line — the shape that makes truncate-then-withhold a leak.
   const long = `${'y'.repeat(400)} wa:62811 please call the venue`;
-  f.attempt({ actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-1' }, textId: long, textEn: 'a long draft' });
+  f.attempt({ actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-1' }, text: { id: long, en: 'a long draft' } });
   const item = f.inbox().items.find((i) => i.kind === 'verdict')!;
   assert.ok(item.detail.length < INBOX_PREVIEW_MAX + 120, `bounded preview, not the whole 400-char draft (${item.detail.length})`);
   assert.ok(!JSON.stringify(f.inbox()).includes('wa:62811'), 'a person does not travel in a list that got cut mid-sentence');

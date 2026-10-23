@@ -18,7 +18,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
-import { SUPPORTED_LOCALES, localeIsSupported } from './disclosure.ts';
+import { DEFAULT_LOCALE_PAIR, SUPPORTED_LOCALE_PAIRS, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
 import type { Autonomy, CommunityCoverage, CommunityPosture, CoverageWindow, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
@@ -512,16 +512,17 @@ export function loadPack(dir: string): Packed {
   if (schema !== 'kinship/v1') refuse('pack_invalid', 'pack format gate', `schema is \`${schema}\`, expected \`kinship/v1\``);
   if (!key) refuse('pack_invalid', 'pack format gate', 'pack key missing');
 
-  const localeRaw = topScalar(yaml, 'locale') ?? SUPPORTED_LOCALES.join(',');
+  const localeRaw = topScalar(yaml, 'locale') ?? DEFAULT_LOCALE_PAIR.join(',');
   const locale = localeRaw.replace(/[\[\]]/g, '').split(',').map((s) => s.trim()).filter(Boolean);
-  // A pack may declare the language pair it runs in, but it may only declare the pair this runtime
-  // implements. The member-facing fields are `textId` and `textEn` and the canonical disclosure line
-  // exists for those two languages, so a pack that declares anything else would boot and then fail
-  // at send time with a refusal that names neither the language nor the setting that caused it.
+  // A pack may declare the language pair it runs in, but it may only declare a pair this runtime
+  // implements. The member-facing copy is carried in the languages the pack declares, the canonical
+  // disclosure line exists for each of them, and the runtime's own cards are written in them — so a
+  // pack that declares anything else would boot and then fail at send time with a refusal that names
+  // neither the language nor the setting that caused it.
   // Supporting another language is a runtime change, not a pack edit.
   if (!localeIsSupported(locale)) {
     refuse('pack_invalid', 'pack format gate (locale)',
-      `pack \`${key}\` declares \`locale: ${localeRaw}\` but this runtime implements only ${SUPPORTED_LOCALES.join(' and ')} — the member-facing fields are \`textId\` and \`textEn\` and the canonical disclosure line exists for those two languages, so a pack cannot declare a pair the runtime will not honour`);
+      `pack \`${key}\` declares \`locale: ${localeRaw}\` but this runtime implements only ${SUPPORTED_LOCALE_PAIRS.map((p) => p.join('+')).join(' and ')} — the member-facing copy is carried in the languages the pack declares, the canonical disclosure line exists for each of them, and the runtime's own cards are written in them, so a pack cannot declare a pair the runtime will not honour`);
   }
 
   const guard = blockMap(block(yaml, 'guardrails'));

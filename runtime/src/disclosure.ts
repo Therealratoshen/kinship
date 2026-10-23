@@ -13,34 +13,51 @@
 import { refuse } from './errors.ts';
 
 /**
- * The languages this runtime implements, in the order it holds them: Indonesian first, English
- * paired. Every member-facing artefact carries both, always — the fields are named for them, the
- * canonical disclosure line exists for each, and PRD FR-5.6 keeps broadcast copy on this pair
- * (per-recipient language is phase 2).
+ * The languages, the pairs a community may declare, and the disclosure line in each.
  *
- * This is the single source of truth for the pair. The pack format gate checks a pack's declared
- * `locale:` against it, so a pack cannot declare a pair the runtime will not honour — and the pair
- * is written down once, not typed into the validator and the parser separately.
+ * These used to live here as a hard-coded Indonesian/English pair with two named functions — and the
+ * FIELD NAMES in every card said the same thing. The languages now live in `src/locales.ts`, which
+ * is the single source of truth: a pack's declared `locale:` is checked against the pairs there, the
+ * canonical disclosure line exists for each language there, and the copy the runtime writes on its own
+ * (the budget-stop card, the escalation card) is there too. A language with a disclosure line but no
+ * runtime copy would leave the runtime raising its own cards in the wrong language, so the pair is
+ * refused rather than half-supported.
  */
-export const SUPPORTED_LOCALES = ['id', 'en'] as const;
+export { LOCALES, SUPPORTED_LOCALE_PAIRS, DEFAULT_LOCALE_PAIR, localeIsSupported, localeSpec } from './locales.ts';
+export type { LocaleSpec, LocaleText } from './locales.ts';
 
-/** True when a declared locale list is exactly the pair this runtime implements, in its order. */
-export function localeIsSupported(locale: readonly string[]): boolean {
-  return locale.length === SUPPORTED_LOCALES.length && locale.every((l, i) => l === SUPPORTED_LOCALES[i]);
+import { LOCALES, localeSpec } from './locales.ts';
+import type { LocaleText } from './locales.ts';
+
+/** The canonical disclosure line in one language. */
+export function disclosureLine(language: string, community: string): string {
+  const spec = localeSpec(language);
+  if (spec === undefined) {
+    refuse('pack_invalid', 'spec §2.8 / FR-5',
+      `this runtime does not implement \`${language}\` — a disclosure line the runtime cannot produce canonically is not disclosure`);
+  }
+  return spec.disclosure(community);
 }
 
-export function disclosureLineId(community: string): string {
-  return `pesan ini dikirim oleh asisten otomatis komunitas ${community} — bukan oleh manusia. balas di sini untuk eskalasi ke organiser.`;
+/** The disclosure line in the community's primary language — the one a preview leads with. */
+export function disclosureLineFor(text: LocaleText, locale: readonly string[], community: string): string {
+  return disclosureLine(locale[0] ?? 'en', community);
 }
 
-export function disclosureLineEn(community: string): string {
-  return `this message was sent by the automated assistant of ${community} — not a human. reply here to escalate to the organiser.`;
-}
-
-/** The gate: both languages carry the canonical line, or the send refuses (fail closed). */
-export function assertDisclosed(textId: string, textEn: string, community: string): void {
-  if (!textId.includes(disclosureLineId(community)) || !textEn.includes(disclosureLineEn(community))) {
-    refuse('disclosure_missing', 'spec §2.8 / FR-5', 'a member-facing send carries the canonical disclosure line in both languages — an improvised AI mention is not disclosure');
+/**
+ * The gate: EVERY declared language carries the canonical line, or the send refuses (fail closed).
+ *
+ * The languages are the community's own pair, in its own order — so this is no longer "Indonesian and
+ * English" but "whatever this community runs in", which is the only version of the rule that was ever
+ * true.
+ */
+export function assertDisclosed(text: LocaleText, community: string, locale: readonly string[]): void {
+  for (const language of locale) {
+    const line = disclosureLine(language, community);
+    if (!(text[language] ?? '').includes(line)) {
+      refuse('disclosure_missing', 'spec §2.8 / FR-5',
+        `a member-facing send carries the canonical disclosure line in every declared language — \`${language}\` is missing it, and an improvised AI mention is not disclosure`);
+    }
   }
 }
 

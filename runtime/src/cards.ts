@@ -9,6 +9,7 @@
 import { refuse } from './errors.ts';
 import { assertSeat } from './roles.ts';
 import { hashText } from './store.ts';
+import { localeTextForHash, type LocaleText } from './locales.ts';
 import type { Ctx, Card, FleetEvent, FleetState, Origin, Phase, Revision, Verdict } from './types.ts';
 
 export interface CreateCardArgs {
@@ -16,8 +17,8 @@ export interface CreateCardArgs {
   agent: string;
   origin: Origin;
   phase: Phase | null;
-  textId: string;
-  textEn: string;
+  /** The copy, in the community's declared languages (FR-5.6 — a declared pair, both always). */
+  text: LocaleText;
   idempotencyKey?: string;
   /** Set by the engine when a rule downgraded an auto lane into a card (e.g. member input). */
   forcedBy?: string;
@@ -34,9 +35,8 @@ export function createCard(ctx: Ctx, args: CreateCardArgs): Card {
     refuse('queue_full', 'spec §1.6', `approval queue holds ${pendingCount} pending cards (max ${ctx.pack.budgets.queueMax}) — depth is bounded, drain before creating`);
   }
   const revision: Revision = {
-    textId: args.textId,
-    textEn: args.textEn,
-    hash: hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`),
+    text: args.text,
+    hash: hashText(localeTextForHash(args.text, ctx.pack.locale)),
   };
   const card: Card = {
     id: args.idempotencyKey !== undefined ? `card-${args.idempotencyKey}` : `card-${ctx.state.cardCount + 1}`,
@@ -57,8 +57,8 @@ export interface DecideArgs {
   verdict: Verdict;
   by: string;
   why: string;
-  newTextId?: string;
-  newTextEn?: string;
+  /** The replacement copy, in the community's declared languages. */
+  newText?: LocaleText;
 }
 
 export function decideCard(ctx: Ctx, cardId: string, args: DecideArgs): Card {
@@ -77,13 +77,12 @@ export function decideCard(ctx: Ctx, cardId: string, args: DecideArgs): Card {
     refuse('verdict_without_why', 'spec §1.2', 'a verdict without a why is not a record');
   }
   if (args.verdict === 'edit') {
-    if (args.newTextId === undefined || args.newTextEn === undefined) {
+    if (args.newText === undefined) {
       refuse('verdict_without_why', 'spec §1.5', 'an edit must carry the replacement revision');
     }
     const newRevision: Revision = {
-      textId: args.newTextId,
-      textEn: args.newTextEn,
-      hash: hashText(`${args.newTextId}\n\u2044\u2044\n${args.newTextEn}`),
+      text: args.newText,
+      hash: hashText(localeTextForHash(args.newText, ctx.pack.locale)),
     };
     if (newRevision.hash === card.revision.hash) {
       refuse('verdict_without_why', 'spec §1.5', 'an edit that changes nothing is an approval');
@@ -98,8 +97,7 @@ export function decideCard(ctx: Ctx, cardId: string, args: DecideArgs): Card {
       agent: card.agent,
       origin: card.origin,
       phase: card.phase,
-      textId: args.newTextId,
-      textEn: args.newTextEn,
+      text: args.newText,
     });
     return next;
   }

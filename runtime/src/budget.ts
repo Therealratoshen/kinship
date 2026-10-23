@@ -10,6 +10,7 @@
  * inventing a limit.
  */
 import { refuse } from './errors.ts';
+import { localeCopy } from './locales.ts';
 import { createCard } from './cards.ts';
 import type { Ctx, FleetEvent, FleetState, Packed } from './types.ts';
 
@@ -49,8 +50,7 @@ export function recordSpend(ctx: Ctx, eventId: string, amountIdr: number, note: 
       agent: 'engine',
       origin: { kind: 'event', id: eventId },
       phase: null,
-      textId: `Anggaran habis: Rp ${wouldBe} dari plafon Rp ${b.ceilingIdr} untuk ${eventId}. Fase terjadwal tidak dilewatkan diam-diam — putuskan lanjut atau naikkan plafon.`,
-      textEn: `Budget exhausted: Rp ${wouldBe} of the Rp ${b.ceilingIdr} ceiling for ${eventId}. Scheduled phases are not silently dropped — decide whether to continue or raise the ceiling.`,
+      text: localeCopy(ctx, 'budgetStop', (spec) => spec.budgetStop(eventId, wouldBe, b.ceilingIdr ?? 0)),
       forcedBy: 'budget_hard_stop',
     });
     ctx.commit({ type: 'BudgetStopRaised', eventId, spentIdr: wouldBe, ceilingIdr: b.ceilingIdr, cardId: card.id, at: ctx.now() });

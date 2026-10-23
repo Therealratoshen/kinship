@@ -7,7 +7,7 @@ const ctx = () => makeCtx(makePack({ engagement: { 'draft.promote': 'draft' } })
 const draft = (c: ReturnType<typeof ctx>, i = 1) => ({
   actionClass: 'draft.promote', agent: 'engagement',
   origin: { kind: 'event', id: `kopdar-${i}` }, phase: 'promoting' as const,
-  textId: `Promo ID ${i}`, textEn: `Promo EN ${i}`,
+  text: { id: `Promo ID ${i}`, en: `Promo EN ${i}` },
 });
 
 test('a card binds to the revision it was created with (§1.5)', () => {
@@ -69,7 +69,7 @@ test('approve v1, edit to v2: the old approval resolves stale_target and v2 queu
   decideCard(c, card.id, { verdict: 'approve', by: 'organiser', why: 'ok' });
   decideCard(c, card.id, {
     verdict: 'edit', by: 'organiser', why: 'venue moved',
-    newTextId: 'Promo ID v2', newTextEn: 'Promo EN v2',
+    newText: { id: 'Promo ID v2', en: 'Promo EN v2' },
   });
   assert.equal(c.state.cards.get(card.id)?.status, 'stale', 'resolved stale_target');
   assert.equal(c.state.authorizations.size, 1, 'the v1 authorization is dead and no new one exists until v2 is approved');

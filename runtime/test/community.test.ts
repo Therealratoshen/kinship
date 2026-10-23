@@ -189,8 +189,10 @@ test('the health read carries the coverage window, the duty state, and what it c
   f.beginEvent('kopdar-1');
   f.attempt({
     actionClass: 'report.assemble', agent: 'community-lead', origin: { kind: 'event', id: 'kopdar-1' },
-    textId: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
-    textEn: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    text: {
+      id: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
+      en: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    },
   });
   const h = f.health();
   assert.equal(h.community.coverage?.mode, 'staffed');
@@ -205,8 +207,10 @@ test('an obligation that outlives its staffed shift is counted, and a pack with 
   f.beginEvent('kopdar-1');
   f.attempt({
     actionClass: 'report.assemble', agent: 'community-lead', origin: { kind: 'event', id: 'kopdar-1' },
-    textId: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
-    textEn: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    text: {
+      id: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
+      en: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    },
   });
   f.advance(local('Asia/Jakarta', 2026, 7, 21, 9, 0) - local('Asia/Jakarta', 2026, 7, 20, 10, 0));
   const h = f.health();

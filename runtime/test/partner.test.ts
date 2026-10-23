@@ -38,7 +38,7 @@ test('one member written two ways is one leak, reported under the unambiguous sp
   assert.deepEqual(leaks, [{ ref: 'wa:62811', token: 'wa:62811' }]);
 });
 
-test('both languages are scanned — a leak in textEn is still a leak', () => {
+test('every language is scanned — a leak in the SECOND language is still a leak', () => {
   const c = ctx(['wa:62811']);
   assert.deepEqual(findMemberLeaks(c.state, ['partner event, all welcome', 'RSVP list: 62811']),
     [{ ref: 'wa:62811', token: '62811' }]);
@@ -47,7 +47,7 @@ test('both languages are scanned — a leak in textEn is still a leak', () => {
 test('clean partner copy matches nothing, and the assertion passes it', () => {
   const c = ctx(['wa:62811']);
   assert.deepEqual(findMemberLeaks(c.state, ['Kopdar Sebelah ngadain meetup Sabtu!', 'AIClub is hosting a meetup Saturday']), []);
-  assert.doesNotThrow(() => assertNoMemberDataInPartnerCopy(c.state, 'Kopdar Sebelah ngadain meetup!', 'AIClub is hosting a meetup'));
+  assert.doesNotThrow(() => assertNoMemberDataInPartnerCopy(c.state, { id: 'Kopdar Sebelah ngadain meetup!', en: 'AIClub is hosting a meetup' }));
 });
 
 test('the scan is a registry check, not a phone-number regex: an unknown number is not a member', () => {
@@ -74,9 +74,10 @@ test('two members leak as two named entries, sorted — the refusal has to be ac
 test('the refusal names the members and never the copy — the timeline is member-readable (§2.3)', () => {
   const c = ctx(['wa:62811', 'tg:62822']);
   try {
-    assertNoMemberDataInPartnerCopy(c.state,
-      'Anggota kami wa:62811 dan 62822 sudah konfirmasi hadir ke acara partner',
-      'Our members wa:62811 and 62822 confirmed they will attend your event');
+    assertNoMemberDataInPartnerCopy(c.state, {
+      id: 'Anggota kami wa:62811 dan 62822 sudah konfirmasi hadir ke acara partner',
+      en: 'Our members wa:62811 and 62822 confirmed they will attend your event',
+    });
     assert.fail('partner copy carrying member identifiers must not pass the scan');
   } catch (e) {
     assert.ok(e instanceof KinshipError, 'a refusal is a coded outcome, not a crash');
@@ -95,6 +96,6 @@ test('the refusal names the members and never the copy — the timeline is membe
 test('a leak scan does not mutate state — it is a check, not a transaction (§1.2)', () => {
   const c = ctx(['wa:62811']);
   const before = c.state.events.length;
-  assert.throws(() => assertNoMemberDataInPartnerCopy(c.state, 'wa:62811 ikut ya', 'you too'), /partner_data_leak/);
+  assert.throws(() => assertNoMemberDataInPartnerCopy(c.state, { id: 'wa:62811 ikut ya', en: 'you too' }), /partner_data_leak/);
   assert.equal(c.state.events.length, before, 'the refusal is logged by the engine at commit time, not by the scanner');
 });
