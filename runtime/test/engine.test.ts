@@ -526,3 +526,25 @@ test('a refused phase-origin claim on the wake path is LOGGED — a refusal that
   assert.equal((refused[0] as { code?: string }).code, 'conflict_409');
   assert.ok(f.health().refusals.some((r) => r.code === 'conflict_409'), 'and it is counted in the health read');
 });
+
+test('a timer may only fire a human-gated draft lane — an auto lane would claim the phase and do nothing', () => {
+  // `opt-in-auto` is committed by the RUNNER, and a wake is not a runner. So firing one used to
+  // claim the phase origin, report "attempted", and do nothing: no card, no commit, and no refusal
+  // logged — so the health read showed nothing either. Now it is refused, and the refusal is logged.
+  const f = Fleet.boot(pack({ 'event-ops': { 'observe.read': 'opt-in-auto', 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'observe.read@x:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'observe.read', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.result, 'refused');
+  assert.equal(out.code, 'timed_lane_not_draft');
+  assert.equal(f.inbox().counts.verdict, 0, 'nothing reached a member');
+  assert.ok(f.health().refusals.some((r) => r.code === 'timed_lane_not_draft'), 'and the refusal is counted');
+  // And the phase origin was NOT burned, so a legitimate draft lane for the same phase still works.
+  const ok = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(ok.id).result, 'attempted', 'the refused lane did not consume the phase');
+});

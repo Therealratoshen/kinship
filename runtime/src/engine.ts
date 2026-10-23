@@ -497,6 +497,26 @@ export class Fleet {
     const action = row.action;
     if (action === undefined) return { fired: true, result: 'no-action' };
     const eventId = row.eventId ?? row.id;
+    // **A timed lane must be a human-gated draft lane.** An `opt-in-auto` class is committed by the
+    // *runner* — and a wake is not a runner. So firing one would claim the phase origin, return
+    // "attempted", and do nothing at all: no card, no commit, and (before D62) no refusal logged,
+    // so the health read showed nothing either. The check is here rather than in the planner
+    // because the planner cannot see the resolved level — a grant or an org ceiling can narrow a
+    // class to `draft`, and the engine is where the truth is.
+    const level = resolveAutonomy({
+      pack: this.pack, role: action.agent, actionClass: action.actionClass,
+      state: this.st, answers: this.answers, settings: this.resolved, channel: action.channel,
+    });
+    if (level !== 'draft' && level !== 'never') {
+      // A class that is absent from the agent's toolset keeps its own code — `class_unavailable`,
+      // "absent, not denied" — so this check only fires for a class that IS declared and is not a
+      // draft lane. `attempt` handles the absent case, and says so.
+      const e = new KinshipError('timed_lane_not_draft',
+        'class `' + action.actionClass + '` is `' + level + '`, and a timer may only fire a human-gated draft lane — an unattended lane is exactly what phase 1 refuses (D21), and the runner that would commit it is not here',
+        'spec section 1.1 / D62');
+      this.recordRefusal({ actionClass: action.actionClass, agent: action.agent }, e);
+      return { fired: true, result: 'refused', code: e.code, reason: e.message };
+    }
     // The phase-origin claim is a refusal like any other, and **a refusal that leaves no trace is a
     // promise a reader cannot check**: the second timer for a phase was refused with a 409, and a
     // reader of the log would have concluded the second reminder went out. So the claim's refusal

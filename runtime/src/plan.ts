@@ -99,6 +99,7 @@ export type PlanProblemCode =
   | 'phase_not_timer_backed'
   | 'locale_missing'
   | 'slot_unfilled'
+  | 'slot_malformed'
   | 'disclosure_missing';
 
 export interface PlanProblem {
@@ -358,8 +359,10 @@ function readEvent(lines: readonly LogicalLine[], from: number): CommunityEvent 
 /** The slots a copy names, in the order they appear. */
 export function slotNames(copy: string): string[] {
   const out: string[] = [];
-  for (const m of copy.matchAll(/\{([A-Za-z_][\w-]*)\}/g)) {
-    if (!out.includes(m[1]!)) out.push(m[1]!);
+  for (const m of copy.matchAll(/\{([^{}]*)\}/g)) {
+    const name = m[1]!;
+    if (!/^[A-Za-z_][\w-]*$/.test(name)) continue;
+    if (!out.includes(name)) out.push(name);
   }
   return out;
 }
@@ -371,17 +374,31 @@ export function slotNames(copy: string): string[] {
  * and never quietly dropped, because a member-facing message that reads "Besok di {venue}" is a message
  * that went out with a hole in it.
  */
-export function renderCopy(copy: string, facts: Record<string, string>): { text: string; unfilled: string[] } {
+export function renderCopy(copy: string, facts: Record<string, string>): { text: string; unfilled: string[]; malformed: string[] } {
   const unfilled: string[] = [];
-  const text = copy.replace(/\{([A-Za-z_][\w-]*)\}/g, (_whole, name: string) => {
+  const malformed: string[] = [];
+  const text = copy.replace(/\{([^{}]*)\}/g, (_whole, content: string) => {
+    const name = content.trim();
+    // A slot is a word in braces with **nothing else** — `{venue}`, not `{venue }`. The exact
+    // spelling is the rule, because a template that half-matches is a template nobody wrote: a
+    // member reading "di {venue }" was told nothing, and silently forgiving the space is guessing
+    // at what the community meant. So a brace pair that does not match exactly, and whose trimmed
+    // content *starts* like a slot, is reported. A brace pair that does not start like a slot
+    // (`{ }`, `{ 30% }`) is prose and is left alone.
+    if (!/^[A-Za-z_][\w-]*$/.test(content)) {
+      if (/^[A-Za-z_]/.test(name) && !malformed.includes(content)) malformed.push(content);
+      return _whole;
+    }
     const value = facts[name];
-    if (value === undefined) {
+    // **An empty value is the absence of a value.** `venue: ""` is not a venue; it is a hole that
+    // would ship as "di ." — a lie about the venue by leaving the venue out.
+    if (value === undefined || value.trim() === '') {
       if (!unfilled.includes(name)) unfilled.push(name);
       return `{${name}}`;
     }
     return value;
   });
-  return { text, unfilled };
+  return { text, unfilled, malformed };
 }
 
 // --- the plan --------------------------------------------------------------------------------------------
@@ -446,6 +463,7 @@ export function planWakes(args: {
     // 5. Fill every language, and refuse a copy with a hole or without the disclosure.
     const text: LocaleText = {};
     const holes = new Map<string, string[]>(); // slot -> the languages it is missing from
+    const typos = new Map<string, string[]>(); // what it looked like -> the languages it was in
     const undisclosed: string[] = [];
     for (const language of pack.locale) {
       const source = t.copy[language]!;
@@ -461,11 +479,24 @@ export function planWakes(args: {
         list.push(language);
         holes.set(slot, list);
       }
+      for (const typo of rendered.malformed) {
+        const list = typos.get(typo) ?? [];
+        list.push(language);
+        typos.set(typo, list);
+      }
       if (!rendered.text.includes(disclosureLine(language, community))) undisclosed.push(language);
       text[language] = rendered.text;
     }
     // A missing fact is ONE thing to fix, even when it is missing from two languages — so the problem
     // names the slot and the languages, rather than reporting the same hole twice.
+    if (typos.size > 0) {
+      problem('slot_malformed',
+        [...typos.entries()].map(([typo, langs]) =>
+          'the ' + langs.join(' and ') + ' copy contains a brace pair that is not a slot: '
+          + typo + ' — a slot is a word in braces with nothing else, like {venue}').join('; ')
+        + ' — a typo\'d slot would ship as the typo');
+      continue;
+    }
     if (holes.size > 0) {
       problem('slot_unfilled',
         [...holes.entries()].map(([slot, langs]) =>

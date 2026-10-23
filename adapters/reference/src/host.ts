@@ -384,7 +384,7 @@ export function fireDue(host: Host, run: RunState = createRun()): string[] {
   for (const w of due) {
     const fired = host.fleet.fireWake(w.id, run);
     if (fired.result === 'attempted') {
-      out.push(`  ${w.purpose} → ${fired.card !== undefined ? `card ${fired.card.id}, waiting on a human` : 'ran on its own lane'}`);
+      out.push(`  ${w.purpose} → ${fired.card !== undefined ? `card ${fired.card.id}, waiting on a human` : 'attempted'}`);
     } else if (fired.result === 'refused') {
       out.push(`  ${w.purpose} → refused: ${fired.code ?? 'unknown'}`);
     } else if (fired.result === 'no-action') {
@@ -453,9 +453,12 @@ export function runCommand(opts: HostOptions): string[] {
         origin: { kind: 'operator', id: 'manual' },
         text: opts.text,
       });
+      // The `auto` disposition means the class runs unattended — and the host is not a runner, so
+      // nothing happened. Saying "ran on its own lane and was logged" would be a lie in a line the
+      // operator reads once.
       out.push(result.disposition === 'card'
         ? `${actionClass} drafted into card ${result.card!.id} — waiting on a human`
-        : `${actionClass} ran on its own lane and was logged`);
+        : `${actionClass} is a lane that runs unattended, and the host does not run one — nothing was attempted, and nothing was logged. Use a draft lane, or let the planner schedule it.`);
       persist(host, opts);
       out.push(...operatorView(host));
       break;

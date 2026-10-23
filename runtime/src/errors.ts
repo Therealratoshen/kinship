@@ -37,6 +37,7 @@ export const REFUSAL_CODES = [
   'idempotent_hit', // section 1.5 — same idempotencyKey returned the existing card
   'thread_invalid', // section 2.14/FR-5.13 — a thread closed with no note, or closed twice, is not a record
   'posture_refused', // section 2.15/FR-5.14 — the community's own posture says the fleet may not do this
+  'timed_lane_not_draft', // D62 — a timer may only fire a human-gated draft lane; an auto lane would claim the phase and do nothing
 ] as const;
 
 export type RefusalCode = (typeof REFUSAL_CODES)[number];

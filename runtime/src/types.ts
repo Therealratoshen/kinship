@@ -143,6 +143,8 @@ export interface WakeAction {
   actionClass: string;
   agent: string;
   phase: Phase;
+  /** The channel this lane is bound to, when it is bound to one. */
+  channel?: string;
   /** The copy, in the community's declared languages. */
   text: LocaleText;
 }

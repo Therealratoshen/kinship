@@ -223,3 +223,36 @@ test('a pack that declares another language pair gets the copy in the languages 
   assert.equal(out.wakes.length, 0);
   assert.equal(out.problems[0]!.code, 'locale_missing');
 });
+
+// --- the three HIGH defects the verifier found (D63) ----------------------------------------------------
+
+test('an EMPTY fact is not a fact — the message ships a hole, so the template is refused', () => {
+  // `venue: ""` is a value to a naive reader and a hole to a member. The rule says a slot with no
+  // value refuses the template — and an empty string is the absence of a value, not a value.
+  const plan = parseCommunityPlan(PLAN_YAML.replace('registration: "bit.ly/kopdar-nov"', 'venue: ""'));
+  const out = planWakes({ templates: plan.templates, event: plan.event, pack: PACK, answers: ANSWERS });
+  assert.equal(out.wakes.length, 0, 'a template with an empty fact schedules nothing');
+  assert.equal(out.problems[0]!.code, 'slot_unfilled');
+  assert.ok(out.problems[0]!.detail.includes('venue'));
+});
+
+test('a MALFORMED slot is reported, not shipped — `{venue }` is a typo, not prose', () => {
+  const plan = parseCommunityPlan(PLAN_YAML.replace('{venue}', '{venue }'));
+  const out = planWakes({ templates: plan.templates, event: plan.event, pack: PACK, answers: ANSWERS });
+  assert.equal(out.wakes.length, 0, 'a copy with a typo\'d slot is never sent');
+  assert.equal(out.problems[0]!.code, 'slot_malformed');
+  assert.ok(out.problems[0]!.detail.includes('venue'), 'and the problem names what it looked like');
+});
+
+test('a brace pair that is not a slot is left alone — a promo may contain braces', () => {
+  const r = renderCopy('kirim ke { } kalau perlu', { venue: 'Studio' });
+  assert.equal(r.text, 'kirim ke { } kalau perlu');
+  assert.deepEqual(r.unfilled, []);
+  assert.deepEqual(r.malformed, []);
+});
+
+test('renderCopy reports an empty value as unfilled and a malformed slot separately', () => {
+  const r = renderCopy('di {venue} pada {date!}', { venue: '', date: '7 Nov' });
+  assert.deepEqual(r.unfilled, ['venue']);
+  assert.deepEqual(r.malformed, ['date!']);
+});
