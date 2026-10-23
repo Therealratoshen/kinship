@@ -252,3 +252,14 @@ test('publishing needs the member named — the host does not know the community
     /--recipient/,
   );
 });
+
+test('the run cap bounds the tick: the wakes past the cap stay due for the next one', () => {
+  // The pack's `max_actions_per_run` is 15 and the example event has two reminders, so the cap is
+  // not reached here — this test is about the wiring: the host holds ONE run handle for the tick,
+  // so the cap bounds the tick rather than each wake. Without the handle the fleet's own path was
+  // not bounded at all, because the cap lived only in `runActions`.
+  const { opts } = aHost();
+  const out = runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  assert.ok(!out.some((l) => l.includes('stopped at its cap')), 'two reminders is inside a cap of 15');
+  assert.ok(out.some((l) => l.includes('waiting on a human')));
+});

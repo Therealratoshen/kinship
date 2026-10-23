@@ -28,6 +28,7 @@ import { loadPack } from 'kinship-runtime/src/pack.ts';
 import type { LoggedEvent, NeedAnswers, Packed } from 'kinship-runtime/src/types.ts';
 import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } from './config.ts';
 import { planWakes, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
+import { createRun, type RunState } from 'kinship-runtime/src/budget.ts';
 import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
 
 export interface HostOptions {
@@ -348,18 +349,26 @@ export function schedulePlan(host: Host, opts: HostOptions): string[] {
  *
  * A refusal is an outcome, not a crash: one refused action does not lose the rest of the batch, which
  * is the runner's own rule applied to timers.
+ *
+ * **And the run cap applies here.** One `createRun()` handle is held for the whole tick, so
+ * `budgets.max_actions_per_run` bounds the tick rather than each wake separately (spec section 1.6,
+ * and D38's `capScope`). Before D60 this path was not bounded at all: the cap lived only in
+ * `runActions`, and the fleet's own path never went through it.
  */
-export function fireDue(host: Host): string[] {
+export function fireDue(host: Host, run: RunState = createRun()): string[] {
   const out: string[] = [];
   const due = host.fleet.health().wakes.overdue;
   for (const w of due) {
-    const fired = host.fleet.fireWake(w.id);
+    const fired = host.fleet.fireWake(w.id, run);
     if (fired.result === 'attempted') {
       out.push(`  ${w.purpose} → ${fired.card !== undefined ? `card ${fired.card.id}, waiting on a human` : 'ran on its own lane'}`);
     } else if (fired.result === 'refused') {
       out.push(`  ${w.purpose} → refused: ${fired.code ?? 'unknown'}`);
     } else if (fired.result === 'no-action') {
       out.push(`  ${w.purpose} → fired (no action attached)`);
+    } else if (fired.result === 'truncated') {
+      out.push(`  this run stopped at its cap of ${host.pack.budgets.maxActionsPerRun} actions — the wakes above are done, and nothing below is retried`);
+      break; // the cap stops the tick; the rest stay due for the next one
     }
   }
   return out;

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
+import { createRun } from '../src/budget.ts';
 import { makePack } from './helpers.ts';
 import {disclosureLine} from '../src/disclosure.ts';
 import { LOW_TRUST_REPLACEMENT } from '../src/containment.ts';
@@ -463,4 +464,45 @@ test('firing a wake that was never scheduled is not-found, and changes nothing',
   assert.equal(out.fired, false);
   assert.equal(out.result, 'not-found');
   assert.equal(f.state.events.length, before);
+});
+
+// --- the run cap covers the path the fleet actually uses (D60) -----------------------------------------------
+
+test('the run cap stops a fleet firing wakes: the crossing wake is not fired, and the rest are not attempted', () => {
+  // A pack whose cap is 1: the fleet may take ONE action this run, and the second wake must not be
+  // attempted. Before D60 the cap lived only in `runActions`, and the wake path — the path the fleet
+  // now actually uses — did not go through it at all.
+  const base = pack({ 'event-ops': { 'draft.reminder': 'draft' } });
+  const capped = { ...base, budgets: { ...base.budgets, maxActionsPerRun: 1 } };
+  const f = Fleet.boot(capped, ANSWERS, DAY);
+  const run = createRun();
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-2', nextCheckAt: DAY + 2_000, eventId: 'kopdar-2',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(a.id, run).result, 'attempted', 'the first wake is inside the cap');
+  const second = f.fireWake(b.id, run);
+  assert.equal(second.result, 'truncated', 'the crossing wake is dropped, not attempted');
+  assert.equal(second.fired, false, 'and it was not fired — the timer did not run');
+  assert.equal(f.inbox().counts.verdict, 1, 'one card, not two');
+});
+
+test('a wake fired with no run handle is unmetered — the cap is the caller\'s to hold', () => {
+  const base = pack({ 'event-ops': { 'draft.reminder': 'draft' } });
+  const capped = { ...base, budgets: { ...base.budgets, maxActionsPerRun: 1 } };
+  const f = Fleet.boot(capped, ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-2', nextCheckAt: DAY + 2_000, eventId: 'kopdar-2',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(a.id).result, 'attempted');
+  assert.equal(f.fireWake(b.id).result, 'attempted', 'without a handle there is no run to be bounded');
 });

@@ -35,7 +35,7 @@ sees a provider key, and a pack must never contain one.
 **What the host does.** Calls the model with its own credential, in its own process, and passes
 Kinship only the number the governance semantics need: `Fleet.recordSpend(eventId, amountIdr, note)`
 meters cost against `budgets.llm_per_event_idr` without knowing which model produced the text.
-Drafts arrive as text (`attempt({ textId, textEn })`), not as completions-in-progress.
+Drafts arrive as text (`attempt({ text: { <language>: <copy> } })`), not as completions-in-progress. **The copy is a map keyed by language code, not a pair of fields** (D58): the field names `textId` / `textEn` *were* the decision that this product serves Indonesian communities, and they were removed so a community in English and Arabic could be expressed at all. A host written against the old pair will not typecheck against the current runtime — which is the point.
 
 **What the runtime guarantees.** No code under `runtime/src` reads an environment variable or holds a
 secret-shaped configuration — `process` appears there only inside a prose comment, and the D32 gate

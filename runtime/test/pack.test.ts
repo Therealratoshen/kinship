@@ -11,6 +11,24 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PACK_DIR = join(REPO_ROOT, 'packs', 'kopdar-ops');
 const DAY = 25_200_000; // 07:00 UTC = 14:00 WIB
 
+/**
+ * Copy the pack into a temp folder **together with the organisation it names**.
+ *
+ * The loader resolves the org manifest by walking up from the pack folder and falling back to the
+ * working directory. A temp copy in `/tmp` has neither, so without this the pack refuses to boot —
+ * fail-closed, and correct, but for the wrong reason: the test would be asserting a locale or a
+ * ladder while the refusal was actually "your org manifest is not here".
+ *
+ * **And that is the rule the fallback was hiding:** a pack that names an organisation must travel
+ * with that organisation. The reference host's own test already does this. The suite used to pass
+ * only because the gates happen to run from the repo root, where `orgs/` happens to be the
+ * working directory's child — a test result that depended on the cwd.
+ */
+function copyPackWithOrg(target: string): void {
+  cpSync(PACK_DIR, target, { recursive: true });
+  cpSync(join(REPO_ROOT, 'orgs'), join(target, '..', 'orgs'), { recursive: true });
+}
+
 const ANSWERS = {
   community_name: 'AI Builders ID',
   schedule: 'every other Saturday',
@@ -48,7 +66,7 @@ test('a pack that declares a language pair the runtime does not implement refuse
   const dir = mkdtempSync(join(tmpdir(), 'kinship-locale-'));
   try {
     const target = join(dir, 'kopdar-ops');
-    cpSync(PACK_DIR, target, { recursive: true });
+    copyPackWithOrg(target);
     const f = join(target, '.kinship.yaml');
     writeFileSync(f, readFileSync(f, 'utf8').replace(/^locale:.*$/m, 'locale: [en]'));
     assert.throws(
@@ -202,7 +220,7 @@ test('the real pack runs the draft-only story end to end, with its own guardrail
 function forkCopy(): { dir: string; mutate(edit: (yaml: string) => string): void; cleanup(): void } {
   const tmp = mkdtempSync(join(tmpdir(), 'kinship-pack-'));
   const dir = join(tmp, 'kopdar-ops'); // PKG-06: path and slug must agree, or the wrong rule fires
-  cpSync(PACK_DIR, dir, { recursive: true });
+  copyPackWithOrg(dir);
   return {
     dir,
     mutate: (edit) => {
@@ -337,7 +355,7 @@ test('the real pack boots into a Fleet whose settings carry the org tier', () =>
 const withCoverageBlock = (body: string): string => {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-coverage-'));
   const target = join(dir, 'kopdar-ops');
-  cpSync(PACK_DIR, target, { recursive: true });
+  copyPackWithOrg(target);
   const f = join(target, '.kinship.yaml');
   const text = readFileSync(f, 'utf8');
   assert.match(text, /^coverage:\s*$/m, 'the shipped pack must carry a coverage block for this test to replace it');
@@ -426,7 +444,7 @@ test('a pack with no coverage block loads with no window at all — an unstated 
   const dir = mkdtempSync(join(tmpdir(), 'kinship-nocov-'));
   try {
     const target = join(dir, 'kopdar-ops');
-    cpSync(PACK_DIR, target, { recursive: true });
+    copyPackWithOrg(target);
     const f = join(target, '.kinship.yaml');
     writeFileSync(f, readFileSync(f, 'utf8').replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, ''));
     const p = loadPack(target);

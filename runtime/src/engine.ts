@@ -32,7 +32,7 @@ import {
   transitionPhase, assertWakeBacked,
 } from './lifecycle.ts';
 import { releaseShatter, tripShatter } from './shatter.ts';
-import { setBudget, recordSpend } from './budget.ts';
+import { setBudget, recordSpend, recordRunAction, type RunState } from './budget.ts';
 import { answersDigest, deepEqualState, seqProblems, type LogExpectation, type LogVerification } from './log.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
@@ -68,8 +68,9 @@ export interface WakeOutcome {
    * `refused` — the action was refused, and the refusal is an outcome, not a crash.
    * `no-action` — a timer and nothing more.
    * `not-found` — there was no such wake.
+   * `truncated` — the run's cap was reached, so this wake was not fired at all.
    */
-  result: 'attempted' | 'refused' | 'no-action' | 'not-found';
+  result: 'attempted' | 'refused' | 'no-action' | 'not-found' | 'truncated';
   /** The card the attempt produced, when it produced one. */
   card?: Card;
   /** The refusal code, when the attempt was refused. */
@@ -468,7 +469,17 @@ export class Fleet {
     suppressMember(this.ctx(), ref, { source });
   }
 
-  fireWake(wakeId: string): WakeOutcome {
+  fireWake(wakeId: string, run?: RunState): WakeOutcome {
+    // The run cap is checked BEFORE the timer fires, so a wake that is over the cap is not fired at
+    // all — the crossing action is accounted for and dropped, exactly as `runActions` drops it
+    // (section 1.6). Before D60 the cap lived only in `runActions`, and the wake path — the path
+    // the fleet now actually uses — was not bounded by it at all.
+    if (run !== undefined) {
+      const gate = recordRunAction(run, this.pack);
+      if (gate === 'truncated') {
+        return { fired: false, result: 'truncated' };
+      }
+    }
     const row = fireWake(this.ctx(), wakeId);
     if (row === undefined) return { fired: false, result: 'not-found' };
     const action = row.action;
