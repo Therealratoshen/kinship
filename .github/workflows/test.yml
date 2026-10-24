@@ -44,6 +44,17 @@ jobs:
       - name: Governance gates (shape, contracts, semantics, tour)
         run: node scripts/gates.mjs
 
+      # The eval harness, run in CI. NOT a fifth gate — the gate list stays four, and a gate list
+      # that grows is a doc that drifts (D24). This is a step inside the gates job, and it earns its
+      # place by a hard-won lesson: the harness had been BROKEN since D58 (it still handed the
+      # pre-D58 `{textId, textEn}` pair to `attempt()`, which is not a shape the runtime accepts any
+      # more), and **nothing noticed for a day** — because the harness was in no CI job and no
+      # session had run it. A test suite nobody runs is not a test suite; it is a file.
+      #
+      # It is node-only and install-free, exactly like the gates, so it costs nothing to run here.
+      - name: Eval harness (five written cases, a deterministic provider)
+        run: node evals/harness.mjs
+
   # The reference host's own tests. This is NOT a fifth gate: the gate list stays four, and a gate
   # list that grows is a doc that drifts (D24). It is a package's own test suite, like any package's
   # — the host is a sibling package with its own manifest (spec/HOST-CONTRACT.md), and its one
