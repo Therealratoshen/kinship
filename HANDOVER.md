@@ -6,8 +6,8 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 21:03 UTC.
-**Re-verified every 30 minutes since 17:02 UTC — 10 consecutive runs through 21:03, no change in any
+**Measured at:** 2026-10-24 21:31 UTC.
+**Re-verified every 30 minutes since 17:02 UTC — 11 consecutive runs through 21:31, no change in any
 of them** — same session, same load, same `main`, same three PR heads, same ten open issues, same
 three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the same
 conclusion, and pushed nothing.
@@ -48,13 +48,13 @@ was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). 
 live chat** (the new one is more recently updated), but it is where the reasoning that predates the
 pack still lives.
 
-**It has not moved since 16:24:09 UTC** — **280 minutes of silence, no retry** (measured 21:03 UTC).
+**It has not moved since 16:24:09 UTC** — **308 minutes of silence, no retry** (measured 21:31 UTC).
 
 **THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 12 most recently
-updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 21:03
+updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 21:31
 this guard, 18:55, 18:04, 17:19, 16:47, 16:44, 16:39 — none carrying an error). **The last quota
 or rate error of any kind was at 16:24:09 UTC.** So `42212` is gone, the PR watch ran at 17:17, and
-this guard has run eight times since, the last at 21:03. **Nothing about the context is blocking a new
+this guard has run nine times since, the last at 21:31. **Nothing about the context is blocking a new
 chat** — the only thing that stopped the last one was the plan, and the plan is serving again.
 
 **The D113 work is recovered and waiting** (see §3). A new chat does not have to re-derive it —
@@ -139,7 +139,7 @@ surface**, which is how the duplicate D-number below survived two days:
 | branch | its PR | what it is |
 |---|---|---|
 | `feat/kinship-product-surface` | **none — it never had one** | The orphan. Its `DECISIONS.md` claims **D54** for *"the hosted surface stopped being a plan"*. `main` had already used **D54** for *"the community's coverage window"* (2026-10-22). **Landing it would land a DUPLICATE D-number.** The disclosure that actually landed is **D81** (*"A hosted surface now exists — and this row is the disclosure D19 asked for"*). **A second reason not to merge it: its range cell reads D10–D44 while its highest row is D54 — the range gate is red on it too.** |
-| `feature/timer-backed-running-phase` | **#24 — CLOSED, NOT MERGED** | Its decision row was **D99**; **D99 was withdrawn by D101** (the `phase` field leaves the runtime). The branch ends at D99. Do not treat it as landed. |
+| `feature/timer-backed-running-phase` | **#24 — CLOSED, NOT MERGED** | Its decision row was **D99**; **D99 was withdrawn by D101** (the `phase` field leaves the runtime). The branch ends at D99 and its range cell reads D10–D99 — consistent, but the row itself is dead. Do not treat it as landed. |
 | `handover/kinship-state` | none | **This pack's own branch.** Agent-owned; it holds `HANDOVER.md` and `recovered/`. |
 
 ### The session that died, and what it was doing
