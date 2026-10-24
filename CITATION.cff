@@ -8,7 +8,7 @@ authors:
     alias: filbert
 repository-code: "https://github.com/Therealratoshen/kinship"
 url: "https://github.com/Therealratoshen/kinship"
-license: MIT
+license: Apache-2.0
 version: 0.2.0
 date-released: "2026-10-23"
 keywords:

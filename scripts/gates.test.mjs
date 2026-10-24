@@ -42,7 +42,7 @@ function liveCounts() {
     runtimeFiles: map.length,
     contractCases: countOf(read('scripts/validate-pack.test.mjs'), /^test\(/gm),
     scriptsCases: countOf(scripts, /^test\(/gm),
-    pkgRules: new Set([...read('scripts/validate-pack.mjs').matchAll(/'(PKG-[0-9N]+)'/g)].map((m) => m[1])).size,
+    pkgRules: computeCounts().pkgRules, // one computation, shared with the generator that writes this number
     packAgents: readdirSync(join(packDir, 'agents'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
     packSkills: readdirSync(join(packDir, 'skills'), { withFileTypes: true }).filter((e) => e.isDirectory()).length,
     runtimeLines: dirLines(join(ROOT, 'runtime', 'src')) + dirLines(join(ROOT, 'runtime', 'test')) + lineCount(read('runtime/tour.ts')),
