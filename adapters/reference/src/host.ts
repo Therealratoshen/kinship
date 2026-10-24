@@ -237,9 +237,38 @@ export function operatorView(host: Host): string[] {
   return lines;
 }
 
+/**
+ * The seat this host acts as — the one seat the community declares.
+ *
+ * **The seat is not a name a caller supplies.** Spec section 1.11: the four human-only acts consult
+ * **one resolved seat set** (`orgs/<key>.yaml`'s `human_seats`, default `['organiser']`). A host that
+ * hardcoded the word `organiser` would be a host that only works for a community whose organiser
+ * happens to be called that — and the spec's own test case is an org whose seat is `ketua`, which a
+ * hardcoded host cannot decide at all.
+ *
+ * It is also the answer to the failure `runtime/src/roles.ts` names: *"the cheap fix for 'who sent
+ * this?' would be to say the organiser did."* The seat here is **resolved**, not asserted: it comes
+ * from the community's own declaration, so the log's "decided by" is a fact about the community
+ * rather than a string the caller chose.
+ *
+ * **What this does NOT prove.** That the human seat's *holder* was at the keyboard. The runtime can
+ * see that the actor holds a declared seat; it cannot see that a person, rather than an assistant
+ * driving this process, used it. That gap is the open question in `DECISIONS.md`, and this function
+ * does not pretend to close it.
+ */
+export function hostSeat(fleet: Fleet): string {
+  const seats = fleet.settings().humanSeats;
+  if (seats.length !== 1) {
+    // Unreachable while `org.ts` refuses a manifest with zero or two seats — but if it ever fires,
+    // picking one arbitrarily would put a name in the log that nobody chose. Refuse instead.
+    throw new Error(`this community declares ${seats.length} seats (${seats.join(', ') || 'none'}) — a host acts as ONE seat, and which one is a question for the community, not for the host`);
+  }
+  return seats[0];
+}
+
 /** The organiser's verdict, through the same API a UI would use. */
 export function approve(host: Host, cardId: string, why: string): string {
-  const card = host.fleet.decideCard(cardId, { verdict: 'approve', by: 'organiser', why });
+  const card = host.fleet.decideCard(cardId, { verdict: 'approve', by: hostSeat(host.fleet), why });
   return `card ${card.id} is now ${card.status}, decided by ${card.decidedBy}`;
 }
 
@@ -560,7 +589,7 @@ export function runCommand(opts: HostOptions): string[] {
       const verdict = opts.verdict ?? 'approve';
       const card = host.fleet.decideCard(opts.cardId, {
         verdict,
-        by: 'organiser',
+        by: hostSeat(host.fleet),
         why: opts.why,
         ...(verdict === 'edit' ? { newText: opts.text } : {}),
       });

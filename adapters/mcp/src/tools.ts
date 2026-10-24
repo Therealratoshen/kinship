@@ -32,7 +32,15 @@
  */
 import { Fleet } from 'kinship-runtime/src/engine.ts';
 import { KinshipError } from 'kinship-runtime/src/errors.ts';
-import type { LocaleText, Packed } from 'kinship-runtime/src/types.ts';
+import type { Packed } from 'kinship-runtime/src/types.ts';
+// `LocaleText` lives in `locales.ts` and `types.ts` only imports it — so importing it from `types.ts`
+// is a type error that no runtime notices (node strips types) and no CI job catches (the type
+// contract job only checks `runtime/`). One line, and the adapter is type-clean.
+import type { LocaleText } from 'kinship-runtime/src/locales.ts';
+// The seat this community decides as — resolved from the org, not chosen by the caller. It lives in
+// the reference host because that is where the other host-side answer lives, and two copies of "how
+// a host names the seat" is two rules in two places.
+import { hostSeat } from 'kinship-adapter-reference/src/host.ts';
 
 /** A tool as MCP describes it: a name, a description, and a JSON Schema for its arguments. */
 export interface ToolDefinition {
@@ -214,7 +222,6 @@ export const TOOLS: ToolDefinition[] = [
         cardId: { type: 'string', description: 'The card to decide.' },
         verdict: { type: 'string', description: 'approve, edit, or reject.' },
         why: { type: 'string', description: "The human's reason. Required — a verdict without a why is refused." },
-        by: { type: 'string', description: 'Who decided. Default: organiser.' },
         text: { type: 'object', description: 'The replacement copy, keyed by language code. Only for an edit.' },
       },
       required: ['cardId', 'verdict', 'why'],
@@ -224,10 +231,23 @@ export const TOOLS: ToolDefinition[] = [
       if (verdict !== 'approve' && verdict !== 'edit' && verdict !== 'reject') {
         return `REFUSED — the verdict must be approve, edit, or reject; got \`${verdict}\`.`;
       }
+      // The deciding actor is the community's declared seat (spec section 1.11), resolved from the
+      // org — NOT a string the caller supplies. A tool argument that named the seat would make the
+      // runtime's seat check unable to fail: the caller would pick a name that holds the seat, and
+      // the check would wave it through. It is also the shortcut `runtime/src/roles.ts` names by
+      // refusing: "the cheap fix for 'who sent this?' would be to say the organiser did".
+      const seat = hostSeat(ctx.fleet);
+      const claimed = args.by === undefined ? null : str(args.by);
+      if (claimed !== null && claimed !== seat) {
+        // Loud, not silent: a caller that names a seat this community does not declare is
+        // misconfigured, and a refusal is how it finds out. Ignoring the argument would leave the
+        // tool's own schema and its behaviour disagreeing, which is the decorative-rule failure.
+        return `REFUSED — this community's seat is \`${seat}\`, not \`${claimed}\`. The deciding actor comes from the org's own declaration; it is not the caller's to name.`;
+      }
       try {
         const card = ctx.fleet.decideCard(str(args.cardId), {
           verdict,
-          by: str(args.by) || 'organiser',
+          by: seat,
           why: str(args.why),
           ...(verdict === 'edit' ? { newText: (args.text ?? {}) as LocaleText } : {}),
         });

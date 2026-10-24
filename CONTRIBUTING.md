@@ -78,6 +78,19 @@ npm install --no-save typescript@5 @types/node@22
 npx tsc -p runtime/tsconfig.json --noEmit
 ```
 
+**If you touched an adapter, run its tests too.** The two adapters are separate hosts with their own
+suites, and CI runs each as a job of its own — but they are not in `scripts/gates.mjs`, because they
+need their local links installed first (every dependency is a `file:` path, so `npm install` contacts
+no registry):
+
+```bash
+cd adapters/reference && npm install --no-audit --no-fund && npm test
+cd adapters/mcp && npm install --no-audit --no-fund && npm test
+```
+
+A contributor who ran only the four gates above would not have run a single adapter test — and the
+deciding-actor rules live in the adapters, not in the runtime.
+
 Four gates, not a smaller number. The list lives in `scripts/gates.mjs`; `scripts/gates.test.mjs`
 (which gate 2 runs) fails if a contributor-facing doc stops printing it, so a new gate is added in
 one place and the test tells you which files then have to change.
