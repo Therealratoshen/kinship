@@ -22,6 +22,10 @@ node src/server.ts --pack ../../packs/kopdar-ops \
   --log logs
 ```
 
+**One `npm install` is enough**, and it fetches nothing: this adapter reuses the reference host's
+plumbing, so its `preinstall` installs the reference host's own local links first. Every dependency is
+a `file:` path — `npm` creates symlinks and the registry is never contacted.
+
 It speaks **MCP `2025-06-18`** over stdio — JSON-RPC 2.0, one message per line. Point an assistant's
 MCP client at that command and it can call the six tools.
 
