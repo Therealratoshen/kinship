@@ -29,6 +29,14 @@ from an agent's, at the moment the verdict is recorded.**
 
 ## 2. What is there today
 
+> **Update, 2026-10-24 (`DECISIONS.md` D100): facts 1 and 2 below describe the tree BEFORE this
+> change.** The deciding actor is now **resolved from the community's own seat** (`orgs/*.yaml`'s
+> `human_seats`) instead of being taken from the tool call, the `by` parameter is out of the tool's
+> schema, and a call that still carries a mismatched seat is refused loudly. **The gap this memo is
+> about is unchanged and is still the owner's:** the log records that the actor holds the declared
+> seat; it cannot show that a *person*, rather than something driving the seat holder's tools,
+> recorded the verdict. Nothing in the attestation design below is implemented.
+
 Every fact below is re-provable from the tree at the commit this memo was written against.
 
 | # | Fact | Where |

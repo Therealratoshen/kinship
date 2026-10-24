@@ -93,8 +93,10 @@ rather than inventing a second one. `kinship_digest` and `kinship_drafts` read t
 **`kinship_approve` records that the actor holds the community's declared seat — it cannot yet tell
 that a *human* used it.** The seat itself is resolved, not chosen: it comes from the org's
 `human_seats` (spec section 1.11), the tool takes no actor argument, and a call that carries one
-anyway is refused. What the runtime still cannot see is the difference between *the seat holder
-decided this* and *something drove the seat holder's tools*. So the approval step proves less than
+anyway is checked against the community's seat — a **mismatched** seat is refused loudly, and one
+that matches is accepted (so a client written against the old schema keeps working). What the runtime
+still cannot see is the difference between *the seat holder decided this* and *something drove the
+seat holder's tools*. So the approval step proves less than
 the rest of this adapter does, and `DECISIONS.md`'s *Not yet decided* table carries the design for
 making it prove the rest. **Treat `kinship_approve` as a local convenience, not a boundary**, and
 read the log rather than the tool's answer when the question is "did a human decide this?".

@@ -44,7 +44,8 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
   sharing promise now says so.
 - **The deciding actor is resolved, not typed** (`DECISIONS.md` D100) — `kinship_approve` took the
   actor from a `by` argument and defaulted it to the literal `organiser`, so the runtime's seat check
-  could not fail; the reference host hardcoded the same name. The seat now comes from the community's
+  could not act as a gate on who decided; the reference host hardcoded the same name at both
+  deciding-actor call sites. The seat now comes from the community's
   own declaration (spec section 1.11), the `by` parameter is out of the tool schema, and a call that
   still carries a mismatched seat is refused loudly. A community whose seat is named differently could
   not be approved at all before this — the seat is a role, not a password.
