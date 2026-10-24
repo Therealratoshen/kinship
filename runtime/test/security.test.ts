@@ -313,3 +313,47 @@ test('a member-facing send with no disclosure is refused, in every declared lang
     /disclosure_missing/,
   );
 });
+
+// --- the shape guard: a malformed row is refused, not folded ---------------------------------------------
+
+test('a row with a wrong field type is REFUSED, not folded — the log is not sound', () => {
+  // Before the guard, this row folded silently and the log VERIFIED AS SOUND. A wrong origin is
+  // a wrong channel; a wrong `code` is a wrong refusal. The log is data, and data is not trusted.
+  const f = aFleet();
+  f.attempt({ actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'ev-1' }, phase: 't-minus-1', text: COPY });
+  const rows = f.events.map((r) => ({ ...r }));
+  const target = rows.find((r) => r.type === 'CardCreated');
+  assert.ok(target);
+  const tampered = rows.map((r) => (r.seq === target.seq
+    ? { ...r, card: { ...target.card, origin: { kind: 123, id: null } } }
+    : r));
+  const v = Fleet.verifyLog(tampered, ANSWERS, PACK);
+  assert.equal(v.ok, false, 'a malformed row must not verify');
+  assert.ok(v.problems.some((p) => p.kind === 'replay_failed'), `expected the fold to refuse, got ${JSON.stringify(v.problems)}`);
+});
+
+test('a member with NO timezone is refused — a member whose quiet hours cannot be checked is a protection switched off', () => {
+  // This is the sharp version of the same defect: `member.tz` is what the quiet-hours check reads.
+  // A row missing it would register a member whose local hours are unknown — and a protection that
+  // cannot be applied is not a protection.
+  const f = aFleet();
+  const rows = f.events.map((r) => ({ ...r }));
+  const target = rows.find((r) => r.type === 'MemberRegistered');
+  assert.ok(target);
+  const tampered = rows.map((r) => (r.seq === target.seq ? { ...r, member: { tz: 'Asia/Jakarta' } } : r));
+  const v = Fleet.verifyLog(tampered, ANSWERS, PACK);
+  assert.equal(v.ok, false, 'a member row with no ref must not verify');
+  assert.ok(v.problems.some((p) => p.kind === 'replay_failed'));
+});
+
+test('the content hash is 128 bits — 64 has a birthday bound of 2^32, which a GPU finds in minutes', () => {
+  // The revision hash is what binds an approval to specific copy. A collision there is not
+  // cosmetic: it is a way to get UNAPPROVED copy past an approval.
+  const f = aFleet();
+  const draft = f.attempt({
+    actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'ev-1' },
+    phase: 't-minus-1', text: COPY,
+  });
+  assert.ok(draft.card);
+  assert.match(draft.card.revision.hash, /^[0-9a-f]{32}$/, 'the revision binding is 128 bits of SHA-256');
+});

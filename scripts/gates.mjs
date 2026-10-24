@@ -15,6 +15,44 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+/**
+ * The Node floor, checked before any gate runs.
+ *
+ * **Why a check and not a hope.** The runtime is TypeScript that node runs by **stripping the types**,
+ * and that is a node feature, not a bundler. On a node too old to strip types, the first thing a
+ * contributor sees is a `SyntaxError` pointing at a type annotation — which reads like a broken
+ * repository rather than an old node. **A clear sentence is worth more than a stack trace here.**
+ *
+ * The hard floor is **22.18**, which is where node turned type stripping on by default; below it the
+ * repository genuinely cannot run. The package's own `engines.node` may claim a narrower range — that
+ * is a *support promise*, and it is the owner's row — so a node inside the floor but below the
+ * promise gets a warning, not a wall.
+ */
+const NODE_FLOOR = [22, 18];
+
+/** @returns {{ok: boolean, note: string}} */
+export function checkNodeVersion() {
+  const [major, minor] = process.versions.node.split('.').map((n) => Number(n));
+  const below = major < NODE_FLOOR[0] || (major === NODE_FLOOR[0] && minor < NODE_FLOOR[1]);
+  if (below) {
+    console.error(
+      `\n  Kinship needs node ${NODE_FLOOR.join('.')} or newer: it runs TypeScript by stripping the types, ` +
+      `and node ${process.versions.node} does not do that.\n` +
+      '  Install a newer node and try again — nothing is wrong with the repository.\n',
+    );
+    return { ok: false, note: `node ${process.versions.node} is below the floor ${NODE_FLOOR.join('.')}` };
+  }
+  let note = '';
+  try {
+    const declared = JSON.parse(readFileSync(join(import.meta.dirname, '..', 'runtime', 'package.json'), 'utf8')).engines?.node ?? '';
+    const promised = Number(String(declared).replace(/\D+/g, '')) || 0;
+    if (promised > 0 && major < promised) {
+      note = `node ${process.versions.node} is below the package's declared range (${declared}), but it runs the repository fine — the declared range is a support promise, not a technical floor.`;
+    }
+  } catch { /* the promise is a nicety; the floor is the rule */ }
+  return { ok: true, note };
+}
+
 export const GATES = [
   {
     id: 'shape',
@@ -236,6 +274,9 @@ export function runGates({ log = console.log, cwd = join(import.meta.dirname, '.
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const node = checkNodeVersion();
+  if (!node.ok) process.exit(1);
+  if (node.note !== '') console.log(`  note: ${node.note}`);
   const results = runGates({ log: (line) => console.log(line) });
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${failed.length ? `${failed.length} gate failed — ${failed.map((f) => f.id).join(', ')}` : 'All four gates pass.'}`);
