@@ -7,6 +7,7 @@
  * reason — the near-miss is the highest-value entry in the audit log (section 1.2).
  */
 import { refuse } from './errors.ts';
+import { asks } from './capabilities.ts';
 import { assertSeat } from './roles.ts';
 import { hashText } from './store.ts';
 import { localeTextForHash, type LocaleText } from './locales.ts';
@@ -50,6 +51,19 @@ export function createCard(ctx: Ctx, args: CreateCardArgs): Card {
     ...(args.forcedBy !== undefined ? { forcedBy: args.forcedBy } : {}),
   };
   ctx.commit({ type: 'CardCreated', card, at: ctx.now() });
+  // The push shape (DECISIONS.md D103): the runtime ASKS. The card is waiting for a human either
+  // way — that is the floor, and it is structural, not a setting — but under `push` the runtime also
+  // writes the row a host turns into a notification. Under `pull` it writes nothing: the human
+  // opens the inbox. The difference is one event in the log, and it is the whole difference.
+  if (asks(ctx.settings.capabilities)) {
+    ctx.commit({
+      type: 'ReviewRequested',
+      cardId: card.id,
+      actionClass: card.actionClass,
+      seat: ctx.settings.capabilities.humanCheck.seat,
+      at: ctx.now(),
+    });
+  }
   return card;
 }
 
@@ -135,11 +149,16 @@ export function consumeAuthorization(ctx: Ctx, token: string): void {
 
 // --- the applier ---------------------------------------------------------------------------------
 
-export function applyCards(state: FleetState, event: Extract<FleetEvent, { type: 'CardCreated' | 'CardDecided' | 'AuthorizationIssued' | 'AuthorizationConsumed' }>): void {
+export function applyCards(state: FleetState, event: Extract<FleetEvent, { type: 'CardCreated' | 'CardDecided' | 'AuthorizationIssued' | 'AuthorizationConsumed' | 'ReviewRequested' }>): void {
   switch (event.type) {
     case 'CardCreated':
       state.cardCount += 1;
       state.cards.set(event.card.id, { ...event.card });
+      return;
+    case 'ReviewRequested':
+      // No state to change: the request is a fact about the LOG, not about the fleet's condition.
+      // The card itself already sits in the queue, so `pull` and `push` produce the same state and
+      // different logs — and the log is where the audit trail lives.
       return;
     case 'CardDecided': {
       const card = state.cards.get(event.cardId);

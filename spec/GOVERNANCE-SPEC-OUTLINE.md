@@ -317,6 +317,38 @@ seat is refused at resolution — otherwise an agent could take the name the hum
 reporting, not a whitelist: a community may add an agent without its org's permission, and the one hard rule is
 that a role name may not collide with a seat.
 
+### 1.12 The capability manifest: what the fleet may do, and who answers for it
+
+Section 1.10 says how a **number** is resolved across tiers. This says how a **power** is declared,
+because the two are not the same thing and mixing them in one dial is how a community accidentally
+turns the check off.
+
+- **A manifest carries capabilities, not settings.** A capability changes what the fleet may *do*;
+  a formatting choice (what the log looks like) is not a capability, and neither is a member
+  protection (those are floors, section 1.10). The rule is the distinction: *a setting that changes
+  whether a human is asked is a governance choice, and a governance choice is not allowed to sit
+  next to a cosmetic one without being named as one.*
+- **Every capability says why it is on.** A power nobody justifies is not a configuration, it is a wider
+  blast radius with a YAML key on it.
+- **The seat that answers is resolved, not written.** The manifest has **no** `seat:` field: the seat set
+  the community declares (`human_seats:`, section 1.11) answers for every capability, exactly as it does
+  for the four human-only acts. A seat written in a second file is a seat that drifts — the same lesson as
+  D100, one layer down, and the MCP adapter's own test caught it.
+- **The human check's existence is a floor.** Its *shape* is configurable — `push` (the runtime asks:
+  a card that needs a human also writes a `ReviewRequested` row, which is what a host turns into a
+  notification) or `pull` (the human opens the inbox and the runtime interrupts nobody). There is no
+  `off`, and every word that means one is refused **by name**. The floor is the *absence of a
+  switch*, which is the only kind of floor that cannot be set by accident.
+- **The vocabulary grows only with enforcement.** A capability the runtime could merely read back
+  would be a setting that lies — the failure this spec keeps recording (a refusal code that is
+  never raised, a rule that is only a comment, a number nobody recomputes). So a capability lands
+  here only if it changes what the runtime *does*. `human_check` qualifies; `log_fields` does not
+  yet, and is therefore not in the vocabulary.
+- **The shape of the check is the community's; the vocabulary of the log is not.** A community
+  chooses the log's *format* and may add its own fields; the runtime's event vocabulary is the
+  project's, because the log is the audit trail and a replay has to reproduce the same state — two
+  communities with different vocabularies would have logs no tool could read together.
+
 ---
 
 ## Part 2 — The community divergences (this is the actual contribution)
@@ -1034,7 +1066,7 @@ grant (section 1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 12,980 as of 2026-10-23. The gate suite itself is **168 cases** across `scripts/`, split 5,976 domain code / 6,305 tests / 699 tour. The count is re-run whenever a
+prints 13,560 as of 2026-10-23. The gate suite itself is **178 cases** across `scripts/`, split 6,361 domain code / 6,500 tests / 699 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -1067,6 +1099,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | section 2.6 shatter-guard: complaint freezes the lane to draft; only **a human seat** releases (the row said "the organiser" until D36 made the seat set the source of that authority — the *rule* is unchanged, the name now comes from the org) | `src/shatter.ts`, `src/ladder.ts`, `src/roles.ts` (`assertSeat`) | `test/ladder.test.ts`, `test/replay.test.ts`, `test/roles.test.ts` (the complainant-is-not-an-actor exclusion) |
 | section 2.9 member as subject: suppression beats any grant, absent row fails closed, no un-suppress, cap counts the member, quiet hours are the member's clock, aggregation floor refuses below 10 | `src/members.ts`, `src/engine.ts` (commit order) | `test/members.test.ts`, `test/engine.test.ts` (order proof) |
 | section 2.11 cross-promotion: partner gate, partner + lane + window grants, per-event cap, no member identifier in partner-facing copy | `src/ladder.ts`, `src/grants.ts` (`grantWithClosedWindow` names an expired window instead of hiding it), `src/partner.ts` (the identifier scan: registry-bounded, both languages, names the member and never the copy), `src/apply.ts` (cap counter), `src/engine.ts` (commit order: the content rule runs ahead of authorization so the approved-card path is covered too; the cap sits after the per-member protections and before the transport gate) | `test/ladder.test.ts`, `test/grants.test.ts`, `test/partner.test.ts`, `test/engine.test.ts` (order proofs), `test/pack.test.ts` |
+| section 1.12 the capability manifest (PRD **FR-1.20**, `DECISIONS.md` **D104**): a community's manifest declares what the fleet may do — each capability saying **why** it is on, and the seat that answers **resolved from the community's declared seat set** (section 1.11) rather than written into the manifest — and the human check's **existence** is a floor with no off switch, while its **shape** is configurable and enforceable: under `push` a card that needs a human also writes a `ReviewRequested` row naming the seat, and under `pull` it does not. An unknown capability name, a field the runtime does not read (a `seat:` is one), a capability with no `reason:`, and a shape outside `push`/`pull` are each **refused by name** rather than ignored; every word meaning *off* is refused naming the floor | `src/capabilities.ts` (`CAPABILITY_NAMES`, `REVIEW_SHAPES`, `DEFAULT_REVIEW_SHAPE`, `parseCapabilities`, `resolveCapabilities`, `asks`), `src/org.ts` (`parseOrgCapabilityBlock` — the two-level reader that refuses what it cannot read), `src/settings.ts` (resolution + the provenance row), `src/types.ts` (`CommunityCapabilities`, `ResolvedCapabilities`, the `ReviewRequested` event), `src/cards.ts` (the shape decides what a card writes), `src/apply.ts` (the shape guard entry), `orgs/kinshipai.yaml` (`capabilities:`) | `test/capabilities.test.ts` (13 cases: the whole vocabulary of *off* refused, the unknown name, the missing seat, the foreign seat, the missing reason, the unknown shape, the default `pull`, the provenance row, and the two that keep it honest — `push` writes the request and `pull` does not) |
 | section 2.12 the sanction ladder (PRD **FR-5.11**, `DECISIONS.md` **D37**): a pack may declare its graduated response as **data**, and the fleet cannot carry any of it out — every rung names a human seat from section 1.11's set, states what the member is told (section 2.9.4), the last rung names the appeal, two rungs or none, absence is legal and **no default ladder is supplied**. The gate is reachability rather than vocabulary: a `via:` is refused when some agent declares that exact tool and is legal when nobody does | `src/types.ts` (`SanctionRung`), `src/pack.ts` (`parseSanctionLadder` — the strict reader: unknown key, unreadable line, unnamed rung), `src/settings.ts` (`resolveSettings` re-checks the shape + reachability at boot), `scripts/validate-pack.mjs` **PKG-62 / PKG-63** (the shape and the reachability, in CI), `packs/kopdar-ops/.kinship.yaml` (4 rungs: nudge → private-word → public-correction → removal) | `test/pack.test.ts` (15 cases incl. the empty-ladder and duplicate-block refusals, and the POSITIVE CONTROL that a pack with no ladder boots unchanged), `test/settings.test.ts` (the seat refusal, the missing `member_told`, the missing appeal, the single-rung binary, and a rung wired to `telegram \| send`), `scripts/validate-pack.test.mjs` (8 cases, both directions per rule incl. `via: discord \| ban` passing because no agent declares it), `runtime/tour.ts` (`sanction_ladder_is_declared_and_out_of_reach`, `fork_cannot_hand_a_rung_to_an_agent_or_a_tool`; the tour now prints 36) |
 | Pack boot gate: a fork cannot weaken an invariant (FR-1.14) — the validator's own `validatePack` runs before parsing | `src/pack.ts` | `test/pack.test.ts` (tamper cases on the real `packs/kopdar-ops`) |
 | section 1.2 read side, **second artefact** (PRD **FR-1.16**): the same log read as a *list* instead of counts — what a human currently owes, by kind (`verdict` / `handoff` / `release` / `overdue`), ordered by how long it has waited, with ranking explicitly refused, the identifier sweep run **before** the 160-char preview cut, and `memberInputs.linkable: false` because the log carries no input→card join | `src/inbox.ts` (`deriveInbox`, exposed as `Fleet.inbox()`), borrowing `health.ts`'s now-exported `pendingCards` + `withholdMemberIdentifiers` rather than re-implementing them, `src/engine.ts` (the method appends nothing) | `test/inbox.test.ts` (11 cases: purity across two calls and replay deep-equality *of the read*, the `handoff` kind that lived only in the log until D31, cross-kind age ordering, the leak-at-the-cutline control, `limits` naming age ≠ importance), `runtime/tour.ts` (4 of the 15 guarantees that existed at D31; the tour now prints 36 — this row and the health row above each said 19 when they were written, and the count is recomputed per pass, never carried; D38 moved it again 21 → 22) |

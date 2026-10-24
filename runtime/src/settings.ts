@@ -29,10 +29,11 @@
  * special case would be the place where a direction flips unnoticed.
  */
 import { refuse } from './errors.ts';
+import { resolveCapabilities } from './capabilities.ts';
 import { DEFAULT_HUMAN_SEATS } from './roles.ts';
 import { DEFAULT_POSTURE } from './types.ts';
 import type {
-  Autonomy, CommunityPosture, Ctx, FleetState, Packed, PackedGuardrails, PackedOrg, ProvenanceRow, ResolvedSettings, SettingSource,
+  Autonomy, CommunityPosture, Ctx, FleetState, Packed, PackedGuardrails, PackedOrg, ProvenanceRow, ResolvedCapabilities, ResolvedSettings, SettingSource,
 } from './types.ts';
 
 /** The three tiers this function knows about. `event` is named in `limits`, never resolved. */
@@ -87,6 +88,8 @@ const LIMITS: readonly string[] = [
   'Autonomy ceilings match exact class names. There is no wildcard, because the ladder has none and a glob would widen reach without anyone writing the class down (section 1.1).',
   '`agent_roles` is reporting, not a whitelist: an org lists the roles it recognises so a snapshot can name them, and a community may add an agent without an org\'s permission. The one hard rule is that a role name may not be a human seat.',
   'Budgets are not floors. `llm_per_event_idr`, `queue_max` and `max_actions_per_run` stay the pack\'s: spend and queue depth are the organiser\'s own cost, not a promise to a member, and an org that can force a volunteer to spend is a different product.',
+  'Capabilities are declared at the org tier only, in v0. The org manifest is the tier that already exists for "one operator, several communities", so a capability lands there first; a community\'s own pack-level override is a later slice, because the pack format is policed by 62 validator rules and a capability that arrives half-wired through a validator that does not know it is worse than one that arrives late.',
+  'The capability vocabulary grows only with enforcement. `human_check` is in it because its shape changes what the runtime DOES — `push` writes a `ReviewRequested` row and `pull` does not. A capability the runtime could only read back would be a setting that lies.',
 ];
 
 /**
@@ -146,6 +149,18 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
     refuse('pack_invalid', 'seat collision (spec section 2.7 / PRD FR-1.18)',
       `pack \`${pack.key}\` declares agent(s) ${squatters.map((r) => `\`${r}\``).join(', ')} whose name is a human seat held by ${org ? `org \`${org.key}\`` : 'the runtime'} — decideCard, issueGrant, revokeGrant and releaseShatter accept a seat, so an agent with that name would hold the veto over its own output`);
   }
+
+  // The capabilities in force (DECISIONS.md D103). The human check's SHAPE is configurable; its
+  // EXISTENCE is a floor, so there is no value here that turns it off — the floor is the absence of
+  // a switch, not a default that a careful operator could override.
+  const capabilities = resolveCapabilities({ org, humanSeats });
+  provenance.push({
+    key: 'capability:human_check', tier: 'capability', effective: capabilities.humanCheck.shape,
+    source: capabilities.humanCheck.source,
+    note: capabilities.humanCheck.source === 'org'
+      ? `org \`${org?.key ?? '?'}\` declares the human check as \`${capabilities.humanCheck.shape}\`, answered by seat \`${capabilities.humanCheck.seat}\` — "${capabilities.humanCheck.reason}". Its shape is configurable; its existence is a floor`
+      : capabilities.humanCheck.reason,
+  });
 
   // The sanction ladder (D37) — a community's own rungs, read once here. Two properties of it are not
   // the community's to author: WHO performs a rung, and whether the bottom of the ladder has a way
@@ -255,6 +270,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
     agentRoles: org ? [...org.agentRoles] : Object.keys(pack.agents),
     autonomyCeiling,
     posture,
+    capabilities,
     provenance,
     limits: [...LIMITS],
   };
@@ -292,6 +308,8 @@ export interface SettingsReport {
   autonomyCeiling: Record<string, Autonomy>;
   /** The operating posture in force — how this community is run (see CommunityPosture). */
   posture: CommunityPosture;
+  /** The capabilities in force — what the fleet may do (see ResolvedCapabilities). */
+  capabilities: ResolvedCapabilities;
   provenance: ProvenanceRow[];
   limits: string[];
 }
@@ -308,6 +326,9 @@ export function deriveSettings(state: FleetState, settings: ResolvedSettings, no
     guardrails: { ...settings.guardrails },
     autonomyCeiling: { ...settings.autonomyCeiling },
     posture: { ...settings.posture },
+    capabilities: {
+      humanCheck: { ...settings.capabilities.humanCheck },
+    },
     provenance: settings.provenance.map((p) => ({ ...p })),
     limits: [...settings.limits],
   };

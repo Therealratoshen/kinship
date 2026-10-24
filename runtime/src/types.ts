@@ -176,6 +176,7 @@ export type FleetEvent =
   | { type: 'GrantConsumed'; grantId: string; commitSeq: number; at: number }
   | { type: 'GrantSuperseded'; grantId: string; reason: string; at: number }
   | { type: 'CardCreated'; card: Card; at: number }
+  | { type: 'ReviewRequested'; cardId: string; actionClass: string; seat: string; at: number }
   | { type: 'CardDecided'; cardId: string; verdict: Verdict; by: string; why: string; newRevision?: Revision; at: number }
   | { type: 'AuthorizationIssued'; auth: SendAuthorization; at: number }
   | { type: 'AuthorizationConsumed'; token: string; at: number }
@@ -400,6 +401,73 @@ export interface Packed {
 export type NeedAnswers = Record<string, string>;
 
 // --- the organisation tier (PRD FR-1.18, DECISIONS.md D35/D36) ------------------------------------
+
+// --- the capability manifest (DECISIONS.md D103) -------------------------------------------------------
+
+/**
+ * How the human is reached when a card is waiting.
+ *
+ * - `push` — the runtime **asks**: every card that needs a human also writes a `ReviewRequested`
+ *   event, which is the row a host turns into a notification ("a message is waiting for you").
+ * - `pull` — the runtime does not ask. The card is in the human's inbox and stays there until the
+ *   human opens it.
+ *
+ * There is no third value on purpose. "Both" was in the question as asked, and it is not a runtime
+ * distinction: the inbox exists under `pull` too, so `both` is `push` plus a host that also shows
+ * the inbox — which is the host's business, not a third behaviour of the runtime.
+ */
+export type ReviewShape = 'push' | 'pull';
+
+/**
+ * One capability, as a community declares it.
+ *
+ * **The reason is required, and that is the point of the shape.** A capability that changes what
+ * the fleet may do has to say why — an operator who turns a power on without justifying it has not
+ * configured anything, they have just widened the blast radius.
+ *
+ * **There is no `seat` field, and that is a correction rather than an omission.** The first version
+ * of this type carried one, and the MCP adapter's own test suite broke the moment a community
+ * renamed its seat: the manifest would name one seat while `human_seats` named another, and the
+ * refusal was correct. That is D100's lesson arriving one layer down — *the seat is resolved, not
+ * typed* — and a seat written in a second file is a seat that drifts. **The seat that answers for a
+ * capability is the community's declared seat set** (section 1.11), the same set every other
+ * human-only act consults, and the log records which seat answered.
+ */
+export interface CapabilityDeclaration {
+  /** The shape of the human check. Only `human_check` has one today. */
+  shape?: ReviewShape;
+  /** Why this community runs it this way. */
+  reason: string;
+}
+
+/** The capabilities a community declared, by name. */
+export type CommunityCapabilities = Record<string, CapabilityDeclaration>;
+
+/** One capability, resolved: what is in force, and which tier put it there. */
+export interface ResolvedCapability {
+  shape: ReviewShape;
+  seat: string;
+  reason: string;
+  source: SettingSource;
+}
+
+/**
+ * The capabilities in force.
+ *
+ * **The vocabulary grows only with enforcement.** A capability the runtime cannot act on is a
+ * setting that lies, and this repo has recorded that failure three times (D24, D28, D29) — so a
+ * capability that lands here must change what the runtime *does*, not what a file says about it.
+ */
+export interface ResolvedCapabilities {
+  /**
+   * The human check.
+   *
+   * Its **shape** is configurable; its **existence** is not. A community may choose to be pulled or
+   * pushed, and it may not choose to have no check at all — there is no `off` value, and writing one
+   * is refused with that reason (DECISIONS.md D103).
+   */
+  humanCheck: ResolvedCapability;
+}
 /**
  * A parsed, shape-checked `orgs/<key>.yaml`: the manifest above the pack. A pack is one community;
  * an org is the operator who runs several of them and does not want their member protections to
@@ -451,6 +519,12 @@ export interface PackedOrg {
   /** Per action class, exact keys only, and never `never` — absence is the pack's to declare. */
   autonomyCeiling: Record<string, Autonomy>;
   /**
+   * The capabilities this operator runs — what the fleet is allowed to do. Optional: an org that
+   * declares none runs the runtime's conservative defaults, and the conservative default for the
+   * human check is `pull` (the runtime asks nobody until a manifest says otherwise).
+   */
+  capabilities?: CommunityCapabilities;
+  /**
    * The operator's most-PERMISSIVE posture for the communities under this org. A pack may be
    * stricter; a pack that tries to be looser is refused, not clamped.
    */
@@ -463,7 +537,7 @@ export type SettingSource = 'pack' | 'org' | 'default';
 /** One row of "who set this, and what it beat" — section 1.2 says why is part of the product. */
 export interface ProvenanceRow {
   key: string;
-  tier: 'guardrail' | 'seat' | 'ceiling' | 'posture';
+  tier: 'guardrail' | 'seat' | 'ceiling' | 'posture' | 'capability';
   effective: string | number | boolean;
   source: SettingSource;
   note: string;
@@ -479,6 +553,8 @@ export interface ResolvedSettings {
   autonomyCeiling: Record<string, Autonomy>;
   /** The operating posture in force — how this community is run (see CommunityPosture). */
   posture: CommunityPosture;
+  /** The capabilities in force — what the fleet is allowed to do (see ResolvedCapabilities). */
+  capabilities: ResolvedCapabilities;
   provenance: ProvenanceRow[];
   limits: string[];
 }

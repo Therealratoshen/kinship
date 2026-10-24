@@ -70,3 +70,26 @@ posture:
 autonomy_ceiling:
   commit.channel-post: draft
   promote.cross-community: draft
+
+# What the fleet may DO under this operator (DECISIONS.md D103).
+#
+# The floors above are numbers; this is a manifest of powers. Two rules make it safe to hand a
+# community a dial:
+#
+#   - Every capability says WHY it is on. A power nobody justified is not a configuration, it is a
+#     wider blast radius.
+#   - The human check's EXISTENCE is a floor: there is no `off` for it, and writing one is refused.
+#     What IS configurable is its SHAPE — `push` means the runtime asks (each waiting card also
+#     writes a `ReviewRequested` row, which is what a host turns into a notification); `pull` means
+#     the human opens the inbox and the runtime interrupts nobody.
+#   - There is deliberately NO `seat:` here. The seat that answers is the community's declared seat
+#     set (`human_seats:` above), resolved rather than written — the same lesson as DECISIONS.md
+#     D100, where a seat typed into a second place went stale the moment a community renamed its
+#     human. A capability names its reason; the seat names itself once.
+#
+# `push` is the right default for an operator running live communities: a card that waits silently
+# is a card that waits forever. The choice is here because the next operator may want the opposite.
+capabilities:
+  human_check:
+    shape: push
+    reason: "Cards wait for a person, and a person who is not told is not waiting — the community's human answers every one of them."

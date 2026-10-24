@@ -149,6 +149,13 @@ events / we send your reminders" is banned copy for the same reason: an incumben
    template metrics in groups. So the class is absent because an 8-person, opt-in-only, non-editable group send
    is not what an organiser is asking for, and the unofficial route that *does* scale risks their own number
    with permanent, no-appeal bans. Falsifier: a raised cap retires D11/D13 for this lane.
+   **Amended 2026-10-24 (`DECISIONS.md` D106):** note 2 above is about the **group** lane, and the
+   group lane is still refused exactly as written. What changed is the **individual** lane, which D106
+   opens: WhatsApp sends to individual members — free-form inside the 24-hour window, an approved
+   template outside it — through an adapter that does not exist yet. So "`whatsapp | send` on any
+   lane is deliberately missing" is still true today (there is no adapter, and a pack that declares a
+   tool the runtime cannot reach is a pack that lies), and it stops being true for the individual lane
+   when that adapter lands. The group lane does not.
 3. **`budgets.llm_per_event_idr` has no sanctioned default.** The field is real and enforced; the number is the
    owner's to set (PRD section 12-Q9). Shipping a made-up ceiling would be exactly the invented figure the honesty
    contract forbids.

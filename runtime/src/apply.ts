@@ -44,6 +44,7 @@ const REQUIRED_SHAPE: Record<string, [string, 'string' | 'number' | 'boolean'][]
   GrantRevoked: [['grantId', 'string']],
   CardCreated: [['card.id', 'string'], ['card.actionClass', 'string'], ['card.origin.id', 'string']],
   CardDecided: [['cardId', 'string'], ['verdict', 'string'], ['by', 'string'], ['why', 'string']],
+  ReviewRequested: [['cardId', 'string'], ['actionClass', 'string'], ['seat', 'string']],
   AuthorizationIssued: [['auth.token', 'string'], ['auth.revisionHash', 'string'], ['auth.actionClass', 'string']],
   AuthorizationConsumed: [['token', 'string']],
   CommitRefused: [['code', 'string'], ['actionClass', 'string'], ['agent', 'string']],
@@ -123,6 +124,7 @@ export function applyEvent(state: FleetState, event: LoggedEvent): void {
     case 'CardDecided':
     case 'AuthorizationIssued':
     case 'AuthorizationConsumed':
+    case 'ReviewRequested':
       applyCards(state, event);
       return;
     case 'BudgetSet':
