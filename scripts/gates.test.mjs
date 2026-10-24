@@ -9,6 +9,7 @@
  *
  * Every check carries a positive control, because a scanner that cannot fail is decoration (D24).
  */
+import { computeCounts, syncCounts } from './sync-counts.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -93,6 +94,25 @@ const COUNTED_DOCS = [
   'packs/kopdar-ops/README.md', 'packs/kopdar-ops/README.id.md',
   '.github/PULL_REQUEST_TEMPLATE.md',
 ];
+
+test('every count the live documents quote is what the generator produces', () => {
+  // The counts are DERIVED facts — computed from the tree, not written by a human — so the documents
+  // must match what `scripts/sync-counts.mjs` produces, not a second copy of the arithmetic. One
+  // source of truth, and a gate that proves nobody edited a number by hand.
+  const c = computeCounts();
+  const docs = {
+    'AGENTS.md': read('AGENTS.md'),
+    'spec/GOVERNANCE-SPEC-OUTLINE.md': read('spec/GOVERNANCE-SPEC-OUTLINE.md'),
+  };
+  assert.match(docs['AGENTS.md'], new RegExp(`\\(${c.runtimeTests} tests across ${c.runtimeFiles} files as of \\d{4}-\\d{2}-\\d{2}`),
+    'AGENTS.md\'s runtime count is the tree\'s runtime count');
+  assert.match(docs['spec/GOVERNANCE-SPEC-OUTLINE.md'], new RegExp(`prints ${c.runtimeLines.toLocaleString('en-US')} as of`));
+  assert.match(docs['spec/GOVERNANCE-SPEC-OUTLINE.md'], new RegExp(`The gate suite itself is \\*\\*${c.scriptsCases} cases\\*\\*`));
+  // And the generator itself does not change what it produces when it runs twice.
+  const before = read('AGENTS.md');
+  syncCounts();
+  assert.equal(read('AGENTS.md'), before, 'the generator is idempotent');
+});
 
 test('every count the live documents quote is still true', () => {
   const c = liveCounts();

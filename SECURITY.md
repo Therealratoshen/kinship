@@ -11,7 +11,19 @@ inbox, and both are read by the maintainer:
    `security@` alias on a domain the project owns is the better long-term home, and setting one up is
    an open item rather than a done thing.**
 
-Triage within **3 business days**, and a fix or a mitigation note before the next release either way.
+**Acknowledged within 3 business days — best effort.** This project has **one maintainer with a few
+hours a week**, and saying so is the point: a reader can judge the promise themselves. What is
+promised is an **acknowledgement**, not a fix: a report that needs a design decision may wait for
+the next release, and a fix is promised only as *a fix or a mitigation note before the next release*,
+not on a clock. **A published response time this project cannot keep is the one place these
+documents would overclaim, so it names the capacity instead of a number alone.**
+
+**If a report is about the maintainer.** There is no second maintainer to route it to, and pretending
+otherwise would be a lie with a contact address attached. So, plainly: **the maintainer is the only
+route today**, and the escalation path is *the platform's* — a conduct report may be filed with GitHub
+against the repository or the account, which is a route that does not run through the person being
+reported. Appointing a second maintainer is on the roadmap and the honest fix for this seam; until
+there is one, this paragraph is the truth.
 
 **What is *not* a vulnerability**, so the report is not wasted: a pack that fails to boot because its
 own shape is wrong; a refusal you think is wrong (the refusal codes are the product, and

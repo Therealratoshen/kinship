@@ -45,6 +45,35 @@ cd kinship
 node scripts/gates.mjs
 ```
 
+**And this is what that actually prints** — the tour, which drives the real pack and checks every
+guarantee the README claims. It is the same output CI gates on:
+
+```
+Kinship tour — the fleet proposes, the organiser approves, nothing sends.
+pack kinshipai/bundled/event-ops/kopdar · zero dependencies
+
+── 1. Boot gate — the pack refuses to invent your community ──
+  booted with one need unanswered → refused: need_unanswered
+  booted with all 8 needs answered → OK
+
+── 2. Draft-only — an attempt is a card, never a message ─────
+  event-ops tried class 'draft.reminder' → disposition: card (card card-1)
+  member-facing classes start at draft, not auto — a human must decide
+
+── 3. Approval, then the transport gate (D21) ────────────────
+  organiser approved the card. the fleet then tried to COMMIT to wa:62811 →
+  refused: no_transport
+  one-send authorisation left intact for the organiser's own hand: true
+
+── 4. Governance refuses bad lanes and bad forks ─────────────
+  cross-promo without partner_policy → class_unavailable — absent, not denied
+  fork adds 'whatsapp | send' → boot refused by PKG-30
+  fork raises the member cap 2 → 5, above its org's floor of 4 → boot refused by PKG-60: refused, not clamped
+  pack names an agent after the human seat → refused: pack_invalid
+```
+
+The refusal in section 3 **is the product**: the fleet got permission, and the send still stopped.
+
 That runs the four checks CI runs, in the order CI runs them:
 
 ```bash
