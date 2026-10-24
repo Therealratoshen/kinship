@@ -45,8 +45,8 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The merge rule is decided, and the record now says what happened** (`DECISIONS.md` D98) — the
   **gates are the review**: the CI jobs are required, no human review is required (there is no second
   human to require one from), and `enforce_admins` is on, so the rules bind the owner as well. The list
-  of required checks is **derived from the workflow**, not typed. Seven pull requests merged today with
-  zero reviews on an admin bypass; that is now a dated row rather than a reflog entry.
+  of required checks is **derived from the workflow**, not typed. Fourteen pull requests merged today with
+  zero approving reviews; that is now a dated row rather than a reflog entry.
 - **The README is a front door again** (`DECISIONS.md` D96) — 444 lines and 3,959 words became 160
   and 1,131: what it is, one command to run it, a table of routes, what it enforces, what it does
   not do, and a table of pointers to everything else. The long walkthrough moved to the reference
