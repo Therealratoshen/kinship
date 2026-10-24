@@ -36,7 +36,7 @@ import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { disclosureLine } from '../src/disclosure.ts';
 import { makePack } from './helpers.ts';
-import type { Packed } from '../src/types.ts';
+import type { LoggedEvent, Packed } from '../src/types.ts';
 
 const DAY = 25_200_000;
 const HOUR = 3_600_000;
@@ -324,9 +324,11 @@ test('a row with a wrong field type is REFUSED, not folded — the log is not so
   const rows = f.events.map((r) => ({ ...r }));
   const target = rows.find((r) => r.type === 'CardCreated');
   assert.ok(target);
+  // The cast is the POINT: a row on disk is data, not a typed value, so a corrupted row is not a
+  // `LoggedEvent` and the type system says so. The runtime has to survive the file anyway.
   const tampered = rows.map((r) => (r.seq === target.seq
     ? { ...r, card: { ...target.card, origin: { kind: 123, id: null } } }
-    : r));
+    : r)) as unknown as LoggedEvent[];
   const v = Fleet.verifyLog(tampered, ANSWERS, PACK);
   assert.equal(v.ok, false, 'a malformed row must not verify');
   assert.ok(v.problems.some((p) => p.kind === 'replay_failed'), `expected the fold to refuse, got ${JSON.stringify(v.problems)}`);
@@ -340,7 +342,7 @@ test('a member with NO timezone is refused — a member whose quiet hours cannot
   const rows = f.events.map((r) => ({ ...r }));
   const target = rows.find((r) => r.type === 'MemberRegistered');
   assert.ok(target);
-  const tampered = rows.map((r) => (r.seq === target.seq ? { ...r, member: { tz: 'Asia/Jakarta' } } : r));
+  const tampered = rows.map((r) => (r.seq === target.seq ? { ...r, member: { tz: 'Asia/Jakarta' } } : r)) as unknown as LoggedEvent[];
   const v = Fleet.verifyLog(tampered, ANSWERS, PACK);
   assert.equal(v.ok, false, 'a member row with no ref must not verify');
   assert.ok(v.problems.some((p) => p.kind === 'replay_failed'));
