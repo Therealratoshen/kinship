@@ -16,8 +16,11 @@ expect is written down rather than guessed at.
 
 ## What you should not expect
 
-- A hosted version. Nothing here is hosted, and the open-source boundary is a promise with a dated
-  row behind it — see [DECISIONS.md](DECISIONS.md) D19 and the README.
+- **A hosted version of this repository.** Nothing *here* is hosted: this repo is a library you run
+  yourself, and it has no SLA because it is not a service. A separate project — **Kinship Host**, at
+  [shortcutsistem.com](https://shortcutsistem.com) — does host a pilot on top of the same control plane,
+  with its own terms and its own (no) SLA. The open-source boundary is a promise with a dated row behind
+  it — see [DECISIONS.md](DECISIONS.md) D19, D81 and the README.
 - Commercial support of any kind. If you need it, this project is not the answer yet.
 - Compatibility with a harness you have not seen the host contract for. If you are writing an
   adapter, [spec/HOST-CONTRACT.md](spec/HOST-CONTRACT.md) is the contract — four seams, and what

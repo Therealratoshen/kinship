@@ -293,13 +293,18 @@ with one line each, for an assistant that reads the repository instead of a pers
 
 ## Product surface
 
-This repository is the whole product today: an open-source, self-hosted control plane under Apache-2.0, with no
-paid tier, no hosted instance and no feature held back.
+This repository is the control plane: an open-source, self-hostable layer under Apache-2.0. **No capability
+of it is held back** — the governance layer, the runtime, the pack, the spec and the tests are all here, and
+the hosted surface that runs them runs this code **byte for byte** (the vendoring check is a CI gate, not a
+promise).
 
-The plan is for the hosted surface to live under **ShortcutSistem** at
-[shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product. Stated plainly so the sentence
-can't be read as a promise it doesn't keep: **that domain does not describe Kinship today, and nothing is
-hosted there.** What exists is the code in this repo.
+**As of 2026-10-24 there IS a hosted surface**, and this section used to be wrong about it. **ShortcutSistem**
+at [shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product, now hosts **Kinship Host**:
+the same control plane, with a hosted human seat, persistence and a channel connection around it, running a
+pilot with a small number of organisers. It is a **separate repository** and a **separate product**, and it
+adds nothing to this repo and takes nothing from it. The honest short version: **this repo is not a service,
+and it is not an advertisement for one.** There is no sign-up path here, no pricing, and no funnel — and
+there is no paid tier and no published price on the other side either, because none has been measured.
 
 Three commitments make the OSS/hosted boundary survivable (`DECISIONS.md` **D19**, written before the
 product existed because that is the only cheap time to make them):
@@ -309,6 +314,9 @@ product existed because that is the only cheap time to make them):
 2. **No silent flip** — any change to the license or the OSS/hosted boundary goes through a dated
    `DECISIONS.md` row *before* this repository changes. If you ever see a boundary move without one, that
    is the repo breaking its own rule, and it is a bug worth reporting.
+   **This rule was broken once, by omission, and repaired after the fact in
+   [`DECISIONS.md` D81](DECISIONS.md):** the hosted surface went live on 2026-10-21 and this section kept
+   saying nothing was hosted. D81 is the disclosure the rule asked for, written late rather than not at all.
 3. **No funnel** — this repo is the product's control plane, not its advertisement. It will not be
    restructured to push readers toward a hosted sign-up.
 
