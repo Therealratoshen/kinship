@@ -8,8 +8,22 @@
 import { createHash } from 'node:crypto';
 import type { FleetState, LoggedEvent } from './types.ts';
 
+/**
+ * The content hash — 128 bits of SHA-256, hex-encoded.
+ *
+ * **Why 32 hex characters and not 16.** A 16-character hex slice is 64 bits, and the birthday bound
+ * for a 64-bit hash is 2^32 — about 4.3 billion. A modern GPU computes billions of SHA-256 digests
+ * a second, so **a collision is minutes of work, not a theoretical concern.** And this hash is not
+ * decorative: it is the *revision binding* (spec section 1.5) — the thing that decides whether the
+ * copy being sent is the copy that was approved. A collision there is not a cosmetic defect; it is a
+ * way to get unapproved copy past an approval. At 128 bits the birthday bound is 2^64, which no
+ * cluster will reach.
+ *
+ * The cost is 16 more characters per hash in the log. That is the right trade: a log that fits in
+ * less space and cannot be trusted is not a log.
+ */
 export function hashText(text: string): string {
-  return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 16);
+  return createHash('sha256').update(text, 'utf8').digest('hex').slice(0, 32);
 }
 
 export function freshState(): FleetState {

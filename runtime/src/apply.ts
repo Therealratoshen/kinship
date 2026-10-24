@@ -18,7 +18,84 @@ import { applyBudget } from './budget.ts';
 import { applyContainment } from './containment.ts';
 import { applyThreads } from './threads.ts';
 
+/**
+ * The shape guard: the fields a given event must carry, and the type each must have.
+ *
+ * **Why this exists.** The log is JSON on disk, and a row in it is DATA, not code — so a row that
+ * was hand-edited, truncated mid-write, or written by something else arrives at the reducer with no
+ * type checking at all. Before this guard, a row with `origin.kind: 123` or a member with **no
+ * timezone** folded silently and the log **verified as sound** — and a member with no timezone is
+ * a member whose quiet hours cannot be checked, which is a member protection quietly switched off.
+ *
+ * So the reducer now **refuses a malformed row loudly**: it throws, `Fleet.replay` propagates it,
+ * and `Fleet.verifyLog` reports it as `replay_failed`. That is the same containment an unknown
+ * event type already had — the difference is that a bad *shape* used to be the one thing that got
+ * through.
+ *
+ * **The guard is deliberately narrow.** It checks the fields the GOVERNANCE reads — the ones a wrong
+ * value would change a decision — not every field of every event. A guard over everything is a
+ * second schema to keep in step with the first, and the first is the TypeScript type. This one asks
+ * a different question: *if this row were wrong, would a decision change?*
+ */
+const REQUIRED_SHAPE: Record<string, [string, 'string' | 'number' | 'boolean'][]> = {
+  MemberRegistered: [['member.ref', 'string'], ['member.tz', 'string']],
+  SuppressionRecorded: [['row.memberRef', 'string'], ['row.source', 'string']],
+  GrantIssued: [['grant.actionClass', 'string'], ['grant.kind', 'string']],
+  GrantRevoked: [['grantId', 'string']],
+  CardCreated: [['card.id', 'string'], ['card.actionClass', 'string'], ['card.origin.id', 'string']],
+  CardDecided: [['cardId', 'string'], ['verdict', 'string'], ['by', 'string']],
+  AuthorizationIssued: [['auth.token', 'string'], ['auth.revisionHash', 'string'], ['auth.actionClass', 'string']],
+  AuthorizationConsumed: [['token', 'string']],
+  CommitRefused: [['code', 'string'], ['actionClass', 'string'], ['agent', 'string']],
+  CommitExecuted: [['actionClass', 'string'], ['agent', 'string'], ['origin.id', 'string'], ['revisionHash', 'string']],
+  MemberInputReceived: [['inputId', 'string'], ['memberRef', 'string'], ['textHash', 'string']],
+  ThreadOpened: [['thread.id', 'string']],
+  ThreadAnswered: [['threadId', 'string'], ['by', 'string'], ['note', 'string']],
+  PhaseEntered: [['eventId', 'string'], ['phase', 'string']],
+  PhaseCompleted: [['eventId', 'string'], ['phase', 'string']],
+  WakeScheduled: [['row.id', 'string'], ['row.purpose', 'string']],
+  SpendRecorded: [['eventId', 'string'], ['amountIdr', 'number']],
+  EscalationRaised: [['purpose', 'string'], ['to', 'string']],
+};
+
+/** The value at a dotted path, or `undefined`. */
+function at(node: unknown, path: string): unknown {
+  let cur: unknown = node;
+  for (const part of path.split('.')) {
+    if (cur === null || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
+}
+
+/**
+ * Refuse a row whose shape is wrong, before the reducer touches the state.
+ *
+ * The throw is deliberate and it is the *loud* failure: the caller that folds a log learns that
+ * the log is not sound, instead of receiving a state that looks plausible and is not.
+ */
+export function assertEventShape(event: LoggedEvent): void {
+  const required = REQUIRED_SHAPE[event.type];
+  if (required === undefined) return; // an unknown type is caught by the reducer's own default
+  for (const [path, kind] of required) {
+    const value = at(event, path);
+    // `number` must be a FINITE number: a NaN in a timestamp or an amount compares false to
+    // itself and would slip past a typeof check.
+    const ok = kind === 'number'
+      ? typeof value === 'number' && Number.isFinite(value)
+      : typeof value === 'string' && value.length > 0;
+    if (!ok) {
+      throw new Error(
+        `applyEvent: row ${event.seq} (${event.type}) is malformed — \`${path}\` must be a non-empty ${kind}` +
+        (value === undefined ? ' and is missing' : ` and is ${typeof value}`) +
+        '. A row that cannot be trusted is a log that cannot be replayed.',
+      );
+    }
+  }
+}
+
 export function applyEvent(state: FleetState, event: LoggedEvent): void {
+  assertEventShape(event);
   switch (event.type) {
     case 'ShatterTripped':
     case 'ShatterReleased':

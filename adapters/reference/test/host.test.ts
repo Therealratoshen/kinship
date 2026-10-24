@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assertAnswersMatchNeeds, parseAnswers } from '../src/config.ts';
 import { bootHost, persist, runCommand, verifyHost, type HostOptions } from '../src/host.ts';
+import { FORMAT_VERSION } from '../src/store.ts';
 import { readEvents } from '../src/store.ts';
 
 const REPO = join(import.meta.dirname, '..', '..', '..');
@@ -167,7 +168,11 @@ test('the manifest states the privacy posture in the artefact, and keeps the ans
     assert.equal(manifest.memberMessageTextStored, false, 'member message text never lands — only a hash');
     assert.equal(manifest.draftCopyInFile, true, 'and saying so matters: the log DOES hold the draft copy, because an approval binds to the exact bytes');
     assert.equal(manifest.retentionOwner, 'host');
-    assert.equal(manifest.formatVersion, 1);
+    // The format version is a CLAIM about the file's shape, so the claim is checked against the code
+    // that writes it — a hardcoded number here is a number that rots the moment the format moves,
+    // which is exactly what happened when the content hash widened (D70).
+    assert.equal(manifest.formatVersion, FORMAT_VERSION, 'the manifest states the format the code writes');
+    assert.ok(manifest.answersDigest.length >= 32, 'and the answers digest is a 128-bit hash');
     assert.ok(manifest.answersDigest.length > 0);
     assert.ok(!JSON.stringify(manifest).includes('organiser'), 'the escalation contact is a named human and stays out of the file');
   } finally {

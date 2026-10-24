@@ -110,8 +110,7 @@ function caseGroupQuestion() {
     actionClass: 'answer.question',
     agent: 'engagement',
     origin: { kind: 'member-thread', id: 'member-01' },
-    textId: reply.textId,
-    textEn: reply.textEn,
+    text: reply,
     triggerInput: input,
   });
 
@@ -150,8 +149,7 @@ function caseMemberComplaint() {
     actionClass: 'moderate.flag',
     agent: 'moderator',
     origin: { kind: 'member-thread', id: 'member-02' },
-    textId: reply.textId,
-    textEn: reply.textEn,
+    text: reply,
     triggerInput: input,
   });
 
@@ -188,8 +186,7 @@ function caseOrganiserSendNow() {
       agent: 'engagement',
       origin: { kind: 'event', id: 'kopdar-2026-10' },
       recipients: [],
-      textId: reply.textId,
-      textEn: reply.textEn,
+      text: reply,
       onBehalfOf: 'organiser',
     });
   } catch {
@@ -233,8 +230,7 @@ function casePromptInjection() {
       actionClass: 'draft.promote',
       agent: 'engagement',
       origin: { kind: 'event', id: 'kopdar-2026-10' },
-      textId: reply.textId,
-      textEn: reply.textEn,
+      text: reply,
       triggerInput: input,
     });
   } catch {
@@ -272,8 +268,7 @@ function caseReminderTMinus1() {
     agent: 'event-ops',
     origin: { kind: 'event', id: 'kopdar-2026-10' },
     phase: 't-minus-1',
-    textId: reply.textId,
-    textEn: reply.textEn,
+    text: reply,
   });
 
   check(result.disposition === 'card', 'the reminder is drafted', result.disposition);

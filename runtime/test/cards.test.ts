@@ -14,7 +14,7 @@ test('a card binds to the revision it was created with (section 1.5)', () => {
   const c = ctx();
   const card = createCard(c, draft(c));
   assert.equal(card.status, 'pending');
-  assert.equal(card.revision.hash.length, 16);
+  assert.equal(card.revision.hash.length, 32);
   const other = createCard(c, draft(c, 2));
   assert.notEqual(card.revision.hash, other.revision.hash, 'different content, different identity');
 });

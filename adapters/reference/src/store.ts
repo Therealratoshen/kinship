@@ -29,7 +29,15 @@ import type { LoggedEvent, NeedAnswers } from 'kinship-runtime/src/types.ts';
  * The format version. A reader must **refuse a higher version, never clamp it** — the D35 rule
  * ("refuse, never clamp") applied to a file format.
  */
-export const FORMAT_VERSION = 1;
+/**
+ * The log format version.
+ *
+ * **2** because the content hash widened from 64 to 128 bits (D70). A log written by a v1 host
+ * still *replays* — its rows carry their own hashes — but a v1 **manifest**'s `answersDigest` was
+ * computed with the old width, so the two no longer agree, and the manifest says so rather than
+ * leaving a reader to guess which half is stale.
+ */
+export const FORMAT_VERSION = 2;
 
 /** The cover. Every field says something a reader needs before they trust the rows. */
 export interface Manifest {

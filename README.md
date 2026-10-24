@@ -286,6 +286,38 @@ community-edition UI removal drew the reply *"It's not a feature issue, it's a t
 pitch that rests on honesty is the one asset a silent flip destroys in a single news cycle
 (`research/OSS-AUTONOMY-FAILURES-2026-10-17.md` patterns 5–7).
 
+## Talk to it from the assistant you already use
+
+A community manager has a personal assistant in the platform they already use — Grok, Claude
+Desktop, Cursor, OpenClaw, Hermes. It can write a message, plan a reminder, draft a reply.
+**The question is what happens when it wants to do something member-facing.**
+
+The answer cannot be "it decided": an assistant has no authority, and no memory that survives an
+audit. So the assistant **asks**. It proposes an action, and **the runtime decides** whether that
+action becomes a card for a human to approve, or is refused with the rule that fired.
+
+> **The assistant is the hand. Kinship is the judgement. The human is the signature.**
+
+```bash
+cd adapters/mcp && npm install --no-audit --no-fund
+node src/server.ts --pack ../../packs/kopdar-ops \
+  --config ../../packs/kopdar-ops/pack.local.yaml \
+  --plan ../../packs/kopdar-ops/pack.local.plan.yaml \
+  --log logs
+```
+
+That speaks **MCP `2025-06-18`** over stdio. Point your assistant's MCP client at it, and it can ask
+Kinship six things: what the fleet would do · what happened yesterday · what is waiting on you ·
+**whether an action may go out** · the organiser's verdict · the fleet's condition.
+[`adapters/mcp/README.md`](adapters/mcp/README.md) has the tool surface, and
+[`adapters/mcp/kinship-persona.md`](adapters/mcp/kinship-persona.md) is a persona you can paste into
+Grok's Custom Agents, `CLAUDE.md`, or a Cursor rule.
+
+**There is no tool there that delivers anything to a member.** Phase 1 ships no transport (D21), so a
+member-facing send ends at a refusal whoever calls it — and the refusal is in the log. A server that
+let the assistant skip the judgement step would not be a governance layer; it would be a stranger with
+your community's address book.
+
 ## What this is, and what it is not
 
 **Kinship reduces risk. It does not guarantee compliance, safe behaviour, or a good outcome.** It is

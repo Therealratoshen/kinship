@@ -50,9 +50,9 @@ test('append freezes the logged event: a nested value mutated after commit does 
     'the audit record must say who was on the list AT COMMIT TIME, not whatever the caller\'s array became');
 });
 
-test('hashText is stable, 16 hex characters, and separates the two languages (section 1.5 revision binding)', () => {
+test('hashText is stable, 32 hex characters (128 bits), and separates the two languages (section 1.5 revision binding)', () => {
   const id = hashText('ingat kopdar');
-  assert.match(id, /^[0-9a-f]{16}$/, 'the approval binds to a hash a card can quote');
+  assert.match(id, /^[0-9a-f]{32}$/, 'the approval binds to a hash a card can quote');
   assert.equal(id, hashText('ingat kopdar'), 'same text, same hash — replay depends on this');
   assert.notEqual(id, hashText('Ingat Kopdar'), 'one letter is a different revision, and the approval goes stale');
   assert.notEqual(hashText('a'), hashText('b'));

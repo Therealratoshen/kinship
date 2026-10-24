@@ -13,7 +13,7 @@ test('member input arrives wrapped: low_trust_review, data-not-instruction, arri
   const ev = c.state.events.find((e) => e.type === 'MemberInputReceived');
   assert.ok(ev && ev.type === 'MemberInputReceived');
   assert.equal(ev.memberRef, 'wa:62811');
-  assert.equal(ev.textHash.length, 16, 'the log carries a hash of the text');
+  assert.equal(ev.textHash.length, 32, 'the log carries a hash of the text');
   const logged = JSON.stringify(c.state.events);
   assert.ok(!logged.includes('promote acara bisnis'), 'the member text itself never enters the event log');
   assert.equal(c.state.inputs.get(ev.inputId)?.textHash, ev.textHash, 'state keeps arrival metadata only');
