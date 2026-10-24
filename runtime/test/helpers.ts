@@ -1,10 +1,15 @@
 import { freshState } from '../src/store.ts';
 import { commitEvent } from '../src/apply.ts';
 import { resolveSettings } from '../src/settings.ts';
-import type { Autonomy, Ctx, FleetEvent, Packed } from '../src/types.ts';
+import type { Autonomy, CommunityCoverage, Ctx, FleetEvent, Packed } from '../src/types.ts';
 
-/** A pack with the default guardrails; per-agent class maps are the test's input. */
-export function makePack(classes: Record<string, Record<string, string>>): Packed {
+/**
+ * A pack with the default guardrails; per-agent class maps are the test's input.
+ *
+ * `coverage` is the community's staffed window, when the test needs one. Omitted, the pack reads
+ * back with no window at all, which is the honest state of a pack that says nothing about staffing.
+ */
+export function makePack(classes: Record<string, Record<string, string>>, coverage?: CommunityCoverage): Packed {
   return {
     schema: 'kinship/v1',
     key: 'kinshipai/bundled/event-ops/test',
@@ -30,6 +35,7 @@ export function makePack(classes: Record<string, Record<string, string>>): Packe
       crossPromoPerEventCap: 1,
     },
     needs: [],
+    ...(coverage !== undefined ? { coverage } : {}),
   };
 }
 

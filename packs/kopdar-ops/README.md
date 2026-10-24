@@ -3,8 +3,7 @@
 > **Bahasa Indonesia:** [README.id.md](README.id.md) — terjemahan on-ramp ini (2026-10-22). This
 > file stays the source of truth; a translation is a copy, and a copy needs a pointer and a date.
 
-A **forkable example**, not a product. It is the reference shape for `kinship/v1`: 3 agents over one
-event lifecycle, one approval queue, and a set of invariants a fork is not allowed to delete. Read
+A **forkable example**, not a product. It is the reference shape for `kinship/v1`: 3 agents over one event lifecycle, one approval queue, and a set of invariants a fork is not allowed to delete. Read
 [`PACK.md`](PACK.md) for what the squad does and why each refusal exists; this file is only the on-ramp.
 
 Everything below was run against this directory on 2026-10-19.
@@ -29,9 +28,10 @@ and then refuses the commit with `no_transport` — because no channel transport
 ```
 PACK.md              frontmatter (key, bundled, agents[], requiredSkills) + the prose a forker needs
 .kinship.yaml        schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs,
-                     `sanction_ladder:` (optional; see "Your consequences, as data" below)
+                     `sanction_ladder:` (optional; see "Your consequences, as data" below),
+                     `coverage:` (optional; see "Your staffed hours, as data" below)
 agents/<role>/AGENTS.md   per-agent instructions — event-ops · engagement · moderator
-skills/<name>/SKILL.md    16 procedures, each with an assertion that fails the pack
+skills/<name>/SKILL.md    19 procedures, each with an assertion that fails the pack
 pack.example.yaml    superseded single-file shape; kept as a pointer (D17), read by nothing
 ```
 
@@ -123,6 +123,39 @@ own controls, because forbidding the *word* would only stop a community describi
 **Deleting the whole key is legal** (D37): a community that does not moderate has no rungs to name, and the
 runtime will not supply a default ladder it never wrote. What is not yours to change is the boundary the key
 sits inside — the fleet flags, a person sanctions (invariant #1). Do not open a PR adding a sanction tool.
+
+## Your staffed hours, as data: `coverage:`
+
+This pack states when a human is **on duty** for the community: `Asia/Jakarta`, Monday to Friday, 09:00–18:00.
+Semantics: spec **§2.13**; requirement: PRD **FR-5.12**; decision: `DECISIONS.md` **D54**.
+
+It is not the member's quiet hours. Quiet hours live in the **member's** zone and answer *"may I contact this
+person?"* — a member protection. The coverage window lives in the **community's** zone and answers *"was anyone
+watching when this community was left waiting?"* — a staffing fact. Different questions, different owners, so
+they are not allowed to share a field.
+
+What the runtime does with it: the health read (`Fleet.health()`) reports the window, whether a human was on duty
+at the moment of the read, and how many obligations outlived a staffed shift. Three rules make it a record rather
+than a score:
+
+- **It is a local wall clock, never a stored UTC offset.** 09:00 stays 09:00 on both sides of a daylight-saving
+  change.
+- **Only a shift whose end has passed counts as missed.** An obligation raised at 10:00 and still open at 12:00
+  is *inside* the shift ending at 18:00 — the clock pauses outside coverage. A question raised Friday evening and
+  still open Monday morning is **not** a miss.
+- **Deleting the whole key is legal** (D54), and the read then reports `null` for the window, the duty state and
+  the missed count — **never `0`**. An unstated staffing promise is an *unknown* duty state, and zero would claim
+  the community was never on duty, which is a different and false claim.
+
+`PKG-65` refuses a window the runtime cannot read: no `timezone` (business hours without a zone is not a
+commitment), an unknown weekday, hours that are not `HH:MM`, a shift that closes before it opens, a mode that is
+neither `always` nor `staffed`, a `mode: always` block that also writes a shift, or a second `coverage:` block in the
+same file. The pack parser refuses the same shapes on its own — and because `loadPack` runs the validator first,
+the parser's refusals are proved by calling it **directly** in the runtime tests, not through a boot.
+
+**What it does not do yet.** It does not *stop* the standing-engagement lane from answering outside those hours:
+that refusal needs a transport to refuse against, and phase 1 sends nothing (**D21**). Today the window is a
+record and a measurement, and the lane honours it in its own instructions.
 
 ## What this pack does *not* prove
 

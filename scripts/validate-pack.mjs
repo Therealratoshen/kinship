@@ -278,7 +278,91 @@ export function validatePack(dir, opts = {}) {
       add('PKG-48', `\`${k}\` is \`${stripComment(m[1]).trim()}\`, outside the useful range ${bound.min}–${bound.max} — an unbounded protection is not a protection`);
   }
 
-  // --- 5. declared toolsets: absent, not denied -----------------------------------------
+  // --- 5. the community's coverage window (its staffed hours) ------------------------------
+  // A shape gate, not a judgement: a community may staff any hours it likes. What is refused is a
+  // window the runtime cannot evaluate, because a window that silently reads as "never on duty"
+  // would turn every later number into a quiet lie. The parser refuses the same shapes at boot
+  // (`runtime/src/pack.ts`); this gate is what a fork's CI catches before anyone runs it.
+  //
+  // The same trap the sanction ladder guards against (PKG-62) applies here: a file may not write
+  // the block twice, because a reader takes the first and ignores the rest.
+  //
+  // The key pattern matches the PARSER's, comment and all — `coverage:` followed by a comment is
+  // the same block, and a gate that only found the bare spelling would skip a window the runtime
+  // does read. Two readers with different ideas of "what a key looks like" is how a gate ends up
+  // checking a file the runtime never sees.
+  const COVERAGE_KEY = /^coverage:\s*(#.*|)$/;
+  const coverageIdxs = ml.reduce((acc, l, i) => (COVERAGE_KEY.test(l) ? [...acc, i] : acc), []);
+  if (coverageIdxs.length > 1) {
+    add('PKG-65', `\`coverage:\` is written ${coverageIdxs.length} times (lines ${coverageIdxs.map((i) => i + 1).join(', ')}) — a second block is read by no one: a reader takes the first and ignores the rest, so a fork could ship a window no check ever saw. One file may not disagree with itself`);
+  }
+  const coverageIdx = coverageIdxs[0];
+  if (coverageIdx !== undefined) {
+    // The block's base indent is the indent of its FIRST key, and every key is read at that indent.
+    // A hard-coded 2 would make this reader and the parser disagree on a pack that indents its
+    // coverage keys by four spaces — valid YAML — and the gate would report "mode: (absent)" for a
+    // window the runtime reads perfectly well. Two readers must agree on the SHAPE of what they read,
+    // not only on the key that introduces it.
+    const covBlock = block(ml, coverageIdx, 0);
+    const baseIndent = covBlock.length > 0 ? covBlock[0].indent : 2;
+    const covLines = covBlock.filter((l) => l.indent === baseIndent).map((l) => l.text.trim());
+    const cov = new Map();
+    for (const l of covLines) {
+      const kv = /^([A-Za-z_][\w-]*):\s*(.*)$/.exec(l);
+      // A line this gate cannot read is NOT this gate's judgement to make, and it is not quietly
+      // dropped either: `runtime/src/pack.ts` refuses the boot on it (`coverage parse gate`).
+      // Reading strictness belongs to the single parser, because a second reader with its own idea
+      // of "unreadable" is how one of the two ends up a check that can never fire — and a refusal
+      // here would run FIRST, so the parser's own door would be unreachable (the D24 class).
+      if (kv === null) continue;
+      cov.set(kv[1], stripComment(kv[2]).trim().replace(/^["']|["']$/g, ''));
+    }
+    const mode = cov.get('mode');
+    if (mode !== 'always' && mode !== 'staffed') {
+      add('PKG-65', `\`coverage.mode: ${mode ?? '(absent)'}\` — expected \`always\` (a 24/7 community) or \`staffed\` (a window of hours)`);
+    } else if (mode === 'always') {
+      // A community staffed around the clock has no shift to open or close, so a file that writes
+      // those keys is disagreeing with itself — the same fault the duplicate-block rule refuses.
+      for (const key of ['days', 'opens', 'closes']) {
+        if (cov.has(key)) {
+          add('PKG-65', `\`coverage.mode: always\` and also \`coverage.${key}\` — a community staffed around the clock has no shift to open or close. Drop the \`${key}\` line or declare \`mode: staffed\``);
+        }
+      }
+    } else if (mode === 'staffed') {
+      const tz = cov.get('timezone');
+      if (tz === undefined || tz === '') {
+        add('PKG-65', 'a staffed window with no `timezone:` — "business hours" without a zone is not a commitment');
+      } else {
+        try { new Intl.DateTimeFormat('en-GB', { timeZone: tz }); }
+        catch { add('PKG-65', `\`coverage.timezone: ${tz}\` is not an IANA zone — the window is a statement about that zone's local calendar`); }
+      }
+      const daysRaw = cov.get('days');
+      if (daysRaw === undefined || daysRaw === '') {
+        add('PKG-65', 'a staffed window with no `days:` — a shift needs the weekdays it covers');
+      } else {
+        for (const d of daysRaw.split(',').map((x) => x.trim().toLowerCase())) {
+          if (!['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].includes(d)) {
+            add('PKG-65', `\`coverage.days:\` names \`${d}\` — expected local weekday names (sun..sat)`);
+          }
+        }
+      }
+      const mins = (raw) => {
+        const m = /^(\d{1,2}):(\d{2})$/.exec(raw ?? '');
+        if (m === null) return null;
+        const h = Number(m[1]), mi = Number(m[2]);
+        return h > 23 || mi > 59 ? null : h * 60 + mi;
+      };
+      const opens = mins(cov.get('opens'));
+      const closes = mins(cov.get('closes'));
+      if (opens === null || closes === null) {
+        add('PKG-65', '`coverage.opens:`/`coverage.closes:` must be `HH:MM` local times — the window is read as a local wall clock');
+      } else if (opens >= closes) {
+        add('PKG-65', '`coverage.opens:` is not before `coverage.closes:` — a shift that closes before it opens is not a shift');
+      }
+    }
+  }
+
+  // --- 6. declared toolsets: absent, not denied -----------------------------------------
   const agentsIdx = ml.findIndex((l) => /^agents:\s*$/.test(l));
   if (agentsIdx === -1) add('PKG-27', '.kinship.yaml declares no `agents:` block');
   const agentBlocks = (() => {
@@ -332,7 +416,7 @@ export function validatePack(dir, opts = {}) {
     }
   }
 
-  // --- 6. budgets: real field, unset value ----------------------------------------------
+  // --- 7. budgets: real field, unset value ----------------------------------------------
   const budgetIdx = ml.findIndex((l) => /^budgets:\s*$/.test(l));
   if (budgetIdx === -1) add('PKG-35', '.kinship.yaml declares no budgets — an unbounded fleet is not a supervised one');
   else {
@@ -352,7 +436,7 @@ export function validatePack(dir, opts = {}) {
     if (!bb.some((t) => /currency_denomination:\s*event_scoped_money/.test(t))) add('PKG-39', 'budget must be denominated in event-scoped money, not tokens (spec §1.6) — a volunteer organiser cannot read "4.2M tokens"');
   }
 
-  // --- 7. the install gate ---------------------------------------------------------------
+  // --- 8. the install gate ---------------------------------------------------------------
   const needsIdx = ml.findIndex((l) => /^needs:\s*$/.test(l));
   const needs = needsIdx === -1 ? [] : block(ml, needsIdx, 0).map((o) => o.text.trim().replace(/^-\s+/, '').replace(/\s*#.*$/, '')).filter(Boolean);
   if (!needs.length) add('PKG-40', 'no `needs:` gate — an installer can boot this pack and invent content, which is the failure mode that makes AI community tools feel like spam');
@@ -377,7 +461,7 @@ export function validatePack(dir, opts = {}) {
     }
   }
 
-  // --- 8. the organisation tier (D35 / PRD FR-1.18) -----------------------------------------
+  // --- 9. the organisation tier (D35 / PRD FR-1.18) ----------------------------------------
   // The pack is one community; `orgs/<key>.yaml` is the operator who runs several of them. Four rules,
   // and the reason each one is here rather than in a review comment:
   //
@@ -469,7 +553,7 @@ export function validatePack(dir, opts = {}) {
     }
   }
 
-  // --- 8b. the sanction ladder (DECISIONS.md D37) ----------------------------------------------------
+  // --- 10. the sanction ladder (DECISIONS.md D37) ---------------------------------------------------
   // A community may write down the rungs a member climbs before they are gone. The block is optional —
   // a community that does not moderate has no rungs to name, and nothing here may hand it a ladder it
   // did not write — and where it exists, two gates hold, opposite in direction, which is why they are
@@ -547,7 +631,7 @@ export function validatePack(dir, opts = {}) {
     });
   }
 
-  // --- 9. structure, not state ------------------------------------------------------------
+  // --- 11. structure, not state -----------------------------------------------------------
   // NOTE: the declared `locale:` is checked by the PARSER, not here — see `runtime/src/pack.ts`.
   // Reading strictness lives in the parser alone (rules/pack-format.mdc): `loadPack` runs this
   // validator first, so a refusal here would make the parser's own door unreachable, and a check

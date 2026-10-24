@@ -37,7 +37,7 @@ test('the shipped pack passes the contract', () => {
   const r = validatePack(PACK);
   assert.equal(r.ok, true, `expected PASS, got:\n  ${r.errors.join('\n  ')}`);
   assert.equal(r.checked.agents, 3, 'three agents: event-ops, engagement, moderator');
-  assert.equal(r.checked.skills, 16, 'sixteen skills — the pack payload');
+  assert.equal(r.checked.skills, 19, 'nineteen skills — the pack payload');
 });
 
 test('every markdown file at the pack root is swept — a second README does not get quieter rules', () => {
@@ -514,4 +514,153 @@ test('two `sanction_ladder:` blocks in one file fail the build — the file may 
     const r = validatePack(dir);
     assert.ok(r.errors.some((e) => e.startsWith('PKG-62') && /twice|second/i.test(e)),
       'a hand-rolled parser reads the first block and ignores the second, so a fork could ship a ladder no check ever saw');
+  }));
+
+// --- the community's coverage window (its staffed hours) -----------------------------------------
+// A shape gate, not a judgement: a community may staff any hours it likes. What is refused is a
+// window the runtime cannot evaluate — because a window that silently reads as "never on duty"
+// turns every later number into a quiet lie.
+//
+// Each case REPLACES the shipped block rather than appending a second one. A second block is
+// itself a defect (the PKG-62 trap: a reader takes the first and ignores the rest), and a test
+// that appended one would be asserting the duplicate rule while believing it tested the shape.
+
+/**
+ * Replace the shipped pack's `coverage:` block with `body`, in a temp copy.
+ *
+ * The block is REPLACED, never appended: a second `coverage:` block is itself a defect (the PKG-62
+ * trap — a reader takes the first and ignores the rest), and a test that appended one would be
+ * asserting the duplicate rule while believing it tested the shape.
+ */
+const withCoverage = (dir, body) => {
+  const f = machine(dir);
+  const text = readFileSync(f, 'utf8');
+  assert.match(text, /^coverage:\s*$/m, 'the shipped pack must carry a coverage block for this test to replace it');
+  writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, `coverage:\n${body.join('\n')}\n\n`));
+};
+
+/**
+ * One test per case, written out rather than generated in a loop.
+ *
+ * The loop was the obvious way to write these, and it was wrong: `scripts/gates.test.mjs` recomputes
+ * the contract-test count with `/^test\(/gm` — a regex that sees one `test(` line and misses the
+ * cases a loop generates. The count in `README.md` would then have been 58 while 67 cases actually
+ * ran, which is exactly the "a count nobody can reproduce is not a claim" defect this repo records
+ * as D37b. A count in prose has to be the number of cases that run, so the cases are written out.
+ */
+test('a staffed coverage window with a zone, days and hours passes', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon,tue,wed,thu,fri', '  opens: "09:00"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `a well-formed window must pass: ${r.errors.join('\n  ')}`);
+  }));
+
+test('a coverage window with no timezone fails — business hours without a zone is not a commitment (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  days: mon,tue', '  opens: "09:00"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'an unzoned window must be refused');
+  }));
+
+test('a coverage window with no days fails (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  opens: "09:00"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'a shift needs the weekdays it covers');
+  }));
+
+test('a coverage window that closes before it opens fails (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon', '  opens: "18:00"', '  closes: "09:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'a shift that closes before it opens is not a shift');
+  }));
+
+test('a coverage window with an unknown weekday fails (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon,funday', '  opens: "09:00"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'a weekday the runtime cannot read is a day nobody is on duty for');
+  }));
+
+test('a coverage window with an unrecognised mode fails (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: whenever', '  timezone: Asia/Jakarta']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'mode is `always` or `staffed` — nothing else is a window');
+  }));
+
+test('a coverage window with an unknown timezone fails — an unreadable zone is an unreadable window (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Middle/Earth', '  days: mon', '  opens: "09:00"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'the window is a statement about that zone\'s local calendar');
+  }));
+
+test('a coverage window with hours that are not HH:MM fails (PKG-65)', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: staffed', '  timezone: Asia/Jakarta', '  days: mon', '  opens: "9 in the morning"', '  closes: "18:00"']);
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'the window is read as a local wall clock');
+  }));
+
+test('a 24/7 community passes with no zone, days or hours — a window that is always open is not a window', () =>
+  inCopy((dir) => {
+    withCoverage(dir, ['  mode: always']);
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `a 24/7 community must pass: ${r.errors.join('\n  ')}`);
+  }));
+
+test('a coverage block with an unknown key is NOT this gate\'s judgement — the parser owns reading strictness', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, 'coverage:\n  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon\n\n'));
+    const r = validatePack(dir);
+    // `rules/pack-format.mdc` rule 8: an unknown key is READING strictness, and reading strictness
+    // lives in `runtime/src/pack.ts` alone. A refusal here would run FIRST and make the parser's own
+    // door unreachable — a check that can never fire (the D24 class). So the gate must stay silent,
+    // and the boot must still refuse (asserted in `runtime/test/pack.test.ts`).
+    assert.ok(!codes(r).includes('PKG-65'), 'the validator must not shadow the parser\'s own refusal');
+  }));
+
+test('`mode: always` alongside a shift fails — the file may not disagree with itself (PKG-65)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, 'coverage:\n  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n\n'));
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'a community staffed around the clock has no shift to open or close');
+  }));
+
+test('a `coverage:` key followed by a comment is still the block — the gate sees what the parser reads (PKG-65)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    // The parser matches `coverage:` with or without a trailing comment. A gate that only found the
+    // bare spelling would skip a window the runtime DOES read — two readers with different ideas of
+    // "what a key looks like" is how a gate ends up checking a file the runtime never sees.
+    // The body is malformed on purpose, so the refusal proves the block was FOUND rather than skipped.
+    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, 'coverage:  # the hours a human is on duty\n  mode: staffed\n  timezone: Asia/Jakarta\n  opens: "09:00"\n  closes: "18:00"\n\n'));
+    const r = validatePack(dir);
+    assert.ok(codes(r).includes('PKG-65'), 'the block is found with its comment, and its missing days are still refused');
+  }));
+
+test('two `coverage:` blocks in one file fail the build — the file may not disagree with itself (PKG-65)', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, `${text}\ncoverage:\n  mode: always\n`);
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-65') && /twice|second|times/i.test(e)),
+      'a hand-rolled parser reads the first block and ignores the second, so a fork could ship a window no check ever saw');
+  }));
+
+test('POSITIVE CONTROL: a pack with no coverage block at all passes — an unstated staffing promise is not a promise', () =>
+  inCopy((dir) => {
+    const f = machine(dir);
+    const text = readFileSync(f, 'utf8');
+    writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, ''));
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `absence is legal: ${r.errors.join('\n  ')}`);
   }));

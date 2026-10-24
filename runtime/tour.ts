@@ -205,6 +205,11 @@ function runStory() {
   healthFleet.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-12' });
   healthFleet.advance(3_600_000); // an hour later: a frozen lane, a card nobody has decided, a wake past due
   const health = healthFleet.health();
+  // The same read over a pack that declares NO coverage window — the honest null case. An unstated
+  // staffing promise is an unknown duty state, and the read must say so rather than counting zero
+  // (which would claim the community was never on duty — a different, and false, statement).
+  const noCoverageFleet = Fleet.boot({ ...pack, coverage: undefined }, ANSWERS, DAY);
+  const noCoverageHealth = noCoverageFleet.health();
   // 9) The organiser's inbox over the same log: not counts, the list — and the fifth thing a count
   //    cannot show is the approved card whose send is still sitting with a human (D21).
   const inbox = healthFleet.inbox();
@@ -229,6 +234,7 @@ function runStory() {
 
   return {
     pack, bootGate, draft, commit, cross, tamper, orgFloor, seatFork, runner, sharedRun, leak, health, inbox,
+    noCoverageHealth,
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     soundLog, tamperedLog,
@@ -321,6 +327,20 @@ function guarantees(s: ReturnType<typeof runStory>) {
       && !JSON.stringify(s.health).includes('wa:62811')
       && JSON.stringify(s.health).includes(HEALTH_WITHHELD_MEMBER_REF),
     health_counts_the_sends_a_human_did: (s.mainFleetHealth.refusals.find((r) => r.code === 'no_transport')?.count ?? 0) === 1,
+    // The community's own staffing promise, read back: the window the pack declared, whether a human
+    // was on duty at the moment of the read, and how many obligations outlived a staffed shift.
+    // The fleet here sits at 14:00 on a weekday in the pack's own zone, so the answer is "yes" —
+    // and the missed-shift count is zero because nothing waited past the end of a shift.
+    health_reports_the_communitys_coverage_window: s.health.community.coverage?.mode === 'staffed'
+      && s.health.community.coverage.timezone === 'Asia/Jakarta'
+      && s.health.community.onDutyNow === true
+      && s.health.community.missedShift?.count === 0,
+    // An unknown duty state reads as null, never as zero. A pack that declares no window has not
+    // said the community was never on duty — it has said nothing at all, and the read must not
+    // turn that silence into a number.
+    health_reports_an_unknown_duty_state_as_null: s.noCoverageHealth.community.coverage === null
+      && s.noCoverageHealth.community.onDutyNow === null
+      && s.noCoverageHealth.community.missedShift === null,
     // The inbox is the same log read as a list instead of counts: a card, a frozen lane, and an
     // overdue wake all show, oldest-waiting first, and nothing about a person rides in it.
     inbox_lists_everything_awaiting_a_human: s.inbox.counts.verdict === 1 && s.inbox.counts.release === 1
@@ -374,6 +394,12 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  rungs carried by a tool some agent declares: ${s.ladderReach.length === 0 ? 'none — the ladder is a promise, not a lane (invariant #1)' : `LEAK: ${s.ladderReach.map((r) => r.rung).join(', ')}`}`);
   console.log(`  fork hands the private-word rung to \`moderator\` (an agent) → boot ${s.seatLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.seatLadderObs.message)?.[0] ?? s.seatLadderObs.code}` : 'ACCEPTED (a fleet could sanction!)'}`);
   console.log(`  fork wires the nudge rung to \`telegram | send\` (a declared tool) → boot ${s.toolLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.toolLadderObs.message)?.[0] ?? s.toolLadderObs.code}` : 'ACCEPTED (the ladder became a send lane!)'}`);
+
+  hr('4c. The community\'s coverage window — the hours a human is on duty, and what waited past them');
+  console.log(`  the pack declares: ${s.health.community.coverage?.mode === 'staffed' ? `${s.health.community.coverage.timezone}, ${s.health.community.coverage.days.length} days, opens ${Math.floor(s.health.community.coverage.opens / 60)}:00, closes ${Math.floor(s.health.community.coverage.closes / 60)}:00` : '(no window declared)'}`);
+  console.log(`  on duty at the moment of the read: ${s.health.community.onDutyNow === null ? 'unknown (the pack declares no window — null, not zero)' : s.health.community.onDutyNow ? 'yes' : 'no'}`);
+  console.log(`  obligations that outlived a staffed shift: ${s.health.community.missedShift === null ? 'unknown' : s.health.community.missedShift.count} — ${s.health.community.missedShift?.note ?? 'a pack with no window cannot say'}`);
+  console.log(`  a pack with no window reads: coverage ${s.noCoverageHealth.community.coverage === null ? 'null' : 'set'}, on duty ${s.noCoverageHealth.community.onDutyNow === null ? 'null' : 'set'}, missed ${s.noCoverageHealth.community.missedShift === null ? 'null' : 'set'} — silence is not a number`);
 
   hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);

@@ -140,7 +140,12 @@ test('POSITIVE CONTROLS: each rule fires, so none of them can pass for the wrong
 test('the scanner is looking at the real runtime, not at an empty directory it can bless', () => {
   const names = srcFiles();
   for (const expected of ['engine.ts', 'cards.ts', 'grants.ts', 'health.ts', 'inbox.ts', 'pack.ts', 'store.ts']) {
-    assert.ok(names.includes(expected), `${expected} is missing from runtime/src — the scan passing because the list is empty is not a pass`);
+    // The list itself is in the message: a missing module is a filesystem state, and a reader who
+    // cannot see what WAS there cannot tell a vanished file from a directory read that came back
+    // short. (This assertion failed once, transiently, in 2026-10-22 and did not reproduce in 17
+    // subsequent runs — see `DECISIONS.md` D54. The message is here so that if it happens again,
+    // the next reader has the evidence rather than the symptom.)
+    assert.ok(names.includes(expected), `${expected} is missing from runtime/src — the scan passing because the list is empty is not a pass. The directory held: ${names.sort().join(', ')}`);
   }
   // The extractor proved against real source, not only against fixtures: if this ever reads nothing,
   // every specifier rule above goes quiet. (No hardcoded file count — that is the D24 rot class.)

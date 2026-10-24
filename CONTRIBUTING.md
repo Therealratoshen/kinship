@@ -67,7 +67,7 @@ change that passes the tests and breaks the tour is a change that broke a promis
 
 Three `scripts/` files do the same job one level up — over the repo's claims about itself rather than
 over the runtime's behaviour: `validate-pack.test.mjs` proves the validator can actually reject a
-tampered pack (53 cases, the newest of them the sanction-ladder cases — each with a passing *and* a
+tampered pack (67 cases, the newest of them the sanction-ladder cases — each with a passing *and* a
 failing control), `gates.test.mjs` proves the four
 commands above are the commands CI runs *and* the commands these docs, `README.md`, `AGENTS.md`, and
 the tour's own `--json` map print — and, since the decision log was found rendering as literal text

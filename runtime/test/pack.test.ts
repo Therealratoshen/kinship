@@ -4,7 +4,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:f
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadPack } from '../src/pack.ts';
+import { loadPack, parseCoverage } from '../src/pack.ts';
 import { Fleet } from '../src/engine.ts';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -326,4 +326,251 @@ test('the real pack boots into a Fleet whose settings carry the org tier', () =>
   assert.ok(s.provenance.some((p) => p.source === 'pack'));
   assert.deepEqual(fleet.settings(), fleet.settings(), 'a pure read returns the same artefact twice, and writes nothing between the calls');
   assert.equal(fleet.state.events.length, 0, 'and boot + settings together appended no event');
+});
+
+// --- the community's coverage window, at the boot door --------------------------------------------
+// The CI door is `scripts/validate-pack.mjs` (PKG-65). `loadPack` runs the validator FIRST, so a
+// boot-level test of a malformed window sees **PKG-65's** message — which is why the parser's own
+// refusals are proved by calling `parseCoverage` directly, further down this file. A boot-level test
+// that reads `pack_invalid` and a field name cannot tell the two doors apart, and would pass with the
+// parser's refusals deleted: a check that cannot fail (the D24 class).
+
+/** A copy of the shipped pack with its `coverage:` block replaced by `body`. */
+const withCoverageBlock = (body: string): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-coverage-'));
+  const target = join(dir, 'kopdar-ops');
+  cpSync(PACK_DIR, target, { recursive: true });
+  const f = join(target, '.kinship.yaml');
+  const text = readFileSync(f, 'utf8');
+  assert.match(text, /^coverage:\s*$/m, 'the shipped pack must carry a coverage block for this test to replace it');
+  writeFileSync(f, text.replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, `coverage:\n${body}\n\n`));
+  return target;
+};
+
+test('the shipped pack parses its coverage window into the numbers the file states', () => {
+  const p = loadPack(PACK_DIR);
+  assert.deepEqual(p.coverage, {
+    mode: 'staffed',
+    timezone: 'Asia/Jakarta',
+    days: [1, 2, 3, 4, 5],
+    opens: 9 * 60,
+    closes: 18 * 60,
+  });
+});
+
+test('a coverage window with no timezone refuses to load — business hours without a zone is not a commitment', () => {
+  const target = withCoverageBlock('  mode: staffed\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /timezone/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window that closes before it opens refuses to load', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /opens|closes/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window with an unrecognised mode refuses to load', () => {
+  const target = withCoverageBlock('  mode: whenever\n  timezone: Asia/Jakarta');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /mode/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage window with an unknown weekday refuses to load', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /days|funday/i, 'the refusal names the field that caused it');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a pack with no coverage block loads with no window at all — an unstated staffing promise is not a promise', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-nocov-'));
+  try {
+    const target = join(dir, 'kopdar-ops');
+    cpSync(PACK_DIR, target, { recursive: true });
+    const f = join(target, '.kinship.yaml');
+    writeFileSync(f, readFileSync(f, 'utf8').replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, ''));
+    const p = loadPack(target);
+    assert.equal(p.coverage, undefined, 'no window is read back as no window, not as a default window');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a 24/7 community parses as `always` with no invented window — and no invented zone', () => {
+  const target = withCoverageBlock('  mode: always');
+  try {
+    const p = loadPack(target);
+    assert.deepEqual(p.coverage, { mode: 'always', timezone: null },
+      'a community that names no zone gets `null`, not a fabricated "UTC" — an invented zone is a claim about a community nobody described');
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a 24/7 community that names its zone keeps it', () => {
+  const target = withCoverageBlock('  mode: always\n  timezone: Asia/Jakarta');
+  try {
+    const p = loadPack(target);
+    assert.deepEqual(p.coverage, { mode: 'always', timezone: 'Asia/Jakarta' });
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('a coverage block with an unknown key refuses to load — a key the runtime does not read is a key the community believes it wrote', () => {
+  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /dayz/, 'the refusal names the key it does not have');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+test('`mode: always` alongside a shift the runtime cannot have refuses to load — the file may not disagree with itself', () => {
+  const target = withCoverageBlock('  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"');
+  try {
+    assert.throws(
+      () => loadPack(target),
+      (e: { code?: string; message?: string }) => {
+        assert.equal(e.code, 'pack_invalid');
+        assert.match(String(e.message), /always/, 'the refusal names the contradiction');
+        return true;
+      },
+    );
+  } finally {
+    rmSync(join(target, '..'), { recursive: true, force: true });
+  }
+});
+
+// --- the parser's own door, called directly ---------------------------------------------------------
+// `loadPack` runs the validator FIRST, so a boot-level test of a malformed window sees **PKG-65's**
+// message, not the parser's. A test that reads `pack_invalid` and a field name cannot tell the two
+// apart — and would pass with the parser's refusals deleted, which is the check-that-cannot-fail class
+// this repo records as D24. So the parser is called directly here, the way `org.test.ts` calls
+// `parseOrg`, and each refusal is proved to fire with **this** gate's message.
+
+const parse = (body: string) => parseCoverage(`coverage:\n${body}\n`, 'test/pack');
+
+const parserRefuses = (body: string, message: RegExp): void => {
+  assert.throws(
+    () => parse(body),
+    (e: { code?: string; message?: string }) => {
+      assert.equal(e.code, 'pack_invalid');
+      assert.match(String(e.message), /coverage parse gate/,
+        `the refusal must come from the PARSER's door, not the validator's — this is the door a boot-level test cannot reach`);
+      assert.match(String(e.message), message, 'the refusal names what it refused');
+      return true;
+    },
+  );
+};
+
+test('the parser refuses an unknown mode, on its own door', () =>
+  parserRefuses('  mode: whenever\n  timezone: Asia/Jakarta', /mode/));
+
+test('the parser refuses a staffed window with no zone, on its own door', () =>
+  parserRefuses('  mode: staffed\n  days: mon\n  opens: "09:00"\n  closes: "18:00"', /timezone/));
+
+test('the parser refuses an unknown weekday, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"', /days|funday/));
+
+test('the parser refuses hours that are not HH:MM, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "9 in the morning"\n  closes: "18:00"', /opens|closes/));
+
+test('the parser refuses a shift that closes before it opens, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"', /opens|closes/));
+
+test('the parser refuses a key the window does not have, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon', /dayz/));
+
+test('the parser refuses a line it cannot read, on its own door', () =>
+  parserRefuses('  mode: staffed\n  ??? not a key\n  timezone: Asia/Jakarta', /cannot read/));
+
+test('the parser refuses a block written twice, on its own door', () => {
+  assert.throws(
+    () => parseCoverage('coverage:\n  mode: always\n\ncoverage:\n  mode: always\n', 'test/pack'),
+    (e: { code?: string; message?: string }) => {
+      assert.equal(e.code, 'pack_invalid');
+      assert.match(String(e.message), /coverage parse gate/);
+      assert.match(String(e.message), /2 times|twice/i, 'the refusal says the block was written twice');
+      return true;
+    },
+  );
+});
+
+test('the parser refuses `mode: always` beside a shift, on its own door', () =>
+  parserRefuses('  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"', /always/));
+
+test('the parser refuses a zone that is not an IANA zone, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Middle/Earth\n  days: mon\n  opens: "09:00"\n  closes: "18:00"', /timezone/));
+
+test('the parser refuses a zone it cannot read even in `always` mode — the one string in the section that is neither validated nor swept', () =>
+  parserRefuses('  mode: always\n  timezone: Middle/Earth', /timezone/));
+
+test('the parser refuses a window written in a shape it cannot read, rather than reading it as "no window"', () => {
+  // An inline flow map is valid YAML and is not the pack format's shape. Reading it as "no window at
+  // all" would report an UNKNOWN duty state for a community that did declare one — the same quiet lie
+  // as reading it as "never on duty", wearing a different hat.
+  assert.throws(
+    () => parseCoverage('coverage: {mode: always}\n', 'test/pack'),
+    (e: { code?: string; message?: string }) => {
+      assert.equal(e.code, 'pack_invalid');
+      assert.match(String(e.message), /coverage parse gate/);
+      return true;
+    },
+  );
+});
+
+test('the parser reads a well-formed window, and one with no window at all', () => {
+  assert.deepEqual(
+    parse('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"'),
+    { mode: 'staffed', timezone: 'Asia/Jakarta', days: [1, 2], opens: 540, closes: 1080 },
+  );
+  assert.equal(parseCoverage('locale: [id, en]\n', 'test/pack'), undefined, 'no block means no promise');
 });

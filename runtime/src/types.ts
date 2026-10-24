@@ -234,6 +234,39 @@ export interface PackedGuardrails {
   defaultsDeny: boolean;
 }
 
+/**
+ * The community's coverage window — the hours a human is on duty for it.
+ *
+ * **Not the member's quiet hours.** FR-5.5 puts those in the member's local time (`members.ts`);
+ * this is the community's own staffing promise, and only the community can state it. The two clocks
+ * answer different questions and are deliberately not merged — see `src/community.ts`.
+ *
+ * A discriminated union, because the two modes are not the same shape of claim and pretending they
+ * are would make the read lie. A **staffed** window names a zone, the weekdays it covers, and the
+ * hours it opens and closes — and every one of those is load-bearing. An **always** community has
+ * no window: it is staffed around the clock, so there are no days to name, no hours to open and
+ * close, and no shift that can end. It may still name the zone it lives in, and that zone is
+ * reported as `null` when the pack did not say — an invented "UTC" would be a claim about a
+ * community nobody described.
+ */
+export type CommunityCoverage =
+  | {
+      mode: 'always';
+      /** The community's own zone, or `null` when the pack named none. Never consulted. */
+      timezone: string | null;
+    }
+  | {
+      mode: 'staffed';
+      /** IANA zone. The window is a statement about this zone's local calendar, never a stored offset. */
+      timezone: string;
+      /** Local weekdays the community is staffed, 0 = Sunday. */
+      days: number[];
+      /** Minutes from local midnight when the shift opens. */
+      opens: number;
+      /** Minutes from local midnight when the shift closes. */
+      closes: number;
+    };
+
 export interface Packed {
   schema: string;
   key: string;
@@ -242,6 +275,12 @@ export interface Packed {
   guardrails: PackedGuardrails;
   budgets: PackedBudgets;
   needs: string[];
+  /**
+   * The community's coverage window, when the pack declares one. `undefined` means the pack says
+   * nothing about staffing, and the reads report that as an unknown duty state rather than as
+   * "always on duty" — an absent window is not a promise.
+   */
+  coverage?: CommunityCoverage;
   /** The org tier this pack names, if any. `null` means the pack is its own top tier (§1.7). */
   organisation?: string | null;
   /** The manifest `loadPack` resolved for that key — present only when `organisation` is set. */

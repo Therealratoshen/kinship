@@ -100,6 +100,42 @@ test('POSITIVE CONTROL: the count check fires on a number that is wrong', () => 
   assert.notEqual(got + 1, c.contractCases, 'and one more is not — the comparison can fail');
 });
 
+test('the contract-test count is the number of cases that RUN, not the number of `test(` lines a loop can hide', () => {
+  // The counts in prose are recomputed from the source with `/^test\(/gm`. That regex sees one line
+  // per case ONLY if every case is written as its own top-level `test(` call. A case generated in a
+  // loop is invisible to it, so the document would quote 58 while 67 cases ran — a number nobody can
+  // reproduce, which is the D37b class this file exists to stop.
+  //
+  // So the count is checked against the suite that actually executes, not against the source.
+  // `NODE_TEST_CONTEXT` is set by the runner on every child it spawns, and a child that inherits it
+  // runs in "child" mode — which prints no summary at all, so the count would be unreadable. The env
+  // is copied with that one key removed.
+  //
+  // `--test-reporter=tap` is explicit because the DEFAULT reporter changed under us: Node 22 prints
+  // TAP (`# tests 67`) and Node 23+ prints the spec reporter (`tests 67`), so a regex written
+  // against one version silently finds nothing on the other. CI caught that — the repo's matrix is
+  // 23 and 24 and the local sandbox was on 22. Asking for the reporter by name makes the output
+  // the same on every version, and the regex below accepts both shapes anyway.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const suite = spawnSync('node', ['--test', '--test-reporter=tap', 'scripts/validate-pack.test.mjs'], { cwd: ROOT, encoding: 'utf8', env });
+  assert.equal(suite.status, 0, `the contract suite must pass for its count to mean anything:\n${suite.stderr}`);
+  // The summary line is `# tests N` under TAP and `ℹ tests N` under the spec reporter, so the
+  // pattern accepts a leading non-word symbol. It is belt-and-braces — `--test-reporter=tap` above
+  // already pins the format — and the next assertion proves the pattern really does accept both.
+  const COUNT_LINE = /^[^\w\s]*\s*tests (\d+)/m;
+  assert.ok(COUNT_LINE.test('# tests 67'), 'the counter must read the TAP summary');
+  assert.ok(COUNT_LINE.test('\u2139 tests 67'), 'the counter must read the spec summary too');
+  const ran = COUNT_LINE.exec(suite.stdout)?.[1];
+  assert.ok(ran, `the contract suite must report how many cases it ran:\n${suite.stdout.slice(-500)}`);
+  const c = liveCounts();
+  assert.equal(
+    Number(ran),
+    c.contractCases,
+    `the source counts ${c.contractCases} cases but the suite ran ${ran} — a case written in a loop is invisible to the count, so the number in README.md would be a claim nobody could reproduce`,
+  );
+});
+
 test('no count claim in the live documents is unchecked', () => {
   // A claim the checker does not know about is a claim nobody recomputes — the failure this whole
   // file exists to stop. So every digit-shaped count in a live document must be one of the claims
@@ -121,8 +157,7 @@ test('no count claim in the live documents is unchecked', () => {
     offenders,
     [],
     `these count claims are in a live document but in no checked list:\n  ${offenders.join('\n  ')}`,
-  );
-});
+  );});
 
 test('the gate list is the four the repo claims, in the order CI runs them', () => {
   assert.deepEqual(GATES.map((g) => g.id), ['shape', 'contract', 'semantics', 'tour']);
