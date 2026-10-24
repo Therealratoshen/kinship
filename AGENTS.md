@@ -57,7 +57,11 @@ calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |
 | `SECURITY.md` | How to report a vulnerability. Not a public issue. |
 
-`rules/*.mdc` is a **convention, not an auto-loaded mechanism** — nothing here consumes the extension yet.
+`rules/*.mdc` is a **convention, not an auto-loaded mechanism** — nothing loads the `.mdc` format as a
+format. But the files are **not** decorative: `scripts/gates.test.mjs` reads the rule ids out of both
+of them and fails the build when one names a rule the validator does not enforce, or a rule no test
+exercises (with its own positive control). So the rule *ids* in these files are checked against the
+code; the *prose* around them is not, and a rule written in words only is still a convention.
 
 ## Running what exists
 
