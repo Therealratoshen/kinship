@@ -69,3 +69,139 @@ cd adapters/reference && npm install && npm test
 
 The four gates at the repo root still need no install step: this package is not one of them, and a
 gate list that grows is a doc that drifts (D24).
+
+---
+
+## Run it on your own community
+
+The reference host runs the fleet and writes a file. The gates in the root README print results; this is the part that *acts*.
+
+```bash
+cd adapters/reference && npm install --no-audit --no-fund && cd ../..
+```
+
+That is the only `npm install` a **user** needs (the root README's `scripts/quickstart.mjs` does it for you). The typecheck above installs its compiler with
+`--no-save` so it never enters a manifest, and the MCP adapter's one has a `preinstall` hook that links
+the same local path. The host's own dependency is a path to `runtime/`, so npm creates a symlink and
+downloads nothing. `--offline` works too.
+
+**Two files, both gitignored, because both hold your community's own data.** The first is who you are;
+the second is what you are doing next. You do not have to copy them by hand:
+
+```bash
+node adapters/reference/src/host.ts init --pack packs/kopdar-ops
+```
+
+That creates both from the shipped examples and tells you what to edit next. **It never overwrites a
+file that already exists** — an `init` that clobbers a community's own answers is a data-loss bug
+wearing a helpful hat.
+
+```bash
+$EDITOR packs/kopdar-ops/pack.local.yaml         # eight answers: your name, your channels, your contacts
+$EDITOR packs/kopdar-ops/pack.local.plan.yaml    # your copy, your next event, your members
+```
+
+`pack.local.yaml` is the eight answers the pack needs before it will boot. `pack.local.plan.yaml` is
+your working file: **the copy you wrote** for each lane and phase, **the next event** with the facts
+your copy may use, and **your members** with the timezone that decides their own quiet hours.
+
+**Your copy is your copy.** There is no model in this repository. The runtime writes no member-facing
+text of its own and invents no fact. A `{slot}` with no value refuses the whole template rather than
+leaving a hole in a message, and a copy written for a lane your pack does not declare is refused too.
+
+Now run the fleet. `--now` is the moment the host acts as if it were, which is how you rehearse a
+week's worth of reminders without waiting a week.
+
+`plan` is a read. It writes nothing. It tells you what the fleet would do, and what is broken in your
+copy before the event rather than during it.
+
+```bash
+node adapters/reference/src/host.ts plan --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs
+```
+
+`run` schedules the timers, fires the ones that are due, and drafts the cards. The copy in them is
+yours, with your facts filled in and the disclosure line in the place you put it.
+
+```bash
+node adapters/reference/src/host.ts run --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs --now "2026-11-07T19:00:00+07:00"
+```
+
+**Two more commands you will want.** `tick` fires the wakes that are due right now, without
+re-planning the event; `draft` drafts one card on demand, which is how you draft something the
+schedule did not think of:
+
+```bash
+node adapters/reference/src/host.ts tick --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs
+
+node adapters/reference/src/host.ts draft --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs --class draft.reminder --agent event-ops --text-id "Reminder: Kopdar besok jam 19:00." --text-en "Reminder: Kopdar tomorrow at 19:00."
+```
+
+Now you are the human in the loop, and you can say no:
+
+```bash
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --why "tanggal dan tempat sudah benar"
+
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-1 --verdict reject --why "terlalu awal, kita umumkan besok"
+```
+
+And then you try to publish, and the gate stops you:
+
+```bash
+node adapters/reference/src/host.ts publish --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --recipient wa:62811
+```
+
+```
+refused: no_transport
+  [no_transport] (D21 / D11) phase 1 ships no channel transport — delivery is the organiser's hand;
+  the authorization is left intact and the refusal is logged
+```
+
+**That refusal is the product.** Phase 1 ships no channel transport, so every member-facing commit
+stops at `no_transport` and the log records that it stopped. A member who has said stop is stopped
+earlier still, at `member_suppressed`.
+
+Two files appear under `logs/kinshipai/bundled/event-ops/kopdar/`:
+
+```
+events.jsonl     one row per action, in order — this is exactly what replay reads
+manifest.json    what a reader needs to know before opening the log
+```
+
+Check the log is honest:
+
+```bash
+node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+```
+
+**And if you want the day's summary** — what the fleet did, what a human decided, what was
+refused, and what is still waiting on you — ask for the digest:
+
+```bash
+node adapters/reference/src/host.ts digest --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+```
+
+**And if you want to share the log** — with a maintainer, in an issue, anywhere public — redact it first.
+The log carries member *identifiers*; the redacted copy carries none, and the governance evidence
+(event types, order, refusal codes, reason strings) survives intact, so a reader can still check that
+the rules held. The original is never touched.
+
+> **Read this before you share it.** Redaction removes the **identifiers**, and it deliberately keeps
+> the **copy** — the drafted message is the thing under review, so removing it would leave a log
+> nobody can check. Which means **every message your fleet drafted travels in the redacted copy**:
+> the venue, the phone number, the register link. **If any of those is a secret, the redacted copy is
+> not safe to share** — a private stream link, a passcode, a Telegram invite. Delete the secret from
+> the copy before it goes anywhere. (The manifest says this too, in one field: `draftCopyInFile: true`.)
+> The other limit, unchanged: a redacted log of a three-person community is still a small log, and a
+> reader still learns that three people exist.
+
+```bash
+node adapters/reference/src/host.ts redact --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
+# → logs/events.redacted.jsonl and logs/manifest.redacted.json
+```
+
+**And the honest limit of redaction:** it removes the *identifiers*, not the *shape*. A redacted log
+of a three-person community is still a small log, and a reader still learns that three people exist.
+
+The manifest states the privacy position inside the file: member identifiers are in the log, member
+message text is not, and the draft copy is. It carries a digest of your eight answers rather than
+their values, so the log can travel without carrying a second person's name.

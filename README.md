@@ -46,7 +46,7 @@ pack kinshipai/bundled/event-ops/kopdar · zero dependencies
 | You want to… | Do this |
 |---|---|
 | **see the guarantee** | `node runtime/tour.ts` |
-| **produce something you can inspect** | `node scripts/quickstart.mjs` — a card, a human's decision, a refused publish, a verified log, and a redacted copy you can share |
+| **produce something you can inspect** | `node scripts/quickstart.mjs` — a card, a human's decision, a refused publish, a verified log, and a redacted copy (identifiers out; **the copy stays**, so check it for secrets before you share it) |
 | **put it in an agent you already use** | [`adapters/mcp/README.md`](adapters/mcp/README.md) — the client configuration and a captured exchange |
 | **write code against it** | [`runtime/src/index.ts`](runtime/src/index.ts) is the public surface; [`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts) is a worked example that uses only that surface |
 | **run it on your own community** | [`adapters/reference/README.md`](adapters/reference/README.md) — the reference host, end to end |
