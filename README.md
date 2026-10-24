@@ -6,108 +6,127 @@
 [![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Governance Gates](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml?query=branch%3Amain)
 
-> **The fleet proposes. The organiser approves. Every action is logged and replayable.**
+> **The fleet proposes. The organiser approves. Nothing sends.**
 
-*The mark is two interlocking rings: two parties, and the rule that binds them. The overlap is the
-shared ground — the record both are accountable to, and the place where one of them has to sign.*
+An open-source **supervised AI-agent fleet** for community operations — event lifecycle, reminders,
+RSVP, recaps, moderation — with a governance control plane that decides what an agent is allowed to
+do to a person, and proves it was decided. **No channel transport ships here**: every member-facing
+action stops at `no_transport` until a named human approves it.
 
-Kinship is an open-source **supervised AI-agent fleet** for community operations — event lifecycle, reminders, RSVP, recaps, and moderation — with a governance control plane that enforces what an agent is allowed to do to a person.
+n8n, CrewAI and LangGraph compose *actions*. None of them has an opinion about which action may
+reach a stranger without a human signing for it first.
 
-```
-The fleet cannot send anything until a human approves.
-No channel transport ships in this repo — that is by design.
-```
-
-## What makes this different from a workflow canvas
-
-n8n, CrewAI, LangGraph, and every other AI workflow tool compose *actions*. None of them has an opinion about which action may reach a stranger without a human signing for it first.
-
-Kinship is a **control plane**, not a runtime. It owns:
-
-- **Autonomy ladder** — every action class starts at `draft`, never at `auto`
-- **Grant taxonomy** — `allow_once` / `allow_always` (named scope required) / instant revocation
-- **Revision-bound approvals** — an edited draft invalidates the previous approval
-- **Member protections** — suppression beats any grant, quiet hours are the member's clock, 2/24h cap
-- **Identity disclosure** — bilingual canonical line, mandatory, not a setting
-- **Stranger-input containment** — member text never enters the audit log
-- **Replayable audit trail** — replay reproduces state exactly
-
-These rules are enforced by tested code, not by prose.
-
-## Three ways in
-
-**You need Node 23 or newer. There is nothing to install and nothing to build.**
-
-### A — evaluate: see the guarantee, in one command
+## Get it
 
 ```bash
-git clone https://github.com/Therealratoshen/kinship.git
-cd kinship
-
+git clone https://github.com/Therealratoshen/kinship.git && cd kinship
 node runtime/tour.ts
 ```
 
-**The tour drives the real pack and checks every guarantee the README claims.** This is what it
-prints:
+One command, no install, no dependencies, no API key. It drives the real pack: the fleet drafts, a
+human approves, and the send is refused. It prints four sections; here are the two that matter.
 
 ```
 Kinship tour — the fleet proposes, the organiser approves, nothing sends.
 pack kinshipai/bundled/event-ops/kopdar · zero dependencies
 
-── 1. Boot gate — the pack refuses to invent your community ──
-  booted with one need unanswered → refused: need_unanswered
-  booted with all 8 needs answered → OK
-
 ── 2. Draft-only — an attempt is a card, never a message ─────
   event-ops tried class 'draft.reminder' → disposition: card (card card-1)
   member-facing classes start at draft, not auto — a human must decide
 
-── 3. Approval, then the transport gate (D21) ────────────────
+── 3. Approval, then the transport gate (D21) ───────────────
   organiser approved the card. the fleet then tried to COMMIT to wa:62811 →
   refused: no_transport
-  one-send authorisation left intact for the organiser's own hand: true
-
-── 4. Governance refuses bad lanes and bad forks ─────────────
-  cross-promo without partner_policy → class_unavailable — absent, not denied
-  fork adds 'whatsapp | send' → boot refused by PKG-30
-  fork raises the member cap 2 → 5, above its org's floor of 4 → boot refused by PKG-60: refused, not clamped
-  pack names an agent after the human seat → refused: pack_invalid
 ```
 
-The refusal in section 3 **is the product**: the fleet got permission, and the send still stopped.
+**That refusal is the product.** The fleet got permission, and the send still stopped.
 
-### B — try it: produce something you can inspect
+## Use it
 
-```bash
-node scripts/quickstart.mjs
+| You want to… | Do this |
+|---|---|
+| **see the guarantee** | `node runtime/tour.ts` |
+| **produce something you can inspect** | `node scripts/quickstart.mjs` — a card, a human's decision, a refused publish, a verified log, and a redacted copy you can share |
+| **put it in an agent you already use** | [`adapters/mcp/README.md`](adapters/mcp/README.md) — the client configuration and a captured exchange |
+| **write code against it** | [`runtime/src/index.ts`](runtime/src/index.ts) is the public surface; [`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts) is a worked example that uses only that surface |
+| **run it on your own community** | [`adapters/reference/README.md`](adapters/reference/README.md) — the reference host, end to end |
+| **check it** | `node scripts/gates.mjs` — the four gates CI runs |
+
+## What it enforces
+
+- **Autonomy ladder** — every action class starts at `draft`, never at `auto`
+- **Grant taxonomy** — `allow_once` / `allow_always` (named scope required) / instant revocation
+- **Revision-bound approvals** — an edited draft invalidates the previous approval
+- **Member protections** — suppression beats any grant, quiet hours are the member's clock, 2/24h cap
+- **Identity disclosure** — a bilingual canonical line, mandatory, not a setting
+- **Stranger-input containment** — member text never enters the audit log
+- **Replayable audit trail** — replay reproduces the state exactly
+
+Enforced by tested code, not by prose.
+[The spec](spec/GOVERNANCE-SPEC-OUTLINE.md) is the authority, and Part 6 of it maps every rule to
+the file and the test that holds it.
+
+## What it does not do
+
+- **No transport.** Nothing reaches a member; delivery is the organiser's hand (D21).
+- **No model.** The runtime writes no member-facing text of its own and invents no fact.
+- **No funnel.** The hosted surface is a separate product; this repository is its control plane, not
+  its advertisement. See **Product surface** below.
+
+## Adopt it
+
+**Vendoring by copy is the intended path.** Copy `runtime/` **and** `scripts/` together — the loader
+reads a pack's shape through the same validator the gates use, so the two travel as one folder —
+and import the `.ts` files directly. No build step, no dependencies.
+
+**The public surface is one file:**
+
+```ts
+import { Fleet, loadPack, runActions, createRun, KinshipError } from './kinship/runtime/src/index.ts';
 ```
 
-**One command, and it ends in artefacts you can open**: a card waiting on a human, the human's
-decision, a publish attempt that is **refused** because phase 1 ships no transport, a log that
-verifies, and a **redacted copy** of that log you can hand to a maintainer without naming anybody.
-It works in a scratch workspace under `logs/`, so it never touches your own community's files.
+Everything not re-exported there is an implementation detail.
 
-### C — integrate: use it in an agent you already use
+**And the copy path is proved, not asserted:** `scripts/vendoring.test.mjs` copies those two folders
+out of this repository — and out of the newest **release tag** — and runs the tour and the worked
+example on the copy, with nothing else present. A promise that only holds in the place the promise
+was written is not a promise.
 
-An assistant in Grok, Claude Desktop, Cursor, OpenClaw or Hermes can ask Kinship for permission, and
-**the runtime decides** — a card for a human, or a refusal naming the rule that fired. The client
-configuration and **a real captured exchange** are in
-[`adapters/mcp/README.md`](adapters/mcp/README.md).
+## Product surface
 
-If you are writing code rather than pointing an assistant at it, the **public API** is
-[`runtime/src/index.ts`](runtime/src/index.ts) — one file, a small list of things you may depend on —
-and a **complete worked example** is
-[`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts): boot a pack,
-attempt an action, handle the card or the refusal, record a human decision, replay and verify. It
-imports **only** the public surface, and the vendoring check runs it from outside this repository.
+**As of 2026-10-24 there IS a hosted surface.** ShortcutSistem — Kinship's parent product — runs
+**Kinship Host** at `shortcutsistem.com`: the same control plane, with a hosted human seat,
+persistence and a channel connection around it, in a **separate repository and a separate product**.
+It adds the host's half of the four seams and nothing to the control plane.
 
-### The four gates — for contributors
+**This repository is not a service and not an advertisement for one.** No sign-up path, no pricing,
+no call to action. **Self-hosted parity** — nothing here is held back; **no silent flip** — a change
+to the licence or the boundary goes through a dated `DECISIONS.md` row *before* this repository
+changes; **no funnel** — the hosted surface links here, and this repository does not link there.
 
-```bash
-node scripts/gates.mjs
-```
+## What ships
 
-That runs the four checks CI runs, in the order CI runs them:
+- **The governance spec** — [`spec/GOVERNANCE-SPEC-OUTLINE.md`](spec/GOVERNANCE-SPEC-OUTLINE.md)
+- **The seed pack** — [`packs/kopdar-ops/`](packs/kopdar-ops/README.md), forkable, with an
+  Indonesian on-ramp
+- **The runtime** — [`runtime/`](runtime/src/index.ts): refusing, logging, replaying, metering a run,
+  sending nothing
+- **A reference host** — [`adapters/reference/`](adapters/reference/README.md): owns the clock, the
+  store and the printing
+- **An MCP adapter** — [`adapters/mcp/`](adapters/mcp/README.md): any assistant can *ask* Kinship for
+  permission, and the runtime decides
+- **The shape gate** — [`scripts/validate-pack.mjs`](scripts/validate-pack.mjs) and
+  [`scripts/gates.mjs`](scripts/gates.mjs), with its 67-case tamper-resistant contract test
+  (62 distinct `PKG-*` rules; recount:
+  `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`)
+- **A persisted log that verifies** — the rows must be dense in `seq`, they must fold, and the state
+  they fold to must be the state the fleet holds
+
+**Gated behind measurement:** any channel transport, and any claim that the fleet "reduces organiser
+load". Every member-facing commit refuses with `no_transport` and leaves its one-send authorisation
+intact for manual hand-off.
+
+## The gates
 
 ```bash
 node scripts/validate-pack.mjs packs/kopdar-ops   # does the pack obey the invariants?
@@ -116,329 +135,26 @@ node --test runtime/test/*.test.ts                # do the rules actually hold?
 node runtime/tour.ts                              # drive the pack live: it drafts, a human approves, it refuses to send
 ```
 
-The list lives in `scripts/gates.mjs`. A test in `scripts/gates.test.mjs` fails the build if this
+`node scripts/gates.mjs` runs all four, in the order CI runs them. A test fails the build if this
 README stops printing the same four commands, so the copy here cannot go stale.
 
-`node runtime/tour.ts --json` prints the same tour plus a machine-readable map of which test file
-covers which source file.
-
-There is one more check CI runs, and it is the only one that needs an install. The runtime is written
-in TypeScript, and node runs the `.ts` files directly by stripping the types, which means the types are
-never checked unless something checks them:
-
-```bash
-npm install --no-save typescript@5 @types/node@22
-npx tsc -p runtime/tsconfig.json --noEmit
-```
-
-CI runs that in a job of its own, so the runtime still installs nothing for whoever forks it.
-
-### Run it on your own community
-
-The checks above print results. The reference host runs the fleet and writes a file.
-
-```bash
-cd adapters/reference && npm install --no-audit --no-fund && cd ../..
-```
-
-That is the only `npm install` a **user** needs. The typecheck above installs its compiler with
-`--no-save` so it never enters a manifest, and the MCP adapter's one has a `preinstall` hook that links
-the same local path. The host's own dependency is a path to `runtime/`, so npm creates a symlink and
-downloads nothing. `--offline` works too.
-
-**Two files, both gitignored, because both hold your community's own data.** The first is who you are;
-the second is what you are doing next. You do not have to copy them by hand:
-
-```bash
-node adapters/reference/src/host.ts init --pack packs/kopdar-ops
-```
-
-That creates both from the shipped examples and tells you what to edit next. **It never overwrites a
-file that already exists** — an `init` that clobbers a community's own answers is a data-loss bug
-wearing a helpful hat.
-
-```bash
-$EDITOR packs/kopdar-ops/pack.local.yaml         # eight answers: your name, your channels, your contacts
-$EDITOR packs/kopdar-ops/pack.local.plan.yaml    # your copy, your next event, your members
-```
-
-`pack.local.yaml` is the eight answers the pack needs before it will boot. `pack.local.plan.yaml` is
-your working file: **the copy you wrote** for each lane and phase, **the next event** with the facts
-your copy may use, and **your members** with the timezone that decides their own quiet hours.
-
-**Your copy is your copy.** There is no model in this repository. The runtime writes no member-facing
-text of its own and invents no fact. A `{slot}` with no value refuses the whole template rather than
-leaving a hole in a message, and a copy written for a lane your pack does not declare is refused too.
-
-Now run the fleet. `--now` is the moment the host acts as if it were, which is how you rehearse a
-week's worth of reminders without waiting a week.
-
-`plan` is a read. It writes nothing. It tells you what the fleet would do, and what is broken in your
-copy before the event rather than during it.
-
-```bash
-node adapters/reference/src/host.ts plan --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs
-```
-
-`run` schedules the timers, fires the ones that are due, and drafts the cards. The copy in them is
-yours, with your facts filled in and the disclosure line in the place you put it.
-
-```bash
-node adapters/reference/src/host.ts run --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs --now "2026-11-07T19:00:00+07:00"
-```
-
-Now you are the human in the loop, and you can say no:
-
-```bash
-node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --why "tanggal dan tempat sudah benar"
-
-node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-1 --verdict reject --why "terlalu awal, kita umumkan besok"
-```
-
-And then you try to publish, and the gate stops you:
-
-```bash
-node adapters/reference/src/host.ts publish --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --recipient wa:62811
-```
-
-```
-refused: no_transport
-  [no_transport] (D21 / D11) phase 1 ships no channel transport — delivery is the organiser's hand;
-  the authorization is left intact and the refusal is logged
-```
-
-**That refusal is the product.** Phase 1 ships no channel transport, so every member-facing commit
-stops at `no_transport` and the log records that it stopped. A member who has said stop is stopped
-earlier still, at `member_suppressed`.
-
-Two files appear under `logs/kinshipai/bundled/event-ops/kopdar/`:
-
-```
-events.jsonl     one row per action, in order — this is exactly what replay reads
-manifest.json    what a reader needs to know before opening the log
-```
-
-Check the log is honest:
-
-```bash
-node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
-```
-
-**And if you want to share it** — with a maintainer, in an issue, anywhere public — redact it first.
-The log carries member *identifiers*; the redacted copy carries none, and the governance evidence
-(event types, order, refusal codes, reason strings) survives intact, so a reader can still check that
-the rules held. The original is never touched.
-
-```bash
-node adapters/reference/src/host.ts redact --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
-# → logs/events.redacted.jsonl and logs/manifest.redacted.json
-```
-
-**And the honest limit of redaction:** it removes the *identifiers*, not the *shape*. A redacted log
-of a three-person community is still a small log, and a reader still learns that three people exist.
-
-The manifest states the privacy position inside the file: member identifiers are in the log, member
-message text is not, and the draft copy is. It carries a digest of your eight answers rather than
-their values, so the log can travel without carrying a second person's name.
-
-## Adopting it
-
-**Vendoring by copy is the intended path, and nothing is published to a registry.** There is no root
-`package.json` and `runtime/package.json` is `private: true` — so there is no registry package and
-no `npm install` in the library itself. That is a decision, not an omission:
-
-- copy **`runtime/` and `scripts/` together** into your project — the loader reads a pack's shape
-  through the same validator the gates use, so the two travel as one folder;
-- import the `.ts` files directly — node runs them as they are, with no build step and no
-  dependencies. **Import from the public surface**, which is one file:
-  `import { Fleet, loadPack, runActions, createRun, KinshipError } from './kinship/runtime/src/index.ts'`.
-  Everything not re-exported there is an implementation detail, and
-  [`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts) is a
-  complete worked example that uses **only** that surface;
-- copy `adapters/reference/` alongside if you want a host to start from — it is a sibling package,
-  and its one dependency is the runtime beside it.
-
-**And the copy path is proved, not asserted:** `scripts/vendoring.test.mjs` copies `runtime/` and
-`scripts/` out of this repository — and out of the newest **release tag** — and runs the tour and
-the worked example on the copy, with nothing else present. A promise that only holds in the place
-the promise was written is not a promise.
-
-The reference host's `npm install` creates a **local symlink** and fetches nothing (`--offline`
-works). That is the only install step anywhere in this repository, and it belongs to the example,
-not to the library.
-
-## What ships vs what is gated
-
-**Ships now** (tested, in this repo):
-- The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
-- The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 67-case tamper-resistant contract test (62 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
-  command for the four CI gates, and a test that fails if the documented list drifts from what CI runs,
-  or if any markdown table in the repository loses the header that gives its rows meaning
-- The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
-- The sanction ladder (`sanction_ladder:` in a pack, spec section 2.12 / PRD FR-5.11, `DECISIONS.md` D37) — a community
-  may write down the graduated consequences it applies, each rung naming a human seat and what the member is
-  told, and the fleet still cannot carry one out: no `moderation.sanction` class, no tool, and `PKG-63` refuses
-  any rung whose `via:` matches a declared tool. Deleting the key is legal; a default ladder is never supplied
-- The tier above the pack (`orgs/kinshipai.yaml`) — org **floors** and an **autonomy ceiling** resolved org →
-  pack with **refuse, never clamp**: an operator can reject a pack that goes below a floor or fill a blank the
-  pack left, and cannot rewrite a number a community declared (spec section 1.10 / PRD FR-1.18)
-- **A reference host** (`adapters/reference/`) — it owns the clock, the store and the printing, and it **sends
-  nothing**: no transport, so every member-facing commit still refuses `no_transport` (D21). It boots the pack
-  (or continues its own log on restart), writes `events.jsonl` + `manifest.json`, and verifies what it wrote
-- **An Indonesian on-ramp** — `packs/kopdar-ops/README.id.md` is the pack's own onboarding doc in Indonesian,
-  and `packs/kopdar-ops/pack.local.example.yaml` explains the eight answers in Indonesian. The English file
-  stays the source of truth and carries the pointer; a translation is a copy, and a copy needs a pointer and a date
-- **A persisted log that can be verified** — `Fleet.verifyLog` (pure read, in `runtime/`): the rows must be dense
-  in `seq`, they must fold, and the state they fold to must be the state the fleet holds. The file carries a
-  **digest** of the `needs:` answers, never their values — one of them is a named human (spec/HOST-CONTRACT.md
-  seam 3; PRD FR-4.4, `DECISIONS.md` D48)
-- The claim ceiling (PRD section 2.3, FR-4.4) — the banned strings are code (`scripts/claim-scan.mjs`) rather than a
-  comment, the sweep reaches the copy that actually ships (the root `README.md` and a pack's own `README.md`
-  included), and `scripts/claims.test.mjs` fails if a forbidden cell in the PRD is neither enforced nor named as
-  a rule no sweep can enforce
-- **The community's coverage window** (`coverage:` in a pack, spec section 2.13 / PRD FR-5.12, `DECISIONS.md` D54) — a
-  community can write down the hours a human is **on duty** for it, in its own timezone, and the health read reports
-  the window, whether anyone was on duty at the moment of the read, and how many obligations outlived a staffed
-  shift. This is **not** the member's quiet hours: that clock is the member's and answers "may I contact this
-  person", while this one answers "was anyone watching when this community was left waiting". Three rules make it
-  a promise rather than a score — the window is a **local wall clock** (never a stored UTC offset, so 09:00 stays
-  09:00 across a daylight-saving change), **only a shift whose end has passed counts as missed** (the clock pauses
-  outside coverage), and a **pack that declares no window reads `null`, never `0`** (an unstated staffing promise is
-  an unknown duty state; zero would claim the community was never on duty)
-- **A community-lead lane** — three skills on the existing `engagement` agent, not a fourth agent: `standing-engagement`
-  (the community's presence *between* events — read the room before speaking, hold the thread, and never answer
-  outside the staffed window), `community-minutes` (decisions with the people who made them, obligations with owners,
-  quotes with sources), and `community-health` (the health check as a **recommended** metric, because a health number
-  that becomes a target is a number a volunteer community optimises for instead of the community)
-
-**Gated behind shadow-mode measurement:**
-- Any channel transport (WhatsApp, Telegram, email, Discord)
-- Any claim that the fleet "reduces organiser load"
-
-The gating mechanism is real: every member-facing commit refuses with `no_transport` and leaves its one-send authorization intact for manual hand-off.
-
-## The governance spec
-
-`spec/GOVERNANCE-SPEC-OUTLINE.md` is the publishable artifact. It covers the autonomy ladder, grant taxonomy, audit replay, event-lifecycle state machine, member protections, disclosure, stranger-input containment, shatter-guard, cross-community promotion, settings resolution across the org/pack tiers, the human seat set, and the community's coverage window. Part 6 maps every spec rule to its runtime file and test.
-
-## For community operators
-
-The [PRD](docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md) and [execution plan](PLAN.md) cover the full product case. The [design-thinking folder](docs/design-thinking/) documents the research that produced the spec. The [CONTRIBUTING.md](CONTRIBUTING.md) explains the append-only decision rule and how to contribute.
-
-Read **[ROADMAP.md](ROADMAP.md) before opening a feature PR**: it lists what is *not* complete, and for each
-gap says whether a contributor can close it or it is an owner decision. Contributor behaviour is governed by
-[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) (Contributor Covenant 3.0, adopted 2026-10-19); its reporting channel
-is the private security-advisory form, because this repo has one maintainer and no other private path yet —
-that limitation is written into the file rather than papered over.
-
-**An index for a tool rather than a reader** — [`llms.txt`](llms.txt) points at the documents worth reading,
-with one line each, for an assistant that reads the repository instead of a person who skims it.
-
-## Product surface
-
-This repository is the control plane: an open-source, self-hostable layer under Apache-2.0. **No capability
-of it is held back** — the governance layer, the runtime, the pack, the spec and the tests are all here, and
-the hosted surface that runs them runs **a vendored copy of this control plane**: `runtime/` and `scripts/`,
-as they are here. **That copy path is proved, not promised** — `scripts/vendoring.test.mjs` copies those two
-folders out of this repository, with nothing else, and the tour still passes on the copy. *(This sentence
-used to say "byte for byte" and call the vendoring check a CI gate. There was no vendoring check, and
-nothing in this repository can read the hosted repository's copy — so the phrase is gone, and
-`DECISIONS.md` D92 says why.)*
-
-**As of 2026-10-24 there IS a hosted surface**, and this section used to be wrong about it. **ShortcutSistem**
-at [shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product, now hosts **Kinship Host**:
-the same control plane, with a hosted human seat, persistence and a channel connection around it, running a
-pilot with a small number of organisers. It is a **separate repository** and a **separate product**, and it
-adds nothing to this repo and takes nothing from it. The honest short version: **this repo is not a service,
-and it is not an advertisement for one.** There is no sign-up path here, no pricing, and no funnel — and
-there is no paid tier and no published price on the other side either, because none has been measured.
-
-Three commitments make the OSS/hosted boundary survivable (`DECISIONS.md` **D19**, written before the
-product existed because that is the only cheap time to make them):
-
-1. **Self-hosted parity** — nothing in this repo may become a crippled demo of the hosted product. The
-   governance layer stays here, in full, because it is the product.
-2. **No silent flip** — any change to the license or the OSS/hosted boundary goes through a dated
-   `DECISIONS.md` row *before* this repository changes. If you ever see a boundary move without one, that
-   is the repo breaking its own rule, and it is a bug worth reporting.
-   **This rule was broken once, by omission, and repaired after the fact in
-   [`DECISIONS.md` D81](DECISIONS.md):** the hosted surface went live on 2026-10-21 and this section kept
-   saying nothing was hosted. D81 is the disclosure the rule asked for, written late rather than not at all.
-3. **No funnel** — this repo is the product's control plane, not its advertisement. It will not be
-   restructured to push readers toward a hosted sign-up.
-
-The reason those three are here rather than in a footnote: the failure mode is documented, not
-speculated. HashiCorp→OpenTofu and Redis→Valkey are the license flip and its fork; MinIO's 2025
-community-edition UI removal drew the reply *"It's not a feature issue, it's a trust one."* A governance
-pitch that rests on honesty is the one asset a silent flip destroys in a single news cycle
-(`research/OSS-AUTONOMY-FAILURES-2026-10-17.md` patterns 5–7).
-
-## Talk to it from the assistant you already use
-
-A community manager has a personal assistant in the platform they already use — Grok, Claude
-Desktop, Cursor, OpenClaw, Hermes. It can write a message, plan a reminder, draft a reply.
-**The question is what happens when it wants to do something member-facing.**
-
-The answer cannot be "it decided": an assistant has no authority, and no memory that survives an
-audit. So the assistant **asks**. It proposes an action, and **the runtime decides** whether that
-action becomes a card for a human to approve, or is refused with the rule that fired.
-
-> **The assistant is the hand. Kinship is the judgement. The human is the signature.**
-
-```bash
-cd adapters/mcp && npm install --no-audit --no-fund
-node src/server.ts --pack ../../packs/kopdar-ops \
-  --config ../../packs/kopdar-ops/pack.local.yaml \
-  --plan ../../packs/kopdar-ops/pack.local.plan.yaml \
-  --log logs
-```
-
-That speaks **MCP `2025-06-18`** over stdio. Point your assistant's MCP client at it, and it can ask
-Kinship six things: what the fleet would do · what happened yesterday · what is waiting on you ·
-**whether an action may go out** · the organiser's verdict · the fleet's condition.
-[`adapters/mcp/README.md`](adapters/mcp/README.md) has the tool surface, and
-[`adapters/mcp/kinship-persona.md`](adapters/mcp/kinship-persona.md) is a persona you can paste into
-Grok's Custom Agents, `CLAUDE.md`, or a Cursor rule.
-
-**There is no tool there that delivers anything to a member.** Phase 1 ships no transport (D21), so a
-member-facing send ends at a refusal whoever calls it — and the refusal is in the log. A server that
-let the assistant skip the judgement step would not be a governance layer; it would be a stranger with
-your community's address book.
-
-## What this is, and what it is not
-
-**Kinship reduces risk. It does not guarantee compliance, safe behaviour, or a good outcome.** It is
-a governance layer with a reference host, not a service, and it ships **no transport** — nothing
-member-facing can send. Where a claim in this README would outrun its evidence, the claim is not
-made: see [the evidence rule](AGENTS.md#the-three-invariants) and the closed set of refusals in
-[the spec](spec/GOVERNANCE-SPEC-OUTLINE.md). What you get is a runtime that **refuses** the things
-it should refuse, and a log you can check afterwards.
-
-## License, marks, and citation
-
-**Apache-2.0** — see [LICENSE](LICENSE) and [NOTICE](NOTICE). PRD section 12-**Q4** is now a
-**ratified decision** (`DECISIONS.md` D72), not a working default.
-
-**Why Apache-2.0 and not MIT.** The difference is one clause, and it is the one this project
-cares about: **an explicit patent grant from every contributor**, plus the patent-termination clause
-that stops a patent claim from being used to shut the project down. A governance core whose whole
-thesis is *who may be reached, and who signs for it* should not ship a licence that leaves a
-contributor's patent outside the bargain. Everything else is the same: no copyleft, no
-source-disclosure, no field-of-use restriction, so a hosted service and a vendored copy are both
-allowed, and **nothing about the open-source/hosted boundary in D19 changes.** The reasoning is in
-[LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md) and the decision in `DECISIONS.md`.
-
-**The name is not covered by the licence, and that is on purpose.** A licence grants rights in the
-*code*; it says nothing about the *name*. So the mark is stated separately, in
-[TRADEMARKS.md](TRADEMARKS.md): **fork this project freely, under your own name** — and do not publish
-something under the Kinship name or the `kinshipai/…` namespace in a way that suggests it is this
-project. A fork that says it is a fork is good for everyone; a fork that pretends to be the project is
-the thing the mark exists to stop.
-
-**Citing it.** [`CITATION.cff`](CITATION.cff) gives GitHub a *Cite this repository* button, and
-[CHANGELOG.md](CHANGELOG.md) is the dated record of what shipped. If you use Kinship in something
-written down, please cite it — it is the difference between a project with a history and a project
-somebody found.
-
-**Reporting a vulnerability** is not a public issue: see [SECURITY.md](SECURITY.md).
+## The rest of it
+
+| | |
+|---|---|
+| [ROADMAP.md](ROADMAP.md) | what is **not** complete, and whether a contributor or the owner owns each gap |
+| [CONTEXT.md](CONTEXT.md) | the vocabulary |
+| [CHANGELOG.md](CHANGELOG.md) | every release |
+| [DECISIONS.md](DECISIONS.md) | the decision log — dated, append-only |
+| [docs/ATTESTATION-MEMO-2026-10-24.md](docs/ATTESTATION-MEMO-2026-10-24.md) | the design for proving a human made a decision |
+| [llms.txt](llms.txt) | an index for a tool rather than a reader |
+| [PLAN.md](PLAN.md) · [the PRD](docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md) | the product case, for community operators |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) · [SECURITY.md](SECURITY.md) | how to contribute, and where to report a problem |
+
+**Before you open a feature PR, read [ROADMAP.md](ROADMAP.md)** — it lists the gaps and says who owns
+each one.
+
+---
+
+Apache-2.0 — [LICENSE](LICENSE) and [NOTICE](NOTICE). The mark is not registered; see
+[TRADEMARKS.md](TRADEMARKS.md).
