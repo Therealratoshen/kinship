@@ -275,7 +275,19 @@ function runStory() {
   });
   const cappedOutcome = cappedFleet.fireWake(cappedSecond.id, cappedRun);
 
-  // 12) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
+  // 12) The daily digest (D65): the read a community manager opens the app with. It is a READ, it
+  //     says its window, and it never names a member.
+  const digestFleet = Fleet.boot(pack, ANSWERS, DAY);
+  const digestCopy = { id: REMINDER_ID, en: REMINDER_EN };
+  const digestCard = digestFleet.attempt({
+    actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-digest' },
+    phase: 't-minus-1', text: digestCopy,
+  });
+  if (digestCard.card) digestFleet.decideCard(digestCard.card.id, { verdict: 'approve', by: 'organiser', why: 'tanggal sudah benar' });
+  digestFleet.openThread({ memberRef: 'wa:62811', pointer: 'msg-42' });
+  const digest = digestFleet.digest(DAY + 3_600_000, 24 * 3_600_000);
+
+  // 13) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
   //     it holds — and the same rows with one deleted, which must NOT verify. The verification is a
   //     pure read in the runtime; the writing is the host's (D41's memo section 3).
   const soundLog = Fleet.verifyLog(fleet.events, ANSWERS, pack, { state: fleet.state });
@@ -287,7 +299,7 @@ function runStory() {
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     soundLog, tamperedLog,
-    planFired, planTwinFired, cappedOutcome,
+    planFired, planTwinFired, cappedOutcome, digest,
     planFleetInbox: planFleet.inbox(),
     planFleetHealth: planFleet.health(),
     mainFleetHealth: fleet.health(),
@@ -332,6 +344,13 @@ function guarantees(s: ReturnType<typeof runStory>) {
     // D60: the fleet runs on the community's own words (spec section 2.18). Four promises, and each
     // is checked as a pair — what happened AND what the log says happened, because a guarantee that
     // only checks the outcome would pass on a fleet that lied.
+    // D65: the daily digest. Checked as a PAIR — what it says AND that it does not name a member,
+    // because a digest travels further than the log it came from.
+    the_digest_says_its_window: s.digest.from === DAY + 3_600_000 - 24 * 3_600_000 && s.digest.to === DAY + 3_600_000,
+    the_digest_counts_the_days_work: s.digest.totals.drafts === 1 && s.digest.totals.approved === 1 && s.digest.totals.openThreads === 1,
+    and_the_digest_names_nobody: !JSON.stringify(s.digest).includes('wa:62811'),
+    and_the_digest_says_what_it_cannot_see: s.digest.notMeasured.some((n) => n.includes('what members said to each other')),
+
     a_scheduled_wake_attempts_its_action: s.planFired.result === 'attempted' && s.planFired.card !== undefined
       && s.planFired.card.actionClass === 'draft.reminder' && s.planFired.card.phase === 't-minus-1',
     the_drafted_card_waits_on_a_human: s.planFleetInbox.counts.verdict === 1,

@@ -36,6 +36,7 @@ import { setBudget, recordSpend, recordRunAction, type RunState } from './budget
 import { answersDigest, deepEqualState, seqProblems, type LogExpectation, type LogVerification } from './log.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
+import { deriveDigest, type DigestReport } from './digest.ts';
 import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
 import type {
   Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeAction, WakeRow,
@@ -578,6 +579,17 @@ export class Fleet {
    * a release, and wakes whose time passed with nothing re-arming them. A pure read like the snapshot:
    * it appends nothing, replays identically, and carries no member identifier (section 2.9).
    */
+  /**
+   * The daily digest — the read a community manager opens the app with.
+   *
+   * A READ, like `health()` and `inbox()`: it appends nothing and the state it reports is the state
+   * the fleet holds. The window is a number the caller passes, so the digest can always say which
+   * window it is about.
+   */
+  digest(now: number, windowMs: number): DigestReport {
+    return deriveDigest({ events: this.events, state: this.st, pack: this.pack, now, windowMs });
+  }
+
   inbox(): InboxReport {
     return deriveInbox(this.st, this.t);
   }

@@ -49,6 +49,17 @@ promise, not a green build.
       without a same-day primary read, or "runs itself")
 - [ ] Any corrected external claim keeps its wrong version visible in a dated row
 
+## Human review
+
+<!-- The AI-assisted disclosure above records what wrote the code. This records who is accountable
+     for it. AI-assisted work is welcome and expected in this repository — `AGENTS.md` is written
+     for it — but the human who merges it owns it. -->
+
+- [ ] A human read this diff and takes responsibility for it
+- [ ] If any part was AI-generated, it was reviewed line by line, not skimmed
+- [ ] Nothing here was copied from a source without recording the source and its licence
+      (`DECISIONS.md` rows, or a dated note in the PR)
+
 ## Remaining risk, stated
 
 <!-- What this PR does not prove. Required even for a docs-only change. -->

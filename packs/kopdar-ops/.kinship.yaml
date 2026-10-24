@@ -208,8 +208,14 @@ sanction_ladder:
     appeal: 'appeal in the group and the flag re-enters the organiser queue, where the human decides it — never the agent that flagged (spec section 2.9.4)'
 
 attribution:
-  author: filbert (@handle)              # immutable in the pack hash
-  powered: auto-counted                  # every real event run increments a public usage trail
+  # Who wrote this pack. Part of the pack hash, so a fork that changes it changes its hash — the
+  # attribution is tamper-evident in the log even though nothing enforces it yet.
+  author: "filbert henrico (@Therealratoshen)"
+  # What this pack is. NOT a usage count: there is no public usage trail, and a pack that claimed
+  # one would be making the kind of claim this repository's own claim ceiling exists to refuse.
+  powered: "kinship, in shadow mode — it drafts, a human decides, and nothing sends (D21)"
+  # The ancestors of this pack, oldest first. Empty for the origin. A fork appends its own key and
+  # names its parent, so a descendant says who it came from.
   fork_chain: []                         # ancestors credited; status payoff, not payout
   provenance:
     donated_shape: paperclipai/paperclip teams-catalog (read at master, 2026-10-17)

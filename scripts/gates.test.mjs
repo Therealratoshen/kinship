@@ -13,7 +13,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { GATES, GATE_DOCS, checkGateDocs, missingGateCommands, staleGateClaims, markdownFiles, orphanedTableRows, overfullTableRows } from './gates.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -171,6 +171,54 @@ test('no count claim in the live documents is unchecked', () => {
     `these count claims are in a live document but in no checked list:\n  ${offenders.join('\n  ')}`,
   );});
 
+test('every command AGENTS.md tells an agent to run actually exists', () => {
+  // Claude's review called this the highest-value thing about the agent file: *stale agent
+  // instructions are worse than none*. An agent that is told to run a command that does not exist
+  // loses time and trust, and a command that moved is a silent lie. So the file's commands are a
+  // CLAIM, and this test checks it.
+  const body = read('AGENTS.md');
+  const commands = [...body.matchAll(/^\s*(node [^\n`]+|npm [^\n`]+|grep [^\n`]+)/gm)].map((m) => m[1].trim());
+  assert.ok(commands.length >= 6, `expected AGENTS.md to list the commands it runs — found ${commands.length}`);
+  const missing = [];
+  for (const cmd of commands) {
+    // The first word is the program; the rest is the path or flag set. A command that reads a file
+    // must name a file that exists; a command that runs a script must name a script that exists.
+    const parts = cmd.split(/\s+/);
+    const fileish = parts.slice(1).find((p) => p.includes('/') && !p.startsWith('-') && !p.startsWith('"'));
+    if (fileish === undefined) continue;
+    const target = fileish.replace(/^["']|["']$/g, '');
+    if (target.includes('*') || target.includes('<') || target.includes('…')) continue;   // a glob or a placeholder
+    if (!existsSync(join(ROOT, target))) missing.push(`${cmd}  →  ${target}`);
+  }
+  assert.deepEqual(missing, [], `AGENTS.md tells an agent to run commands whose files are not there:\n  ${missing.join('\n  ')}`);
+});
+
+test('every relative link in the live documents resolves — the folder structure is a claim too', () => {
+  // A link that points at a file that moved is a broken promise in the one place a reader clicks.
+  // There was no check for this, which is why moving the dated documents needed a hand-written
+  // reference sweep; this test makes the next move mechanical, and a broken link a build failure.
+  const DOCS = [
+    'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'DECISIONS.md', 'PLAN.md', 'ROADMAP.md',
+    'SECURITY.md', 'CODE_OF_CONDUCT.md',
+    'packs/kopdar-ops/README.md', 'packs/kopdar-ops/README.id.md', 'packs/kopdar-ops/PACK.md',
+    'spec/GOVERNANCE-SPEC-OUTLINE.md', 'spec/HOST-CONTRACT.md',
+    'docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md',
+    'docs/LICENSE-MEMO-2026-10-18.md', 'docs/PERSISTED-LOG-MEMO-2026-10-19.md',
+  ];
+  const broken = [];
+  for (const doc of DOCS) {
+    const body = read(doc);
+    for (const m of body.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+      const target = m[1];
+      if (/^(https?:|mailto:|#)/.test(target)) continue;          // not a file link
+      if (target.startsWith('/')) continue;                         // a site-root link, not a repo path
+      const resolved = join(dirname(join(ROOT, doc)), target.split('#')[0]);
+      if (!existsSync(resolved)) broken.push(`${doc} -> ${target}`);
+    }
+  }
+  assert.deepEqual(broken, [], `these links point at files that are not there:\n  ${broken.join('\n  ')}`);
+});
+
 test('the gate list is the four the repo claims, in the order CI runs them', () => {
   assert.deepEqual(GATES.map((g) => g.id), ['shape', 'contract', 'semantics', 'tour']);
 });
@@ -302,7 +350,7 @@ test('the gate docs this checks are the ones contributors actually read', () => 
   for (const rel of GATE_DOCS) assert.ok(existsSync(join(ROOT, rel)), `${rel} is on the list but missing`);
   // History files are deliberately NOT policed: DECISIONS.md and the PRD keep their dated wording,
   // and a correction there is a new dated row. Assert they are absent so nobody "fixes" that.
-  for (const history of ['DECISIONS.md', 'PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md']) {
+  for (const history of ['DECISIONS.md', 'docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md']) {
     assert.ok(!GATE_DOCS.includes(history), `${history} is append-only history — it is not a gate list`);
   }
 });

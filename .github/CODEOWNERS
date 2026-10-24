@@ -1,0 +1,18 @@
+# Who reviews what.
+#
+# The governance core, the shape gate and the spec are the project's meaning, not its plumbing: a
+# change to any of them can change what the fleet is allowed to do, so it needs the maintainer and
+# not only a passing CI run. This file only asks for a review — it does not grant one, and it does
+# not replace the rule that no change to the licence or the open-source/hosted boundary happens
+# without a dated `DECISIONS.md` row first.
+
+*                                   @Therealratoshen
+/runtime/                           @Therealratoshen
+/scripts/                           @Therealratoshen
+/spec/                              @Therealratoshen
+/rules/                             @Therealratoshen
+/orgs/                              @Therealratoshen
+/packs/                             @Therealratoshen
+DECISIONS.md                        @Therealratoshen
+LICENSE                             @Therealratoshen
+TRADEMARKS.md                       @Therealratoshen

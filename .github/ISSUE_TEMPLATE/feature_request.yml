@@ -1,35 +1,30 @@
-name: Feature Request
-description: Suggest a new action class, guardrail, or governance rule
-title: "[FR] "
-labels: [enhancement]
-assignees: []
+name: Feature request
+description: Something the project does not do yet.
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## What problem does this solve?
-
-        (be specific — "better governance" is not a problem)
-
-  - type: markdown
+        **Read `ROADMAP.md` first.** It says, for each gap, whether a contributor may close it or
+        it is the owner's call — and several refusals are enforced by the validator, so the right
+        PR fails a gate rather than a review.
+  - type: textarea
+    id: problem
     attributes:
-      value: |
-        ## What spec rule does this relate to?
-
-        (or `N/A — new action class`)
-
-  - type: markdown
+      label: The problem
+      description: What you cannot do today. Not the feature you want — the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
     attributes:
-      value: |
-        ## What would failure look like?
-
-        (the spec rule that would be violated if this shipped without this)
-
-  - type: checkboxes
-    id: tests
+      label: What you propose
+      description: "And, if it changes what the fleet may do, which invariant it touches and what the refusal should be."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
     attributes:
-      label: Tests
-      description: I am willing to write the failing test first (TDD)
-      options:
-        - label: "Yes — I'll write the failing test before requesting review"
-          required: false
+      label: What you have tried
+    validations:
+      required: false

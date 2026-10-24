@@ -263,3 +263,54 @@ test('the run cap bounds the tick: the wakes past the cap stay due for the next 
   assert.ok(!out.some((l) => l.includes('stopped at its cap')), 'two reminders is inside a cap of 15');
   assert.ok(out.some((l) => l.includes('waiting on a human')));
 });
+
+test('the digest command reports the day, per channel, and names nobody', () => {
+  const { opts } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  runCommand({ ...opts, command: 'approve', cardId: 'card-2', why: 'tanggal dan tempat sudah benar' });
+  const out = runCommand({ ...opts, command: 'digest', now: Date.parse(EVENT_MOMENT) + 3_600_000 });
+  const text = out.join('\n');
+  assert.ok(text.includes('digest —'), text);
+  assert.ok(text.includes('2 draft(s)'), 'both reminders were drafted');
+  assert.ok(text.includes('1 approved'));
+  assert.ok(text.includes('kopdar-2026-11-07'), 'and the channel is named');
+  assert.ok(text.includes('NOT a summary of what members said to each other'), 'and the limit is stated');
+  assert.equal(text.includes('wa:62811'), false, 'the digest names nobody');
+});
+
+test('the redact command takes the member identifiers out and leaves the governance evidence in', () => {
+  const { opts, dir } = aHost();
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const logDir = join(dir, 'logs');
+  const out = runCommand({ ...opts, command: 'redact', logRoot: logDir });
+  assert.ok(out.some((l) => l.includes('member identifier(s) replaced')), out.join('\n'));
+  const src = join(logDir, 'kinshipai', 'bundled', 'event-ops', 'kopdar', 'events.jsonl');
+  const redacted = join(logDir, 'events.redacted.jsonl');
+  assert.ok(existsSync(redacted), 'the redacted copy exists');
+  const original = readFileSync(src, 'utf8');
+  const copy = readFileSync(redacted, 'utf8');
+  assert.ok(original.includes('wa:62811'), 'the original still has the real identifiers — it is the only record');
+  assert.equal(copy.includes('wa:62811'), false, 'and the copy does not');
+  assert.ok(copy.includes('member-1'), 'the pseudonyms are there instead');
+  assert.equal(copy.split('\n').filter((l) => l.trim() !== '').length, original.split('\n').filter((l) => l.trim() !== '').length,
+    'the row count is the same — the structure survived');
+});
+
+test('init scaffolds the two working files from the examples, and never overwrites one', () => {
+  const { opts, dir } = aHost();
+  const packDir = join(dir, 'kopdar-ops');
+  // Start from a pack with no working files.
+  rmSync(join(packDir, 'pack.local.yaml'), { force: true });
+  rmSync(join(packDir, 'pack.local.plan.yaml'), { force: true });
+  const out = runCommand({ ...opts, packDir, command: 'init' });
+  assert.ok(out.some((l) => l.includes('created 2 file(s)')), out.join('\n'));
+  assert.ok(existsSync(join(packDir, 'pack.local.yaml')));
+  assert.ok(existsSync(join(packDir, 'pack.local.plan.yaml')));
+  assert.ok(out.some((l) => l.includes('who you are')), 'and it says what to edit next');
+  // Second run: nothing is overwritten.
+  writeFileSync(join(packDir, 'pack.local.yaml'), 'community_name: "Mine"\n');
+  const again = runCommand({ ...opts, packDir, command: 'init' });
+  assert.ok(again.some((l) => l.includes('nothing was overwritten')), again.join('\n'));
+  assert.equal(readFileSync(join(packDir, 'pack.local.yaml'), 'utf8'), 'community_name: "Mine"\n',
+    "a community's own answers survive init");
+});

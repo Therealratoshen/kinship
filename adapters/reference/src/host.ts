@@ -20,7 +20,7 @@
  *   node src/host.ts approve --pack ... --config ... --log ... --card card-1 --why "tanggal sudah benar"
  *   node src/host.ts verify  --pack ... --config ... --log ...
  */
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Fleet } from 'kinship-runtime/src/engine.ts';
 import { KinshipError } from 'kinship-runtime/src/errors.ts';
@@ -29,6 +29,7 @@ import type { LoggedEvent, NeedAnswers, Packed } from 'kinship-runtime/src/types
 import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } from './config.ts';
 import { planWakes, slotNames, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
 import { createRun, type RunState } from 'kinship-runtime/src/budget.ts';
+import { redactLog } from './redact.ts';
 import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
 
 export interface HostOptions {
@@ -40,7 +41,7 @@ export interface HostOptions {
   /** Whether to keep ticking. A host that only ticks on demand is a demo; one that ticks is a host. */
   watch: boolean;
   /** The command to run. */
-  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan';
+  command: 'run' | 'tick' | 'draft' | 'approve' | 'publish' | 'verify' | 'plan' | 'digest' | 'redact' | 'init';
   /**
    * The community's plan file — their own copy and their next event.
    *
@@ -65,6 +66,8 @@ export interface HostOptions {
   verdict?: 'approve' | 'edit' | 'reject';
   /** For `publish`: who the message is for. The host does not know the community's members. */
   recipients?: string[];
+  /** For `digest`: the window, in milliseconds. Default 24 hours. */
+  windowMs?: number;
 }
 
 /** Everything the host knows about the community it is running for. */
@@ -236,6 +239,7 @@ export function parseArgs(argv: readonly string[]): HostOptions {
     // host papers over.
     text: collectText(argv),
     verdict: readVerdict(flag('verdict')),
+    windowMs: flag('window-ms') === null ? undefined : Number(flag('window-ms')),
     recipients: collectRecipients(argv),
   };
 }
@@ -290,6 +294,45 @@ export function registerMembers(host: Host): string[] {
     out.push(`  ${m.ref} (${m.tz})${m.suppressed ? ' — has said stop' : ''}`);
   }
   return out;
+}
+
+/**
+ * The easy setup: scaffold a community's two working files from the shipped examples.
+ *
+ * **Why a command and not a paragraph.** A new user should not have to know that there are two
+ * files, which is which, or that one of them is gitignored — they should run one command and be
+ * told what to edit next. **Nothing is ever overwritten**: a file that already exists is kept and
+ * said so, because an `init` that clobbers a community's own answers is a data-loss bug wearing a
+ * helpful hat.
+ */
+export function initCommunity(packDir: string, out: string[]): void {
+  const answers = join(packDir, 'pack.local.yaml');
+  const plan = join(packDir, 'pack.local.plan.yaml');
+  const created: string[] = [];
+  for (const [from, to] of [
+    [join(packDir, 'pack.local.example.yaml'), answers],
+    [join(packDir, 'pack.local.plan.example.yaml'), plan],
+  ] as const) {
+    if (existsSync(to)) {
+      out.push(`  kept: ${to} (it already exists — nothing was overwritten)`);
+      continue;
+    }
+    if (!existsSync(from)) {
+      out.push(`  missing: ${from} — copy it from the pack's README by hand`);
+      continue;
+    }
+    copyFileSync(from, to);
+    created.push(to);
+  }
+  out.push(created.length > 0 ? `created ${created.length} file(s):` : 'nothing to create:');
+  for (const c of created) out.push(`  ${c}`);
+  out.push('');
+  out.push('  Edit them next — two things, and the fleet needs both:');
+  out.push(`    ${answers}      — who you are: your name, your channels, your contacts`);
+  out.push(`    ${plan}         — what you are doing next: your copy, your event, your members`);
+  out.push('');
+  out.push(`  Then:  node adapters/reference/src/host.ts plan --pack ${packDir} --config ${answers} --plan ${plan} --log logs`);
+  out.push("  The files are gitignored on purpose: a community's member list is not a repository artefact.");
 }
 
 /**
@@ -399,6 +442,13 @@ export function fireDue(host: Host, run: RunState = createRun()): string[] {
 
 /** Run one command and return what to print. */
 export function runCommand(opts: HostOptions): string[] {
+  // `init` runs BEFORE the host boots: the files it creates are the ones the boot needs, so booting
+  // first would ask for a config that does not exist yet.
+  if (opts.command === 'init') {
+    const out: string[] = [];
+    initCommunity(opts.packDir, out);
+    return out;
+  }
   const host = bootHost(opts);
   const out: string[] = [];
   switch (opts.command) {
@@ -478,6 +528,38 @@ export function runCommand(opts: HostOptions): string[] {
       persist(host, opts);
       break;
     }
+    case 'redact': {
+      // The mechanism behind "never attach a raw log to a public issue": the identifiers come out, the
+      // structure stays, and the original is never touched.
+      const dir = opts.logRoot;
+      const src = join(dir, 'kinshipai', 'bundled', 'event-ops', 'kopdar');
+      const r = redactLog({
+        eventsPath: join(src, 'events.jsonl'),
+        manifestPath: join(src, 'manifest.json'),
+        outDir: dir,
+      });
+      out.push(`redacted ${r.rows} row(s) — ${r.pseudonyms} member identifier(s) replaced`);
+      out.push(`  ${r.eventsPath}`);
+      if (r.manifestPath !== null) out.push(`  ${r.manifestPath}`);
+      out.push('  the original is untouched, and the pseudonyms are not reversible');
+      break;
+    }
+    case 'digest': {
+      // The community manager's day: what the fleet did, what a human decided, what was refused,
+      // and what is still waiting — per channel, over a window the caller names.
+      const windowMs = opts.windowMs ?? 24 * 3_600_000;
+      const d = host.fleet.digest(host.fleet.now(), windowMs);
+      out.push(`digest — ${new Date(d.from).toISOString()} → ${new Date(d.to).toISOString()}`);
+      out.push(`  ${d.totals.drafts} draft(s) · ${d.totals.approved} approved · ${d.totals.rejected} rejected · ${d.totals.edited} edited`);
+      out.push(`  ${d.totals.refusals} refusal(s) · ${d.totals.openThreads} open thread(s) · ${d.waiting} waiting on a human`);
+      for (const c of d.channels) {
+        out.push(`  ${c.channel}: ${c.drafts} draft(s), ${c.approved} approved, ${c.rejected} rejected, ${c.edited} edited`);
+      }
+      for (const [code, n] of Object.entries(d.refusalsByCode)) out.push(`  refused: ${code} ×${n}`);
+      out.push(`  scope: ${d.scope}`);
+      for (const n of d.notMeasured) out.push(`  not measured: ${n}`);
+      break;
+    }
     case 'publish': {
       // The last step of the loop, and the one that shows the product: the message is ready, the
       // human has approved it, and the transport gate stops it anyway (D21). The refusal is not a
@@ -524,7 +606,7 @@ export function runCommand(opts: HostOptions): string[] {
       break;
     }
     default:
-      throw new Error(`unknown command \`${opts.command}\` — plan, run, tick, draft, approve, publish or verify`);
+      throw new Error(`unknown command \`${opts.command}\` — init, plan, run, tick, digest, redact, draft, approve, publish or verify`);
   }
   return out;
 }
