@@ -81,7 +81,7 @@ const FORBIDDEN_ACTIONS = new Set(['delete', 'ban', 'mute', 'kick', 'restrict', 
 // name is banned in the manifest, not merely discouraged in prose.
 const FORBIDDEN_CLASSES = /^(score\.member|member\.opt-out-override|member\.described-in-recap|report\.name-a-member|trust\.raise-self|message\.as-member)(\s|$)/;
 const FORBIDDEN_CHANNEL_ACTION = [
-  { channel: 'whatsapp', action: 'send', rule: 'whatsapp group/individual auto-send is out of scope — DECISIONS.md D11' },
+  { channel: 'whatsapp', action: 'send', rule: 'whatsapp send is absent from a pack — DECISIONS.md D11, narrowed by D106: the GROUP lane stays refused (D11/D13, the Groups API is capped at 8 participants), the INDIVIDUAL lane opens with the adapter that does not exist yet, and a pack may not declare a tool for a capability the runtime cannot reach' },
 ];
 // Copy rules (PRD section 2.3 claim ceiling) enforced inside the repo, not just in the pitch.
 // The member-side entries are here because the temptation is symmetric: after a good event, the easiest
