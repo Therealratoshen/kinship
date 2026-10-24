@@ -48,7 +48,9 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
   deciding-actor call sites. The seat now comes from the community's
   own declaration (spec section 1.11), the `by` parameter is out of the tool schema, and a call that
   still carries a mismatched seat is refused loudly. A community whose seat is named differently could
-  not be approved at all before this — the seat is a role, not a password.
+  not be approved at all before this — the seat is a role, not a password. Three tests fail when the fix
+  is reverted, and an adversarial pass over the diff is what found three sentences of mine that
+  did not survive being checked.
 - **The merge rule is decided, and the record now says what happened** (`DECISIONS.md` D98) — the
   **gates are the review**: the CI jobs are required, no human review is required (there is no second
   human to require one from), and `enforce_admins` is on, so the rules bind the owner as well. The list
