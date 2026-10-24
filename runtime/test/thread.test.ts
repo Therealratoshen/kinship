@@ -10,7 +10,7 @@
  * ask us something, we will answer you". And today the runtime **cannot say which message is
  * unanswered** — `inbox.ts` says so in as many words: *"inputs and cards cannot be joined … this list
  * can say how many arrived and how many produced an undecided card, but not which message is
- * unanswered. That link is a spec rule (§1.2/§1.7), not a query."*
+ * unanswered. That link is a spec rule (section 1.2 / section 1.7), not a query."*
  *
  * So `standing-engagement`'s promise to "hold the thread" was prose with nothing behind it. A thread
  * is that missing primitive: a question the community owes an answer to, with a date on it.
@@ -20,7 +20,7 @@
  * its own so that the runtime can age it and measure it against the community's staffed hours.
  *
  * **What a thread never holds.** Not the words — the log stores a hash of every member input, never
- * the text (§2.7), and a thread holds no text either. Not the asker's name in any read: the member
+ * the text (section 2.7), and a thread holds no text either. Not the asker's name in any read: the member
  * reference lives in the log and the state, and every read sweeps it (the same mechanism, the same
  * rule, one implementation). What a thread *does* hold is a **pointer** — an opaque handle the host
  * can resolve, the way an inbox item is "a pointer, not the payload".
@@ -31,7 +31,7 @@
  *     trail can answer "when was this asked, and when was it answered?"
  *  2. **An open thread is something a human owes.** It appears in the inbox as a fifth kind, with an
  *     age, and it leaves when it is answered.
- *  3. **An answer with no note is refused.** The same discipline as a verdict without a why (§1.5):
+ *  3. **An answer with no note is refused.** The same discipline as a verdict without a why (section 1.5):
  *     a record with no substance is not a record.
  *  4. **A thread that survives a staffed shift is a missed shift.** This is the community-facing
  *     meaning of the coverage window: not "did the fleet keep up" but **"did we keep our word"**.
@@ -50,9 +50,7 @@ const ANSWERS = { community_name: 'AI Builders ID' };
 const JAKARTA = (over: Partial<Extract<CommunityCoverage, { mode: 'staffed' }>> = {}): CommunityCoverage => ({
   mode: 'staffed',
   timezone: 'Asia/Jakarta',
-  days: [1, 2, 3, 4, 5], // 0 = Sunday
-  opens: 9 * 60,
-  closes: 18 * 60,
+  windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }], // 0 = Sunday
   ...over,
 });
 
@@ -140,7 +138,7 @@ test('answering a thread closes it, and it leaves the inbox', () => {
 });
 
 test('an answer with no note is refused — a record with no substance is not a record', () => {
-  // The same discipline as a verdict without a why (§1.5). "It was answered" with no record of how
+  // The same discipline as a verdict without a why (section 1.5). "It was answered" with no record of how
   // is a claim nobody can check later, and the community's own promise is exactly what this runtime
   // is supposed to be able to check.
   const { f, thread } = withThread();

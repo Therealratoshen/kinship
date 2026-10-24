@@ -1,14 +1,14 @@
 /**
  * claim-scan.mjs — the claim ceiling, as code.
  *
- * PRD §2.3 "The claim ceiling" is the normative table: the left column is allowed in any copy, the
+ * PRD section 2.3 "The claim ceiling" is the normative table: the left column is allowed in any copy, the
  * right column is forbidden in any copy. AGENTS.md invariant 3 states part of the same list in prose
- * and adds what §2.3 does not carry: three string bans (hours-saved, TAM, community size) and one
+ * and adds what section 2.3 does not carry: three string bans (hours-saved, TAM, community size) and one
  * rule of its own.
  *
  * WHY THIS IS A MODULE AND NOT A CONSTANT INSIDE THE VALIDATOR: the list is a *claim about a
  * document*, and a claim that lives in one place but is checked in another is the drift class this
- * repo polices. `scripts/claims.test.mjs` reads PRD §2.3 and AGENTS.md and asserts that this file
+ * repo polices. `scripts/claims.test.mjs` reads PRD section 2.3 and AGENTS.md and asserts that this file
  * accounts for every forbidden cell — so the list cannot quietly fall behind the documents it
  * claims to enforce, and the documents cannot quietly grow a ban the gate does not know about.
  *
@@ -19,7 +19,7 @@
  *   - a **rule** ban ("any competitor size/adoption number before [n] lands") is a judgement no
  *     sweep can make, because the threshold is a fact only a person holds. These live in
  *     `CLAIM_RULES`, and the gate does not pretend to enforce them — it names them, and the
- *     contract test asserts that every forbidden cell in §2.3 is accounted for in one list or the
+ *     contract test asserts that every forbidden cell in section 2.3 is accounted for in one list or the
  *     other. A ban that lands in the PRD and in neither list is a build failure, not a silent gap.
  *
  * CITATION vs ASSERTION. A document is allowed to *name* a banned phrase in order to forbid it —
@@ -61,7 +61,7 @@
  */
 
 /**
- * The strings §2.3 and AGENTS.md invariant 3 forbid in any copy. `source` says where each one is
+ * The strings section 2.3 and AGENTS.md invariant 3 forbid in any copy. `source` says where each one is
  * written, so a reviewer can check this list against the documents rather than trust it.
  *
  * Every pattern is word-bounded on purpose: `tam` must not match "tamper", and "community size"
@@ -70,8 +70,8 @@
  * markdown line is still the phrase — otherwise a paragraph the author merely re-wrapped would
  * be a way to ship the claim.
  *
- * `traces` is how an entry proves it belongs: the forms in which it appears in PRD §2.3 or
- * AGENTS.md. It is usually the phrase itself, but §2.3 row 4 writes one span with a shared
+ * `traces` is how an entry proves it belongs: the forms in which it appears in PRD section 2.3 or
+ * AGENTS.md. It is usually the phrase itself, but section 2.3 row 4 writes one span with a shared
  * prefix — "Members will feel more valued / more engaged" — so that entry traces through both of
  * its halves rather than through a phrase the PRD never wrote.
  *
@@ -82,27 +82,27 @@
  * to a document, which is how it stays honest without pretending the PRD was written twice.
  */
 export const BANNED_CLAIMS = [
-  { phrase: 'replace your community manager', re: /\b(replace your[- \s]+community[- \s]+manager)\b/i, traces: ['replace your community manager'], source: 'PRD §2.3 row 1' },
-  { phrase: 'fully autonomous', re: /\b(fully[- \s]+autonomous)\b/i, traces: ['fully autonomous'], source: 'PRD §2.3 row 2' },
-  { phrase: 'autonomous 24/7', re: /\b(autonomous[- \s]+24\/7)\b/i, traces: ['autonomous 24/7'], source: 'PRD §2.3 row 2' },
-  { phrase: '24/7 management', re: /\b(24\/7[- \s]+management)\b/i, traces: ['24/7 management'], source: 'PRD §2.3 row 2' },
-  { phrase: 'we run your events', re: /\b(we[- \s]+run[- \s]+your[- \s]+events)\b/i, traces: ['we run your events'], source: 'PRD §2.3 row 2' },
-  { phrase: 'we send your reminders', re: /\b(we[- \s]+send[- \s]+your[- \s]+reminders)\b/i, traces: ['we send your reminders'], source: 'PRD §2.3 row 2' },
+  { phrase: 'replace your community manager', re: /\b(replace your[- \s]+community[- \s]+manager)\b/i, traces: ['replace your community manager'], source: 'PRD section 2.3 row 1' },
+  { phrase: 'fully autonomous', re: /\b(fully[- \s]+autonomous)\b/i, traces: ['fully autonomous'], source: 'PRD section 2.3 row 2' },
+  { phrase: 'autonomous 24/7', re: /\b(autonomous[- \s]+24\/7)\b/i, traces: ['autonomous 24/7'], source: 'PRD section 2.3 row 2' },
+  { phrase: '24/7 management', re: /\b(24\/7[- \s]+management)\b/i, traces: ['24/7 management'], source: 'PRD section 2.3 row 2' },
+  { phrase: 'we run your events', re: /\b(we[- \s]+run[- \s]+your[- \s]+events)\b/i, traces: ['we run your events'], source: 'PRD section 2.3 row 2' },
+  { phrase: 'we send your reminders', re: /\b(we[- \s]+send[- \s]+your[- \s]+reminders)\b/i, traces: ['we send your reminders'], source: 'PRD section 2.3 row 2' },
   {
-    // §2.3 row 4 writes one span with a shared prefix — "Members will feel more valued / more
+    // section 2.3 row 4 writes one span with a shared prefix — "Members will feel more valued / more
     // engaged" — so the entry is one claim with two readings, not two claims.
     phrase: 'members will feel more valued / more engaged',
     re: /\b(members[- \s]+will[- \s]+feel[- \s]+more[- \s]+(?:valued|engaged))\b/i,
     traces: ['members will feel more valued / more engaged', 'members will feel more valued'],
-    source: 'PRD §2.3 row 4',
+    source: 'PRD section 2.3 row 4',
   },
   {
-    // §2.3 row 5 is one sentence with a shared prefix: "We invented approvals / budgets /
+    // section 2.3 row 5 is one sentence with a shared prefix: "We invented approvals / budgets /
     // heartbeats / audit trails." Four mechanisms, one way of claiming them.
     phrase: 'we invented approvals / budgets / heartbeats / audit trails',
     re: /\b(we[- \s]+invented[- \s]+(?:approvals|budgets|heartbeats|audit[- \s]+trails))\b/i,
     traces: ['we invented approvals / budgets / heartbeats / audit trails', 'we invented approvals'],
-    source: 'PRD §2.3 row 5',
+    source: 'PRD section 2.3 row 5',
   },
   { phrase: 'runs itself', re: /\b(runs[- \s]+itself)\b/i, traces: ['runs itself'], source: 'AGENTS.md invariant 3' },
   { phrase: 'hours saved', re: /\b(hours[- \s]+saved)\b/i, traces: ['hours saved'], source: 'AGENTS.md invariant 3' },
@@ -113,25 +113,25 @@ export const BANNED_CLAIMS = [
   // The copy is bilingual, so the ceiling has to be too: a translation that asserts "sepenuhnya
   // otonom" is making the same claim as "fully autonomous", and a list of English strings would
   // not see it. Each of these is the Indonesian form of an entry above.
-  { phrase: 'sepenuhnya otonom', re: /\b(sepenuhnya otonom)\b/i, traces: ['sepenuhnya otonom'], translationOf: 'fully autonomous', source: 'the Indonesian of PRD §2.3 row 2' },
+  { phrase: 'sepenuhnya otonom', re: /\b(sepenuhnya otonom)\b/i, traces: ['sepenuhnya otonom'], translationOf: 'fully autonomous', source: 'the Indonesian of PRD section 2.3 row 2' },
   { phrase: 'berjalan sendiri', re: /\b(berjalan sendiri)\b/i, traces: ['berjalan sendiri'], translationOf: 'runs itself', source: 'the Indonesian of AGENTS.md invariant 3' },
-  { phrase: 'menggantikan organizer', re: /\b(menggantikan organizer)\b/i, traces: ['menggantikan organizer'], translationOf: 'replace your community manager', source: 'the Indonesian of PRD §2.3 row 1' },
-  { phrase: 'kami yang mengelola acara', re: /\b(kami yang mengelola acara)\b/i, traces: ['kami yang mengelola acara'], translationOf: 'we run your events', source: 'the Indonesian of PRD §2.3 row 2' },
-  { phrase: 'kami yang mengirim pengingat', re: /\b(kami yang mengirim pengingat)\b/i, traces: ['kami yang mengirim pengingat'], translationOf: 'we send your reminders', source: 'the Indonesian of PRD §2.3 row 2' },
-  { phrase: 'anggota akan merasa lebih dihargai', re: /\b(anggota akan merasa lebih dihargai)\b/i, traces: ['anggota akan merasa lebih dihargai'], translationOf: 'members will feel more valued', source: 'the Indonesian of PRD §2.3 row 4' },
-  { phrase: 'kami yang membuat persetujuan', re: /\b(kami yang membuat persetujuan)\b/i, traces: ['kami yang membuat persetujuan'], translationOf: 'we invented approvals', source: 'the Indonesian of PRD §2.3 row 5' },
+  { phrase: 'menggantikan organizer', re: /\b(menggantikan organizer)\b/i, traces: ['menggantikan organizer'], translationOf: 'replace your community manager', source: 'the Indonesian of PRD section 2.3 row 1' },
+  { phrase: 'kami yang mengelola acara', re: /\b(kami yang mengelola acara)\b/i, traces: ['kami yang mengelola acara'], translationOf: 'we run your events', source: 'the Indonesian of PRD section 2.3 row 2' },
+  { phrase: 'kami yang mengirim pengingat', re: /\b(kami yang mengirim pengingat)\b/i, traces: ['kami yang mengirim pengingat'], translationOf: 'we send your reminders', source: 'the Indonesian of PRD section 2.3 row 2' },
+  { phrase: 'anggota akan merasa lebih dihargai', re: /\b(anggota akan merasa lebih dihargai)\b/i, traces: ['anggota akan merasa lebih dihargai'], translationOf: 'members will feel more valued', source: 'the Indonesian of PRD section 2.3 row 4' },
+  { phrase: 'kami yang membuat persetujuan', re: /\b(kami yang membuat persetujuan)\b/i, traces: ['kami yang membuat persetujuan'], translationOf: 'we invented approvals', source: 'the Indonesian of PRD section 2.3 row 5' },
   { phrase: 'jam yang dihemat', re: /\b(jam yang dihemat)\b/i, traces: ['jam yang dihemat'], translationOf: 'hours saved', source: 'the Indonesian of AGENTS.md invariant 3' },
   { phrase: 'ukuran komunitas', re: /\b(ukuran komunitas)\b/i, traces: ['ukuran komunitas'], translationOf: 'community size', source: 'the Indonesian of AGENTS.md invariant 3' },
 ];
 
 /**
- * The forbidden things §2.3 and AGENTS.md state as rules rather than as strings. A sweep cannot
+ * The forbidden things section 2.3 and AGENTS.md state as rules rather than as strings. A sweep cannot
  * enforce these, and the gate says so instead of pretending otherwise.
  */
 export const CLAIM_RULES = [
   {
     phrase: 'any competitor size/adoption number before [n] lands',
-    source: 'PRD §2.3 row 3',
+    source: 'PRD section 2.3 row 3',
     note: 'the threshold is literally unset — `[n]` is a placeholder no one has filled. A sweep cannot enforce a number that was never written down, so this is named and left open for the owner.',
   },
   {

@@ -38,7 +38,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 import type { CommunityPosture, PackedOrg } from '../src/types.ts';
 
 // 14:00 in Jakarta — deliberately OUTSIDE the member's quiet hours (21:00–07:59 local, FR-5.5),
@@ -53,7 +53,7 @@ const OPEN: CommunityPosture = { contact: 'open', openness: 'open' };
 const CLOSED: CommunityPosture = { contact: 'never', openness: 'closed' };
 
 // The canonical disclosure line rides in the copy — it is part of the content, not a setting
-// (§2.8) — so a member-facing commit without it is refused before the posture is even consulted.
+// (section 2.8) — so a member-facing commit without it is refused before the posture is even consulted.
 /** A complete org manifest — the floor tests need a real one, not a stub with one field. */
 const ORG = (posture?: CommunityPosture): PackedOrg => ({
   schema: 'kinship-org/v1',
@@ -67,8 +67,7 @@ const ORG = (posture?: CommunityPosture): PackedOrg => ({
 
 const BUNDLE = {
   id: 'card-1',
-  textId: `Halo! Kopdar #7 Sabtu, 19:00 WIB, Ruang A.\n\n${disclosureLineId('AI Builders ID')}`,
-  textEn: `Hello! Kopdar #7 on Saturday, 19:00 WIB, Hall A.\n\n${disclosureLineEn('AI Builders ID')}`,
+  text: { id: `Halo! Kopdar #7 Sabtu, 19:00 WIB, Ruang A.\n\n${disclosureLine('id', 'AI Builders ID')}`, en: `Hello! Kopdar #7 on Saturday, 19:00 WIB, Hall A.\n\n${disclosureLine('en', 'AI Builders ID')}` },
 };
 
 /** A fleet with one member, a posture, and the grants a 1:1 / public commit needs. */
@@ -189,7 +188,7 @@ test('no posture declared is the conservative one — a fleet does not get to ap
 test('the pack may only be STRICTER than the org — a looser pack is refused, not clamped', () => {
   // The org says every community under it is closed to approaches. A pack that says `open` is
   // refused, because a value silently rounded toward the org is a file that lies about the system it
-  // configures — the same rule the guardrails follow (spec §1.10, "refuse, never clamp").
+  // configures — the same rule the guardrails follow (spec section 1.10, "refuse, never clamp").
   const pack = makePack({ 'event-ops': { 'commit.individual-message': 'draft' } });
   let refused: unknown = null;
   try {

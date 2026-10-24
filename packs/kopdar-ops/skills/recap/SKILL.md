@@ -17,6 +17,6 @@ traceable to something someone said — "incredibly insightful evening" is fille
 actually discussed is a recap.
 
 Quarantined content does not appear here. If a member's message was low-trust, the recap gets the substitution
-string and moves on (`spec` §1.7).
+string and moves on (`spec` section 1.7).
 
 **Assertion.** `assert every link in a recap resolves && every quoted string is present in a cited source file`.

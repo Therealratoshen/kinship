@@ -1,5 +1,5 @@
 /**
- * claims.test.mjs — the contract test for the claim ceiling (PRD §2.3).
+ * claims.test.mjs — the contract test for the claim ceiling (PRD section 2.3).
  *
  *   node --test scripts/claims.test.mjs
  *
@@ -13,7 +13,7 @@
  * Both are the defect class this repo polices: a rule whose scope reads wider than it is
  * (D33's "a code path promising a doc"), and a check that cannot fail (D24).
  *
- * The last two tests are the ones that keep this from rotting: they read PRD §2.3 and AGENTS.md
+ * The last two tests are the ones that keep this from rotting: they read PRD section 2.3 and AGENTS.md
  * and assert that `scripts/claim-scan.mjs` accounts for every forbidden cell in one list or the
  * other. A ban added to the PRD and not to the code is a build failure rather than a silent gap —
  * the generated counterpart of D37b's M1 question, answered for the one list that was still prose.
@@ -32,7 +32,7 @@ const ROOT = process.cwd();
 const PACK = join(ROOT, 'packs', 'kopdar-ops');
 const PRD = join(ROOT, 'PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md');
 
-/** A phrase that is banned by PRD §2.3 ("Fully autonomous 24/7 management" / "fully autonomous"). */
+/** A phrase that is banned by PRD section 2.3 ("Fully autonomous 24/7 management" / "fully autonomous"). */
 const PHRASE = 'fully autonomous community management';
 
 const inCopy = (fn) => {
@@ -43,11 +43,11 @@ const inCopy = (fn) => {
 };
 const codes = (r) => r.errors.map((e) => e.split(' ')[0]);
 
-/** The forbidden column of PRD §2.3's table, cell by cell, in order. */
+/** The forbidden column of PRD section 2.3's table, cell by cell, in order. */
 function claimCeilingCells() {
   const text = readFileSync(PRD, 'utf8');
   const start = text.indexOf('### 2.3 The claim ceiling');
-  assert.ok(start > -1, 'PRD §2.3 moved or was renamed — update this test, do not delete it');
+  assert.ok(start > -1, 'PRD section 2.3 moved or was renamed — update this test, do not delete it');
   const end = text.indexOf('\n### ', start + 1);
   const section = text.slice(start, end === -1 ? undefined : end);
   return section
@@ -71,7 +71,7 @@ function invariantThree() {
 /**
  * AGENTS.md invariant 3's forbidden list, item by item. This is the half of the drift check the
  * PRD-only version missed: three of the bans — hours-saved, TAM, community size — are written
- * only here, so a list that kept them in step with §2.3 could still have lost them without a
+ * only here, so a list that kept them in step with section 2.3 could still have lost them without a
  * single test failing.
  */
 function invariantThreeItems() {
@@ -168,7 +168,7 @@ test('every banned string has a pattern that can actually fire', () => {
   }
 });
 
-test('every ban AGENTS.md states is in the list, not only the ones PRD §2.3 states', () => {
+test('every ban AGENTS.md states is in the list, not only the ones PRD section 2.3 states', () => {
   const items = invariantThreeItems();
   assert.ok(items.length >= 4, 'AGENTS.md invariant 3 lost items — update this test, do not delete it');
   for (const item of items) {
@@ -193,7 +193,7 @@ test('the copy this repo ships asserts no banned claim', () => {
   }
 });
 
-test('every banned string traces to a line in PRD §2.3 or AGENTS.md invariant 3', () => {
+test('every banned string traces to a line in PRD section 2.3 or AGENTS.md invariant 3', () => {
   const source = normalise([...claimCeilingCells(), invariantThree()].join(' '));
   const tracesDirectly = (claim) => claim.traces.some((t) => source.includes(normalise(t)));
   for (const claim of BANNED_CLAIMS) {
@@ -206,7 +206,7 @@ test('every banned string traces to a line in PRD §2.3 or AGENTS.md invariant 3
       : BANNED_CLAIMS.find((c) => c.traces.some((t) => normalise(t) === normalise(wanted)));
     assert.ok(
       parent !== undefined && tracesDirectly(parent),
-      `\`${claim.phrase}\` (${claim.source}) is in the code but in neither PRD §2.3 nor AGENTS.md invariant 3 — a ban no document states is a rule nobody can follow`,
+      `\`${claim.phrase}\` (${claim.source}) is in the code but in neither PRD section 2.3 nor AGENTS.md invariant 3 — a ban no document states is a rule nobody can follow`,
     );
   }
 });
@@ -219,7 +219,7 @@ test('the ceiling reaches the copy in the other language too', () => {
   assert.ok(hits.length > 0, 'a claim asserted in Indonesian is the same claim');
 });
 
-test('every forbidden cell in PRD §2.3 is enforced, or named as a rule no sweep can enforce', () => {
+test('every forbidden cell in PRD section 2.3 is enforced, or named as a rule no sweep can enforce', () => {
   const cells = claimCeilingCells();
   assert.ok(cells.length >= 5, 'the claim ceiling table lost rows — update this test, do not delete it');
   for (const cell of cells) {
@@ -229,13 +229,13 @@ test('every forbidden cell in PRD §2.3 is enforced, or named as a rule no sweep
         const n = normalise(span);
         assert.ok(
           BANNED_CLAIMS.some((c) => c.traces.some((t) => n.includes(normalise(t)))),
-          `PRD §2.3 forbids "${span}" and no entry in scripts/claim-scan.mjs catches it — a ban in the PRD the gate does not know is a gap, not a ceiling`,
+          `PRD section 2.3 forbids "${span}" and no entry in scripts/claim-scan.mjs catches it — a ban in the PRD the gate does not know is a gap, not a ceiling`,
         );
       }
     } else {
       assert.ok(
         CLAIM_RULES.some((r) => normalise(cell).includes(normalise(r.phrase))),
-        `PRD §2.3 states "${cell}" as a rule rather than a string, and scripts/claim-scan.mjs does not name it — a rule no sweep can enforce still has to be written down somewhere`,
+        `PRD section 2.3 states "${cell}" as a rule rather than a string, and scripts/claim-scan.mjs does not name it — a rule no sweep can enforce still has to be written down somewhere`,
       );
     }
   }

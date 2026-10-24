@@ -9,16 +9,16 @@
  *
  * What this file pins, and why each one is a rule rather than a preference:
  *
- *  - **Exactly one human seat while PRD §12-Q12 stands.** The runtime has one human identity string
+ *  - **Exactly one human seat while PRD section 12-Q12 stands.** The runtime has one human identity string
  *    (`'organiser'`) and no delegation mechanism, so declaring two seats in a manifest would be a
- *    company setting the code does not have. The refusal names §12-Q12 because the reader of that
+ *    company setting the code does not have. The refusal names section 12-Q12 because the reader of that
  *    failure is the person who is allowed to change it — the owner, not the implementer.
  *  - **A seat name may not also be an agent role.** Otherwise a pack declares an agent called
  *    `organiser` and an agent now holds the human seat — the four seat-gated acts
  *    (decideCard / issueGrant / revokeGrant / releaseShatter) would accept it.
  *  - **`never` is the pack's to declare, not the org's.** Invariant #1 says `never` means *absent*,
  *    and the review is a grep of the pack's toolset. An org ceiling of `never` would make a class
- *    present-but-unreachable, which is exactly the denied-not-absent shape §1.1 forbids.
+ *    present-but-unreachable, which is exactly the denied-not-absent shape section 1.1 forbids.
  *  - **A missing value is not a guess.** The parser is hand-rolled and small, like the pack parser's:
  *    anything it cannot read refuses `org_invalid`, because a parser that guesses is a trust
  *    boundary with holes (pack.ts says the same sentence about the pack half).
@@ -82,12 +82,12 @@ test('the schema is checked before anything is read, like the pack half (D15)', 
 
 test('an org with no human seat is an unattended fleet, and the manifest is where that is caught', () => {
   assert.equal(codeOf(() => parseOrg(MINIMAL.replace(/^human_seats:\n  - organiser\n/m, 'human_seats: []\n'))), 'org_invalid',
-    'spec §2.7 puts approval and veto with a named human — a manifest with no seat cannot boot one');
+    'spec section 2.7 puts approval and veto with a named human — a manifest with no seat cannot boot one');
 });
 
-test('TWO human seats refuse, naming PRD §12-Q12 — the shape exists, the delegation does not', () => {
+test('TWO human seats refuse, naming PRD section 12-Q12 — the shape exists, the delegation does not', () => {
   const two = MINIMAL.replace('  - organiser\n', '  - organiser\n  - delegate\n');
-  try { parseOrg(two); assert.fail('a second human seat must not parse while §12-Q12 is unanswered'); }
+  try { parseOrg(two); assert.fail('a second human seat must not parse while section 12-Q12 is unanswered'); }
   catch (e) {
     assert.ok(e instanceof KinshipError);
     assert.equal(e.code, 'org_invalid');
@@ -102,7 +102,7 @@ test('a seat name cannot also be an agent role — that is how an agent acquires
     'decideCard/issueGrant/revokeGrant/releaseShatter all accept a seat name; a roster containing one would widen them');
 });
 
-test('an org autonomy_ceiling may not say `never` — that is the pack\'s to declare (§1.1, invariant #1)', () => {
+test('an org autonomy_ceiling may not say `never` — that is the pack\'s to declare (section 1.1, invariant #1)', () => {
   assert.equal(codeOf(() => parseOrg(MINIMAL.replace('commit.channel-post: draft', 'commit.channel-post: never'))), 'org_invalid',
     'a central `never` would make a class present-but-unreachable; `never` means the tool is absent from the pack');
 });

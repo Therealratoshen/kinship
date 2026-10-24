@@ -84,7 +84,7 @@ hari yang sama (**D17**).
    mengarang isi. Rekayasa itulah yang membuat alat komunitas AI terasa seperti spam, jadi
    ia ditolak saat boot, bukan dicatat sebagai peringatan.
 5. **Paket ini menunjuk sebuah org, dan org-nya ada di atasnya** (`organisation: kinshipai` →
-   `orgs/kinshipai.yaml`, spec §1.10 / PRD **FR-1.18**, **D35**). Dua konsekuensi untuk fork,
+   `orgs/kinshipai.yaml`, spec section 1.10 / PRD **FR-1.18**, **D35**). Dua konsekuensi untuk fork,
    dalam urutan yang menggigit: **kamu tidak boleh turun di bawah lantai-lantainya** —
    `member_message_cap_per_24h: 5` di bawah lantai `4` gagal boot dengan menyebut kuncinya, kedua
    angkanya, dan org-nya, dan itu *ditolak, bukan dijepit*, karena sistem yang diam-diam mengirim 4
@@ -97,7 +97,7 @@ hari yang sama (**D17**).
    `organisation:` sama sekali dan jadilah tier teratasmu sendiri. Separuh lagi dari berkas itu
    adalah himpunan seat: `decideCard`, `issueGrant`, `revokeGrant` dan `releaseShatter` hanya
    menerima seat manusia yang dideklarasikan, org dengan seat kedua ditolak dengan menyebut
-   **PRD §12-Q12** (delegasi belum dibangun, dan fork tidak boleh membangunnya lewat jalan
+   **PRD section 12-Q12** (delegasi belum dibangun, dan fork tidak boleh membangunnya lewat jalan
    samping), dan *agent* bernama `organiser` ditolak sebagai benturan seat — begitulah caranya
    agent akan memegang veto manusia atas keluarannya sendiri (**FR-1.19**, **D36**).
 
@@ -122,7 +122,7 @@ hari yang sama (**D17**).
 4. Setel `needs.partner_policy` **hanya** kalau memang niat melakukan promosi konten mitra. Kelas
    `promote.cross-community` tidak bisa dicapai sebelum jawaban itu menyebut mitra yang diizinkan
    dan baris pengungkapan yang wajib — konten mitra adalah salinan *keluar*, bukan data anggota
-   *keluar* (**D20**, spec §2.11).
+   *keluar* (**D20**, spec section 2.11).
 5. Hapus skill yang tidak kamu jalankan. Skill yang tidak terpakai adalah klaim yang tidak bisa
    dipenuhi paket.
 6. Jalankan gerbang bentuk, lalu tambahkan satu kasus gagal di `scripts/validate-pack.test.mjs` untuk
@@ -148,7 +148,7 @@ Paket ini menyatakan, dalam empat anak tangga, apa yang dilakukan komunitasnya k
 melanggar aturan — `nudge → private-word → public-correction → removal` — dan setiap anak tangga
 menyebut **siapa yang bertindak** (`by: organiser`, seat dari `human_seats` di
 `orgs/kinshipai.yaml`) dan **apa yang diberi tahu kepada anggota**. Anak tangga terakhir menyebut jalan
-kembali (`appeal:`). Semantiknya: spec **§2.12**; kebutuhannya: PRD **FR-5.11**; keputusannya:
+kembali (`appeal:`). Semantiknya: spec **section 2.12**; kebutuhannya: PRD **FR-5.11**; keputusannya:
 `DECISIONS.md` **D37**.
 
 Ini adalah *deskripsi*, bukan kemampuan. Tidak ada kelas aksi `moderation.sanction`, tidak ada tool

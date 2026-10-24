@@ -18,7 +18,7 @@
 ## What this changes, and which artifact owns it
 
 - [ ] `DECISIONS.md` row added (if any decision is made, reversed, or narrowed)
-- [ ] PRD §14 changelog row (if a requirement, claim, or scope line moved)
+- [ ] PRD section 14 changelog row (if a requirement, claim, or scope line moved)
 - [ ] `spec/GOVERNANCE-SPEC-OUTLINE.md` (if a semantic changed)
 - [ ] `research/` snapshot (dated, primary-sourced, or it does not merge)
 

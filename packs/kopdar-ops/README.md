@@ -56,7 +56,7 @@ assertions, or a namespaced key, which is why the flat example was retired the s
    runtime raises `need_unanswered` rather than inventing content. That invention is the failure mode that makes
    AI community tools feel like spam, so it is refused at boot instead of being logged as a warning.
 5. **This pack names an org, and the org sits above it** (`organisation: kinshipai` → `orgs/kinshipai.yaml`,
-   spec §1.10 / PRD **FR-1.18**, **D35**). Two consequences for a fork, in the order they bite:
+   spec section 1.10 / PRD **FR-1.18**, **D35**). Two consequences for a fork, in the order they bite:
    **you may not go below its floors** — `member_message_cap_per_24h: 5` under a floor of `4` fails the boot
    naming the key, both numbers, and the org, and it is *refused, not clamped*, because a system that quietly
    sends 4 after you wrote 5 leaves your file disagreeing with the world (**PKG-60** in CI, `settings.ts` at
@@ -66,7 +66,7 @@ assertions, or a namespaced key, which is why the flat example was retired the s
    (orgs are separate namespaces from packs; a bare org key is never a pack key) or declare no `organisation:`
    at all and become your own top tier. The seat set is the other half of that file: `decideCard`, `issueGrant`,
    `revokeGrant` and `releaseShatter` accept only a declared human seat, an org with a second seat is refused
-   naming **PRD §12-Q12** (delegation is not built, and a fork must not build it sideways), and an *agent*
+   naming **PRD section 12-Q12** (delegation is not built, and a fork must not build it sideways), and an *agent*
    named `organiser` is refused as a seat collision — that is how an agent would otherwise acquire the human
    veto over its own output (**FR-1.19**, **D36**).
 
@@ -89,7 +89,7 @@ assertions, or a namespaced key, which is why the flat example was retired the s
    `member_notice_text` is the disclosure line members are told, in both languages.
 4. Set `needs.partner_policy` **only** if you actually intend to promote partner content. The class
    `promote.cross-community` is unreachable until that answer names the allowed partners and the required
-   disclosure line — partner content is copy *out*, never member data *out* (**D20**, spec §2.11).
+   disclosure line — partner content is copy *out*, never member data *out* (**D20**, spec section 2.11).
 5. Delete skills you do not run. An unused skill is a claim the pack cannot honour.
 6. Run the shape gate, then add a failing case to `scripts/validate-pack.test.mjs` for anything your fork loosens
    — a validator rule needs both a passing and a failing case (`CONTRIBUTING.md`).
@@ -97,6 +97,20 @@ assertions, or a namespaced key, which is why the flat example was retired the s
 Real names, channels, and any member data go in `packs/kopdar-ops/pack.local.yaml`, which is gitignored
 (`.gitignore:4`). A pack that carries state is a pack that leaks someone's attendee list into the next deploy
 (**PACK.md** note 3).
+
+**And your community's working data goes in a second file, `packs/kopdar-ops/pack.local.plan.yaml`, which
+is gitignored for the same reason.** That one is not a set of answers — it is your *work*: the copy you
+wrote for each lane and phase, the next event with the facts your copy may use, and your members with
+the timezone that decides their own quiet hours. It is a separate file because the two have different
+lifetimes: the answers are who your community is and change rarely, the plan is what your community is
+doing next and changes every event. Start from `pack.local.plan.example.yaml`, which is the plan the
+reference host's own tests run.
+
+**The copy is yours.** There is no model in this repository, and the runtime writes no member-facing text
+of its own. A `{slot}` with no value refuses the whole template — a message with a hole in it ships a
+lie about a venue by leaving the venue out — and a copy written for a lane this pack does not declare is
+refused too. The `{disclosure}` slot is filled with the runtime's canonical line for that language, in
+the place *you* put it, because the disclosure is the one thing that may not be improvised.
 
 **Provider keys go nowhere in this folder — not even in `pack.local.yaml`.** The model key is yours, held by
 the host that runs the model (`spec/HOST-CONTRACT.md` seam 1, **D33**); Kinship meters cost through
@@ -111,7 +125,7 @@ comment or a markdown instruction too — fails the shape gate, and the message 
 This pack states, in four rungs, what its community does when someone breaks a rule — `nudge → private-word →
 public-correction → removal` — and each rung names **who acts** (`by: organiser`, a seat from
 `orgs/kinshipai.yaml`'s `human_seats`) and **what the member is told**. The last rung names the way back in
-(`appeal:`). Semantics: spec **§2.12**; requirement: PRD **FR-5.11**; decision: `DECISIONS.md` **D37**.
+(`appeal:`). Semantics: spec **section 2.12**; requirement: PRD **FR-5.11**; decision: `DECISIONS.md` **D37**.
 
 It is a *description*, not a capability. There is no `moderation.sanction` action class, no ban/mute/remove tool
 in any `tools:` list, and nothing in `runtime/` can climb a rung — it only reads the ladder to check the promise
@@ -128,7 +142,7 @@ sits inside — the fleet flags, a person sanctions (invariant #1). Do not open 
 ## Your staffed hours, as data: `coverage:`
 
 This pack states when a human is **on duty** for the community: `Asia/Jakarta`, Monday to Friday, 09:00–18:00.
-Semantics: spec **§2.13**; requirement: PRD **FR-5.12**; decision: `DECISIONS.md` **D54**.
+Semantics: spec **section 2.13**; requirement: PRD **FR-5.12**; decision: `DECISIONS.md` **D54**.
 
 It is not the member's quiet hours. Quiet hours live in the **member's** zone and answer *"may I contact this
 person?"* — a member protection. The coverage window lives in the **community's** zone and answers *"was anyone
@@ -141,6 +155,12 @@ than a score:
 
 - **It is a local wall clock, never a stored UTC offset.** 09:00 stays 09:00 on both sides of a daylight-saving
   change.
+- **The week may be SPLIT.** The block carries a **list** of windows, each with its own days and hours, because
+  a community's week is not always one span. The **UAE** federal government works Monday–Thursday 07:30–15:30
+  and **Friday 07:30–12:00 — a half day** — with Saturday and Sunday as the weekend (u.ae and the DGHR "New
+  Weekly Work System" FAQ, read 2026-10-23), and Sharjah's weekend is Friday–Sunday. **There is no country
+  table in the runtime**: *your* community declares its windows, and a pack for a different community declares
+  different days without any code changing.
 - **Only a shift whose end has passed counts as missed.** An obligation raised at 10:00 and still open at 12:00
   is *inside* the shift ending at 18:00 — the clock pauses outside coverage. A question raised Friday evening and
   still open Monday morning is **not** a miss.
@@ -189,7 +209,7 @@ it configures. **Absence is not permission**: a pack that declares no posture ge
 default (`contact: asked_only`, `openness: closed`), and deleting this block does not make your
 community open — it makes it careful.
 
-Semantics: spec **§2.15**; requirement: PRD **FR-5.14**; decision: `DECISIONS.md` **D56**.
+Semantics: spec **section 2.15**; requirement: PRD **FR-5.14**; decision: `DECISIONS.md` **D56**.
 
 ## What this pack does *not* prove
 

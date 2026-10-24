@@ -1,7 +1,7 @@
 /**
  * Verifying a persisted log — seam 3 (spec/HOST-CONTRACT.md), as a pure read.
  *
- * The event log is the product's replayable audit trail (§1.2). In memory that is a plain array;
+ * The event log is the product's replayable audit trail (section 1.2). In memory that is a plain array;
  * the moment it becomes a **file** — copyable, syncable, forwardable — three questions appear that
  * memory never had to answer:
  *

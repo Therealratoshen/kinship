@@ -10,7 +10,7 @@ trigger: a flag is raised against an identified member
 Flag-only moderation (`moderate-flag-only`) is the correct posture and it is also **incomplete**: it produces a
 record *about* a person that the person never sees, while changing how they are treated. Silence plus quieter
 treatment is not "the human decides" — it is a decision executed without a party. This skill closes that gap.
-Semantics: spec §2.9.4; requirement: PRD FR-5.4.
+Semantics: spec section 2.9.4; requirement: PRD FR-5.4.
 
 The rule, as behaviour: when `moderate.flag` fires against an identified member, a notice is **composed** — the
 behaviour described, the reason in plain language, the confidence, and the name of the human who decided — and it

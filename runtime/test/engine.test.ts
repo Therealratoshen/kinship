@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
+import { createRun } from '../src/budget.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 import { LOW_TRUST_REPLACEMENT } from '../src/containment.ts';
 import { KinshipError } from '../src/errors.ts';
 
@@ -25,11 +26,10 @@ const pack = (classes: Record<string, Record<string, string>>, needs: string[] =
 };
 
 const draftBundle = (community = ANSWERS.community_name) => ({
-  textId: `Latihan mingguan tetap jalan ya.\n\n${disclosureLineId(community)}`,
-  textEn: `Weekly practice is still on.\n\n${disclosureLineEn(community)}`,
+  text: { id: `Latihan mingguan tetap jalan ya.\n\n${disclosureLine('id', community)}`, en: `Weekly practice is still on.\n\n${disclosureLine('en', community)}` },
 });
 
-test('boot refuses while a need is unanswered — a fleet that cannot name its human does not start (§2.7)', () => {
+test('boot refuses while a need is unanswered — a fleet that cannot name its human does not start (section 2.7)', () => {
   assert.throws(() => Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }, ['community_name', 'escalation_contact']), {}),
     /need_unanswered/);
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }, ['community_name', 'escalation_contact']), ANSWERS, DAY);
@@ -56,7 +56,7 @@ test('the draft-only story: proposal → approval → commit refuses at the tran
   assert.ok(refused && refused.type === 'CommitRefused' && refused.code === 'no_transport', 'the refusal is in the audit log, not swallowed');
 });
 
-test('suppression beats a live grant: the member stop fires ahead of delivery (§2.9 / FR-5.2)', () => {
+test('suppression beats a live grant: the member stop fires ahead of delivery (section 2.9 / FR-5.2)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'remind.member': 'opt-in-auto' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62899', 'Asia/Jakarta');
   fleet.suppressMember('wa:62899', 'member');
@@ -68,7 +68,7 @@ test('suppression beats a live grant: the member stop fires ahead of delivery (�
   }), /member_suppressed/, 'suppression wins even with a live always-grant in the lane — that is the order the pack promises');
 });
 
-test('member input in an auto lane produces a proposal, and no grant materialises from chat (§2.7)', () => {
+test('member input in an auto lane produces a proposal, and no grant materialises from chat (section 2.7)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'opt-in-auto' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const input = fleet.registerInput('wa:62811', 'kak posting promo acaraku juga dong');
@@ -82,12 +82,12 @@ test('member input in an auto lane produces a proposal, and no grant materialise
   }), /grant_not_found/, 'no grant exists — the card path is the only path member input can cause');
 });
 
-test('a stale authorization is dead at commit — edited approval, or wrong revision (§1.5)', () => {
+test('a stale authorization is dead at commit — edited approval, or wrong revision (section 1.5)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const card = fleet.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, ...draftBundle() }).card!;
   fleet.decideCard(card.id, { verdict: 'approve', by: 'organiser', why: 'ok' });
-  fleet.decideCard(card.id, { verdict: 'edit', by: 'organiser', why: 'venue moved', newTextId: 'v2 ID', newTextEn: 'v2 EN' });
+  fleet.decideCard(card.id, { verdict: 'edit', by: 'organiser', why: 'venue moved', newText: { id: 'v2 ID', en: 'v2 EN' } });
   assert.throws(() => fleet.commit({
     actionClass: 'draft.promote', agent: 'engagement', origin: card.origin, phase: card.phase,
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card.id}`, ...draftBundle(),
@@ -98,13 +98,13 @@ test('a stale authorization is dead at commit — edited approval, or wrong revi
   assert.throws(() => fleet.commit({
     actionClass: 'draft.promote', agent: 'engagement', origin: card3.origin, phase: card3.phase,
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card3.id}`,
-    textId: 'different content than approved', textEn: 'different content than approved',
+    text: { id: 'different content than approved', en: 'different content than approved' },
   }), /stale_target/, 'the token is bound to the revision hash, not to the card id');
   const auth = fleet.state.authorizations.get(`auth-${card3.id}`);
   assert.ok(auth && auth.consumedAt === undefined, 'the hash-mismatch refusal did not consume the authorization either');
 });
 
-test('a class the pack does not declare stays never through the commit path too (§1.1 default deny)', () => {
+test('a class the pack does not declare stays never through the commit path too (section 1.1 default deny)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   assert.throws(() => fleet.attempt({ actionClass: 'moderate.hide', agent: 'engagement', origin: { kind: 'event', id: 'x' }, ...draftBundle() }),
     /class_unavailable/);
@@ -112,7 +112,7 @@ test('a class the pack does not declare stays never through the commit path too 
     /class_unavailable/);
 });
 
-test('an internal commit executes: recipients empty, transport recorded as none, log shows it (§1.2)', () => {
+test('an internal commit executes: recipients empty, transport recorded as none, log shows it (section 1.2)', () => {
   const fleet = Fleet.boot(pack({ ops: { 'recap.assemble': 'opt-in-auto' } }), ANSWERS, DAY);
   fleet.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
   fleet.commit({ actionClass: 'recap.assemble', agent: 'ops', origin: { kind: 'event', id: 'kopdar-12' }, recipients: [], ...draftBundle() });
@@ -121,7 +121,7 @@ test('an internal commit executes: recipients empty, transport recorded as none,
   assert.equal(exec.transport, 'none');
 });
 
-test('cross-promotion commits only against a grant that names the partner (§2.11)', () => {
+test('cross-promotion commits only against a grant that names the partner (section 2.11)', () => {
   const fleet = Fleet.boot(pack({ growth: { 'promote.cross-community': 'opt-in-auto' } }, ['partner_policy']), { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' }, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   assert.throws(() => fleet.commit({
@@ -137,7 +137,7 @@ test('cross-promotion commits only against a grant that names the partner (§2.1
   }), /no_transport/, 'the partner-matched grant authorizes the lane; delivery still refuses — phase 1 sends nothing');
 });
 
-test('the per-event cross-promotion cap is enforced, not merely counted (§2.11 / FR-6.5)', () => {
+test('the per-event cross-promotion cap is enforced, not merely counted (section 2.11 / FR-6.5)', () => {
   const answers = { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' };
   const f = Fleet.boot(pack({ growth: { 'promote.cross-community': 'opt-in-auto' }, engagement: { 'recap.assemble': 'opt-in-auto' } }, ['partner_policy']), answers, DAY);
   f.issueGrant({ actionClass: 'promote.cross-community', kind: 'allow_always', channel: 'telegram', scope: 'kopdar-12', partner: 'Kopdar Sebelah', window: { from: 0, to: 99_999_999 }, by: 'organiser' });
@@ -180,7 +180,7 @@ test('a cap of zero means no partner promotion in this event, not an unbounded l
   }), /cross_promo_cap/, '0 is a decision an organiser can make, so it has to hold');
 });
 
-test('an expired partner window refuses with its own code — the organiser is told the truth (§2.11 / §1.2)', () => {
+test('an expired partner window refuses with its own code — the organiser is told the truth (section 2.11 / section 1.2)', () => {
   const answers = { ...ANSWERS, partner_policy: 'Kopdar Sebelah, dengan baris disclosure wajib' };
   const f = Fleet.boot(pack({ growth: { 'promote.cross-community': 'opt-in-auto' } }, ['partner_policy']), answers, DAY);
   f.issueGrant({
@@ -201,11 +201,10 @@ test('an expired partner window refuses with its own code — the organiser is t
   assert.ok(f.state.events.some((e) => e.type === 'CommitRefused' && e.code === 'grant_window_expired'), 'the right code reaches the audit log');
 });
 
-// --- §2.11 / FR-6.1: copy travels, people do not ------------------------------------------------------
+// --- section 2.11 / FR-6.1: copy travels, people do not ------------------------------------------------------
 
 const LEAKY = {
-  textId: 'Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi 62811',
-  textEn: "AIClub's meetup Saturday — if you have not registered yet, contact 62811",
+  text: { id: 'Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi 62811', en: "AIClub's meetup Saturday — if you have not registered yet, contact 62811" },
 };
 
 const partnerFleet = (promoLevel: 'draft' | 'opt-in-auto' = 'opt-in-auto') => {
@@ -219,7 +218,7 @@ const partnerFleet = (promoLevel: 'draft' | 'opt-in-auto' = 'opt-in-auto') => {
   return f;
 };
 
-test('partner copy carrying a member identifier refuses with partner_data_leak, ahead of the transport gate (§2.11 / FR-6.1)', () => {
+test('partner copy carrying a member identifier refuses with partner_data_leak, ahead of the transport gate (section 2.11 / FR-6.1)', () => {
   const f = partnerFleet();
   assert.throws(() => f.commit({
     actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
@@ -232,7 +231,7 @@ test('partner copy carrying a member identifier refuses with partner_data_leak, 
   assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), undefined, 'a refused partner send spends none of the event\'s allowance');
 });
 
-test('the member-data rule outranks the cadence rule: a full cap does not hide a leak (§2.11)', () => {
+test('the member-data rule outranks the cadence rule: a full cap does not hide a leak (section 2.11)', () => {
   const f = partnerFleet();
   f.commit({
     actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
@@ -246,7 +245,7 @@ test('the member-data rule outranks the cadence rule: a full cap does not hide a
     'the cap would also refuse this, but "wait for the next event" is the wrong advice for copy that must be rewritten');
 });
 
-test('a partner promo to a member who said stop reports the stop, not the cap — §2.11: the member\'s rights survive the partnership', () => {
+test('a partner promo to a member who said stop reports the stop, not the cap — section 2.11: the member\'s rights survive the partnership', () => {
   const f = partnerFleet();
   f.commit({
     actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
@@ -261,7 +260,7 @@ test('a partner promo to a member who said stop reports the stop, not the cap �
     'the cap is also spent here, but "wait for the next event" would be a lie: this member is unreachable in every lane, partner included');
 });
 
-test('the scan is bound to partner-facing copy — our own recap may name our own members (§2.11 scope)', () => {
+test('the scan is bound to partner-facing copy — our own recap may name our own members (section 2.11 scope)', () => {
   const f = partnerFleet();
   f.commit({
     actionClass: 'recap.assemble', agent: 'engagement',
@@ -271,7 +270,7 @@ test('the scan is bound to partner-facing copy — our own recap may name our ow
   assert.equal(exec.length, 1, 'the same tokens pass when no partner is on the receiving end — the rule is about the direction, not the digits');
 });
 
-test('an organiser-approved cross-promo card is still §2.11 copy — the token path runs the partner rules too (§2.11 / FR-6.1, D27)', () => {
+test('an organiser-approved cross-promo card is still section 2.11 copy — the token path runs the partner rules too (section 2.11 / FR-6.1, D27)', () => {
   const f = partnerFleet('draft');
   const card = f.attempt({
     actionClass: 'promote.cross-community', agent: 'growth', channel: 'telegram',
@@ -284,11 +283,11 @@ test('an organiser-approved cross-promo card is still §2.11 copy — the token 
     origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${card.id}`, ...LEAKY,
   }), /partner_data_leak/,
-    'a one-send approval authorises the lane; it does not vouch for the member number inside the copy — the §2.11 rules are content rules, not authorization rules');
+    'a one-send approval authorises the lane; it does not vouch for the member number inside the copy — the section 2.11 rules are content rules, not authorization rules');
   assert.equal(f.state.crossPromoByEvent.get('kopdar-12'), undefined, 'and the refused token send spends none of the event allowance either');
 });
 
-test('the audit timeline is a readable record, not JSON — near-misses and refusals are visible (§1.2)', () => {
+test('the audit timeline is a readable record, not JSON — near-misses and refusals are visible (section 1.2)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const card = fleet.attempt({ actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, ...draftBundle() }).card!;
@@ -297,13 +296,13 @@ test('the audit timeline is a readable record, not JSON — near-misses and refu
   const lines = fleet.auditTimeline();
   assert.ok(lines.every((l) => /^#\d+ /.test(l)), 'every line is a seq-prefixed record — the organiser can show a member what happened');
   const joined = lines.join('\n');
-  assert.ok(joined.includes('wrong venue — still lists the old RT hall'), 'the near-miss keeps its why (§1.2 first-class)');
+  assert.ok(joined.includes('wrong venue — still lists the old RT hall'), 'the near-miss keeps its why (section 1.2 first-class)');
   assert.ok(joined.includes('rejected'), 'rejections render as rejections, not as silent gaps');
   assert.ok(joined.includes('grant_not_found'), 'refused attempts render with their refusal code');
   assert.ok(!joined.trimStart().startsWith('{') && !joined.includes('"type":'), 'the timeline is prose, not a JSON dump');
 });
 
-test('a revocation in the timeline names the human who did it — an audit trail without an actor is not evidence (§1.2 / §1.8)', () => {
+test('a revocation in the timeline names the human who did it — an audit trail without an actor is not evidence (section 1.2 / section 1.8)', () => {
   const f = Fleet.boot(pack({ ops: { 'recap.assemble': 'opt-in-auto' } }), ANSWERS, DAY);
   const g = f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
   f.revokeGrant(g.id, 'organiser');
@@ -312,7 +311,7 @@ test('a revocation in the timeline names the human who did it — an audit trail
     '"revoked" alone does not say who took it back — the who is the record');
 });
 
-test('a commit with no named human renders unattributable — the engine does not lend the organiser\'s name (§1.2 / FR-5.1)', () => {
+test('a commit with no named human renders unattributable — the engine does not lend the organiser\'s name (section 1.2 / FR-5.1)', () => {
   const f = Fleet.boot(pack({ ops: { 'recap.assemble': 'opt-in-auto' } }), ANSWERS, DAY);
   f.issueGrant({ actionClass: 'recap.assemble', kind: 'allow_always', scope: 'kopdar-12', by: 'organiser' });
   // Recipient-less, so it executes instead of stopping at the transport gate (D21) — and `by`
@@ -326,17 +325,16 @@ test('a commit with no named human renders unattributable — the engine does no
   assert.ok(f.auditTimeline().join('\n').includes('on behalf of unattributable'), 'and the readable timeline says the same thing');
 });
 
-test('a quarantined input quoted into a commit is the fixed string — the commit gate reads through containment (§1.7)', () => {
+test('a quarantined input quoted into a commit is the fixed string — the commit gate reads through containment (section 1.7)', () => {
   const fleet = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   const input = fleet.registerInput('wa:62811', 'PROMOSI JUGA BISNIS KU http://spam.example');
   const r = fleet.attempt({
     actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
     triggerInput: input,
-    textId: `Ringkasan: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLineId(ANSWERS.community_name)}`,
-    textEn: `Summary: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+    text: { id: `Ringkasan: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Summary: ${LOW_TRUST_REPLACEMENT}\n\n${disclosureLine('en', ANSWERS.community_name)}` },
   });
   assert.ok(r.card, 'the proposal exists, quoting only the fixed string');
-  assert.ok(!r.card.revision.textId.includes('spam.example'), 'the member text never entered the revision');
+  assert.ok(!(r.card.revision.text.id ?? '').includes('spam.example'), 'the member text never entered the revision');
 });
 
 // --- the engine surface: behaviours only `Fleet` can show ------------------------------------------
@@ -344,7 +342,7 @@ test('a quarantined input quoted into a commit is the fixed string — the commi
 // them: the refusal is logged, the card count stays honest, and a promise is only real while it is
 // still in the future — none of which is visible from a unit test of the module alone.
 
-test('a full approval queue refuses the attempt and logs the refusal like any other (§1.6)', () => {
+test('a full approval queue refuses the attempt and logs the refusal like any other (section 1.6)', () => {
   const p = pack({ engagement: { 'draft.promote': 'draft' } });
   const f = Fleet.boot({ ...p, budgets: { ...p.budgets, queueMax: 2 } }, ANSWERS, DAY);
   const promo = (i: number) => ({
@@ -361,7 +359,7 @@ test('a full approval queue refuses the attempt and logs the refusal like any ot
   assert.equal(f.state.cards.size, 2, 'and a refused attempt creates no card');
 });
 
-test('the same idempotencyKey through the engine returns the same card — one question, one approval (§1.5)', () => {
+test('the same idempotencyKey through the engine returns the same card — one question, one approval (section 1.5)', () => {
   const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   const promo = { actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, ...draftBundle() };
   const a = f.attempt({ ...promo, idempotencyKey: 'promo-kopdar-12' });
@@ -376,18 +374,18 @@ test('the same idempotencyKey through the engine returns the same card — one q
   assert.equal(f.state.cards.size, 2);
 });
 
-test('an escalation is a card for a named human, an event, and a timeline line — a member cannot answer it (§2.7 / FR-5.1)', () => {
+test('an escalation is a card for a named human, an event, and a timeline line — a member cannot answer it (section 2.7 / FR-5.1)', () => {
   const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   const card = f.raiseEscalation('sponsor tier disagreement: the partner wants their logo on every poster', 'organiser');
   assert.equal(card.actionClass, 'engine.escalation');
   assert.equal(card.forcedBy, 'escalation', 'the card exists because a rule asked for it, not because an agent chose to draft');
   assert.ok(f.state.events.some((e) => e.type === 'EscalationRaised'), 'the escalation is an event, not only a card');
-  assert.ok(f.auditTimeline().join('\n').includes('escalation raised to organiser'), 'and it reads as an escalation in the timeline (§1.2)');
+  assert.ok(f.auditTimeline().join('\n').includes('escalation raised to organiser'), 'and it reads as an escalation in the timeline (section 1.2)');
   assert.throws(() => f.decideCard(card.id, { verdict: 'approve', by: 'member:m1', why: 'ya udah' }), /not_the_human/,
-    'the escalation asks a named human — a member answering it is the astroturf §2.7 forbids');
+    'the escalation asks a named human — a member answering it is the astroturf section 2.7 forbids');
 });
 
-test('a wake is only a waiting path while it is in the future — the engine refuses its own expired promise (§1.3)', () => {
+test('a wake is only a waiting path while it is in the future — the engine refuses its own expired promise (section 1.3)', () => {
   const f = Fleet.boot(pack({ engagement: { 'draft.promote': 'draft' } }), ANSWERS, DAY);
   assert.throws(() => f.assertWakeBacked('chase rsvp non-responders'), /ghost_watcher/, 'no row, no promise');
   const wake = f.scheduleWake({ purpose: 'chase rsvp non-responders', nextCheckAt: DAY + 1_000, eventId: 'kopdar-12' });
@@ -398,4 +396,155 @@ test('a wake is only a waiting path while it is in the future — the engine ref
   f.advance(2_000); // past nextCheckAt, and it never fired
   assert.throws(() => f.assertWakeBacked('chase rsvp non-responders', 'kopdar-12'), /ghost_watcher/,
     'a wake that went due unfired is a broken promise, not a waiting path — the organiser must be told, not reassured');
+});
+
+// --- firing a wake attempts the action it carries (D60) --------------------------------------------------
+
+test('firing a wake that carries an action drafts the card, and a human is waiting on it', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.fired, true);
+  assert.equal(out.result, 'attempted');
+  assert.equal(out.card?.actionClass, 'draft.reminder');
+  assert.equal(out.card?.phase, 't-minus-1');
+  assert.equal(f.inbox().counts.verdict, 1, 'the card is on a human\'s desk, not in the void');
+});
+
+test('firing a wake with no action fires the timer and attempts nothing', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({ purpose: 'chase rsvp non-responders', nextCheckAt: DAY + 1_000 });
+  const out = f.fireWake(w.id);
+  assert.equal(out.fired, true);
+  assert.equal(out.result, 'no-action');
+  assert.equal(f.inbox().counts.verdict, 0);
+});
+
+test('a wake whose action names a class the agent does not declare is refused, and the refusal is logged', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'draft.promote@x:kopdar-1',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-1',
+    action: { actionClass: 'draft.promote', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.result, 'refused');
+  assert.equal(out.code, 'class_unavailable');
+  assert.ok(f.state.events.some((e) => e.type === 'CommitRefused'), 'a refusal is logged, not swallowed');
+  assert.equal(f.inbox().counts.verdict, 0, 'and nothing reached a member');
+});
+
+test('one reminder per event per phase — the second timer for the same phase is a 409, not a second card', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#a', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#b', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo again', en: 'hello again' } },
+  });
+  assert.equal(f.fireWake(a.id).result, 'attempted');
+  const second = f.fireWake(b.id);
+  assert.equal(second.result, 'refused');
+  assert.equal(second.code, 'conflict_409');
+  assert.equal(f.inbox().counts.verdict, 1, 'the community got one reminder, not two');
+});
+
+test('firing a wake that was never scheduled is not-found, and changes nothing', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const before = f.state.events.length;
+  const out = f.fireWake('wake-999');
+  assert.equal(out.fired, false);
+  assert.equal(out.result, 'not-found');
+  assert.equal(f.state.events.length, before);
+});
+
+// --- the run cap covers the path the fleet actually uses (D60) -----------------------------------------------
+
+test('the run cap stops a fleet firing wakes: the crossing wake is not fired, and the rest are not attempted', () => {
+  // A pack whose cap is 1: the fleet may take ONE action this run, and the second wake must not be
+  // attempted. Before D60 the cap lived only in `runActions`, and the wake path — the path the fleet
+  // now actually uses — did not go through it at all.
+  const base = pack({ 'event-ops': { 'draft.reminder': 'draft' } });
+  const capped = { ...base, budgets: { ...base.budgets, maxActionsPerRun: 1 } };
+  const f = Fleet.boot(capped, ANSWERS, DAY);
+  const run = createRun();
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-2', nextCheckAt: DAY + 2_000, eventId: 'kopdar-2',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(a.id, run).result, 'attempted', 'the first wake is inside the cap');
+  const second = f.fireWake(b.id, run);
+  assert.equal(second.result, 'truncated', 'the crossing wake is dropped, not attempted');
+  assert.equal(second.fired, false, 'and it was not fired — the timer did not run');
+  assert.equal(f.inbox().counts.verdict, 1, 'one card, not two');
+});
+
+test('a wake fired with no run handle is unmetered — the cap is the caller\'s to hold', () => {
+  const base = pack({ 'event-ops': { 'draft.reminder': 'draft' } });
+  const capped = { ...base, budgets: { ...base.budgets, maxActionsPerRun: 1 } };
+  const f = Fleet.boot(capped, ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-2', nextCheckAt: DAY + 2_000, eventId: 'kopdar-2',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(a.id).result, 'attempted');
+  assert.equal(f.fireWake(b.id).result, 'attempted', 'without a handle there is no run to be bounded');
+});
+
+test('a refused phase-origin claim on the wake path is LOGGED — a refusal that leaves no trace is a promise a reader cannot check', () => {
+  const f = Fleet.boot(pack({ 'event-ops': { 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const a = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const b = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1#b', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo again', en: 'hello again' } },
+  });
+  f.fireWake(a.id);
+  const second = f.fireWake(b.id);
+  assert.equal(second.result, 'refused');
+  assert.equal(second.code, 'conflict_409');
+  const refused = f.state.events.filter((e) => e.type === 'CommitRefused');
+  assert.equal(refused.length, 1, 'the refusal is in the log — a reader must be able to see it');
+  assert.equal((refused[0] as { code?: string }).code, 'conflict_409');
+  assert.ok(f.health().refusals.some((r) => r.code === 'conflict_409'), 'and it is counted in the health read');
+});
+
+test('a timer may only fire a human-gated draft lane — an auto lane would claim the phase and do nothing', () => {
+  // `opt-in-auto` is committed by the RUNNER, and a wake is not a runner. So firing one used to
+  // claim the phase origin, report "attempted", and do nothing: no card, no commit, and no refusal
+  // logged — so the health read showed nothing either. Now it is refused, and the refusal is logged.
+  const f = Fleet.boot(pack({ 'event-ops': { 'observe.read': 'opt-in-auto', 'draft.reminder': 'draft' } }), ANSWERS, DAY);
+  const w = f.scheduleWake({
+    purpose: 'observe.read@x:kopdar-1', nextCheckAt: DAY + 1_000, eventId: 'kopdar-1',
+    action: { actionClass: 'observe.read', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  const out = f.fireWake(w.id);
+  assert.equal(out.result, 'refused');
+  assert.equal(out.code, 'timed_lane_not_draft');
+  assert.equal(f.inbox().counts.verdict, 0, 'nothing reached a member');
+  assert.ok(f.health().refusals.some((r) => r.code === 'timed_lane_not_draft'), 'and the refusal is counted');
+  // And the phase origin was NOT burned, so a legitimate draft lane for the same phase still works.
+  const ok = f.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-1', nextCheckAt: DAY + 2_000, eventId: 'kopdar-1',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(f.fireWake(ok.id).result, 'attempted', 'the refused lane did not consume the phase');
 });

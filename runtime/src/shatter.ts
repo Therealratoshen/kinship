@@ -1,5 +1,5 @@
 /**
- * §2.6 shatter-guard. A single complaint freezes the agent's level-1 lanes back to `draft` for
+ * section 2.6 shatter-guard. A single complaint freezes the agent's level-1 lanes back to `draft` for
  * that channel, automatically, pending organiser review — with a written record of what
  * triggered it. The failure mode for community agents is not a wrong answer, it is a slow
  * accumulation of annoyance that ends in the agent being ejected; a guard that trips early and
@@ -8,7 +8,7 @@
  * annoyance.
  *
  * Release is an organiser act with an event, never an agent act — and it can never touch
- * disclosure (§2.8): the freeze demotes a lane, it does not anonymise one.
+ * disclosure (section 2.8): the freeze demotes a lane, it does not anonymise one.
  */
 import { assertSeat } from './roles.ts';
 import type { Ctx, FleetEvent, FleetState, ShatterRow } from './types.ts';
@@ -16,14 +16,14 @@ import type { Ctx, FleetEvent, FleetState, ShatterRow } from './types.ts';
 export function tripShatter(ctx: Ctx, channel: string, ref: string): void {
   // NO seat check here, on purpose (D36): `ref` is the member who complained. Requiring a human seat
   // to be annoyed would refuse a member's complaint for not being the organiser — the precise way a
-  // governance system becomes a silencer (§2.6 is the member's lever, §2.7 is the organiser's).
+  // governance system becomes a silencer (section 2.6 is the member's lever, section 2.7 is the organiser's).
   const existing = ctx.state.shatter.get(channel);
   if (existing && existing.releasedAt === undefined) return; // idempotent while frozen
   ctx.commit({ type: 'ShatterTripped', channel, ref, at: ctx.now() });
 }
 
 export function releaseShatter(ctx: Ctx, channel: string, by: string): void {
-  assertSeat(ctx, by, 'spec §2.6');
+  assertSeat(ctx, by, 'spec section 2.6');
   const row = ctx.state.shatter.get(channel);
   if (!row || row.releasedAt !== undefined) return;
   ctx.commit({ type: 'ShatterReleased', channel, by, at: ctx.now() });

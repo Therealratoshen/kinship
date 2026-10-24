@@ -4,7 +4,7 @@ For the peer/outsider conversations in `PLAN.md` W10 and phase 3. **Not for your
 your own data goes in `FEELING-DIARY.md` and the event template, and the bias note applies: a
 conversation with someone inside your network is weaker evidence than one outside it.
 
-Ask the questions in `TEST-PROTOCOL.md` §5. Record what they **do**, not what they say they'd
+Ask the questions in `TEST-PROTOCOL.md` section 5. Record what they **do**, not what they say they'd
 do. "I'd use that" is worth nothing; "here's the spreadsheet I actually use, you can see the
 last row is from March" is worth a lot.
 
@@ -35,11 +35,11 @@ last row is from March" is worth a lot.
 The partner lane is confirmed and scarce. It is spent **only** when all four are true:
 
 1. One clean shadow-mode event of proof exists (`EVENT-TEMPLATE.md` filled, diary rated).
-2. `TEST-PROTOCOL.md` §4 returned CONTINUE, not REPOSITION or KILL.
+2. `TEST-PROTOCOL.md` section 4 returned CONTINUE, not REPOSITION or KILL.
 3. The spec (`../../spec/GOVERNANCE-SPEC-OUTLINE.md`) is readable by a stranger, because the
    pitch's honesty rests on it.
 4. Their operator consent for member data is obtained **before** anything touches their
-   community (PRD §12-Q3 — the legal question is still open, which is exactly why the first
+   community (PRD section 12-Q3 — the legal question is still open, which is exactly why the first
    ask is read-only and one event).
 
 If any is false, the pitch is a favour spent on faith. Write the date you got to four/four.

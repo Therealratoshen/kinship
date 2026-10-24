@@ -30,7 +30,7 @@
  *
  * And the honest nulls: a pack that declares no coverage window has an *unknown* duty state, not an
  * always-on one, and `null` is what this file reports for "we cannot tell". Zero is a claim that
- * nothing was missed; `null` is the absence of the claim (§2.9's discipline, applied to staffing).
+ * nothing was missed; `null` is the absence of the claim (section 2.9's discipline, applied to staffing).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -45,9 +45,7 @@ const DAY = 86_400_000;
 const JAKARTA = (over: Partial<Extract<CommunityCoverage, { mode: 'staffed' }>> = {}): CommunityCoverage => ({
   mode: 'staffed',
   timezone: 'Asia/Jakarta',
-  days: [1, 2, 3, 4, 5], // 0 = Sunday
-  opens: 9 * 60,
-  closes: 18 * 60,
+  windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }], // 0 = Sunday
   ...over,
 });
 
@@ -151,7 +149,7 @@ test('the window keeps its local meaning across a DST transition — no offset i
   // Europe/London moves to BST on 2026-03-29. A staffed 09:00–18:00 window must still open at
   // 09:00 local on both sides of the change; a stored UTC offset would open it at 08:00 local
   // after the switch.
-  const cov: CommunityCoverage = { mode: 'staffed', timezone: 'Europe/London', days: [0, 1, 2, 3, 4, 5, 6], opens: 9 * 60, closes: 18 * 60 };
+  const cov: CommunityCoverage = { mode: 'staffed', timezone: 'Europe/London', windows: [{ days: [0, 1, 2, 3, 4, 5, 6], opens: 9 * 60, closes: 18 * 60 }] };
   assert.equal(isOnDuty(cov, local('Europe/London', 2026, 3, 28, 9, 0)), true, 'the Saturday before the change');
   assert.equal(isOnDuty(cov, local('Europe/London', 2026, 3, 30, 9, 0)), true, 'the Monday after the change — still 09:00 local');
 });
@@ -191,8 +189,10 @@ test('the health read carries the coverage window, the duty state, and what it c
   f.beginEvent('kopdar-1');
   f.attempt({
     actionClass: 'report.assemble', agent: 'community-lead', origin: { kind: 'event', id: 'kopdar-1' },
-    textId: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
-    textEn: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    text: {
+      id: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
+      en: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    },
   });
   const h = f.health();
   assert.equal(h.community.coverage?.mode, 'staffed');
@@ -207,8 +207,10 @@ test('an obligation that outlives its staffed shift is counted, and a pack with 
   f.beginEvent('kopdar-1');
   f.attempt({
     actionClass: 'report.assemble', agent: 'community-lead', origin: { kind: 'event', id: 'kopdar-1' },
-    textId: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
-    textEn: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    text: {
+      id: 'Rekap mingguan: 19 orang hadir.\n\nbot ini asisten organiser, bukan manusia',
+      en: 'Weekly recap: 19 people attended.\n\nI am the organiser\'s assistant, not a human',
+    },
   });
   f.advance(local('Asia/Jakarta', 2026, 7, 21, 9, 0) - local('Asia/Jakarta', 2026, 7, 20, 10, 0));
   const h = f.health();
@@ -222,7 +224,7 @@ test('an obligation that outlives its staffed shift is counted, and a pack with 
   assert.equal(h2.community.missedShift, null, 'with no window there is no shift to have missed');
 });
 
-test('the coverage read is a read: it appends nothing, and replay reproduces it exactly (§1.2)', () => {
+test('the coverage read is a read: it appends nothing, and replay reproduces it exactly (section 1.2)', () => {
   const pack = makePack({ 'community-lead': { 'observe.read': 'opt-in-auto' } }, JAKARTA());
   const f = Fleet.boot(pack, { community_name: 'AI Builders ID' }, local('Asia/Jakarta', 2026, 7, 20, 10, 0));
   f.beginEvent('kopdar-1');
@@ -235,7 +237,7 @@ test('the coverage read is a read: it appends nothing, and replay reproduces it 
 
   // The name of this test promises a replay, so the test does one: `Fleet.replay` rebuilds the fleet
   // from the log alone, and the coverage section must come back identical. A read that depends on
-  // anything the log does not carry would differ here — which is the whole claim of §1.2.
+  // anything the log does not carry would differ here — which is the whole claim of section 1.2.
   const answers = { community_name: 'AI Builders ID' };
   const replayed = Fleet.replay(f.events, answers, pack);
   assert.deepEqual(
@@ -330,13 +332,13 @@ test('the shift list is read against the LOCAL weekday — a UTC date would put 
   // 19:00 on Sunday in UTC), is off duty — the local date is Monday. Read against the UTC date it would
   // be Sunday, and the community would be "on duty" on a day it never staffed. The other direction
   // too: 00:30 on Tuesday in Jakarta is 17:30 on Monday in UTC.
-  const sundayOnly = JAKARTA({ days: [0], opens: 0, closes: 24 * 60 - 1 });
+  const sundayOnly = JAKARTA({ windows: [{ days: [0], opens: 0, closes: 24 * 60 - 1 }] });
   const jakartaMonday2am = local('Asia/Jakarta', 2026, 7, 20, 2, 0); // local Monday 02:00
   assert.equal(new Date(jakartaMonday2am).getUTCDay(), 0, 'the UTC day is Sunday');
   assert.equal(isOnDuty(sundayOnly, jakartaMonday2am), false,
     'the local day is Monday, and Monday is not a staffed day — a UTC date would read Sunday and say "on duty"');
 
-  const mondayOnly = JAKARTA({ days: [1], opens: 0, closes: 24 * 60 - 1 });
+  const mondayOnly = JAKARTA({ windows: [{ days: [1], opens: 0, closes: 24 * 60 - 1 }] });
   const jakartaTuesday0030 = local('Asia/Jakarta', 2026, 7, 21, 0, 30); // local Tuesday 00:30
   assert.equal(new Date(jakartaTuesday0030).getUTCDay(), 1, 'the UTC day is Monday');
   assert.equal(isOnDuty(mondayOnly, jakartaTuesday0030), false,
@@ -345,7 +347,7 @@ test('the shift list is read against the LOCAL weekday — a UTC date would put 
   // And across TWO zones, because the day formatter is CACHED per zone — so a cache that leaked
   // between zones would hand the second community the first community's calendar. New York on the
   // local Tuesday is already the Wednesday in Jakarta, so a leaked formatter reads the wrong weekday.
-  const nyTuesdayOnly = JAKARTA({ timezone: 'America/New_York', days: [2], opens: 0, closes: 24 * 60 - 1 });
+  const nyTuesdayOnly = JAKARTA({ timezone: 'America/New_York', windows: [{ days: [2], opens: 0, closes: 24 * 60 - 1 }] });
   const nyTuesday2100 = local('America/New_York', 2026, 7, 21, 21, 0); // local Tuesday 21:00
   assert.equal(new Date(nyTuesday2100).getUTCDay(), 3, 'the UTC day is Wednesday, and in Jakarta it is already the Wednesday');
   assert.equal(isOnDuty(nyTuesdayOnly, nyTuesday2100), true,

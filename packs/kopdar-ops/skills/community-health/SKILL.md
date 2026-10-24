@@ -21,15 +21,15 @@ What it reads, and only this:
 - **What is waiting, and who owes it.** Pending cards, live authorizations, unreleased freezes, overdue
   wakes — the same four things `inbox` lists, because "what is owed" and "what is late" are the same
   question.
-- **The questions the community still owes an answer to.** Open **threads** (spec §2.14): how many, and
+- **The questions the community still owes an answer to.** Open **threads** (spec section 2.14): how many, and
   how old the oldest is. This is the one number on the list a member would recognise, because it is the
   only one about a person rather than about the fleet's own housekeeping. A thread still open when a
   staffed shift ended is the community failing to keep its word — and the count of those is the same
   `missedShift` number, read the community-facing way.
 - **What this cannot say.** Sentiment, morale, churn risk, whether anyone was happy. None of these are
-  measured in v0 (PRD §5) and this read says so rather than implying omniscience.
+  measured in v0 (PRD section 5) and this read says so rather than implying omniscience.
 - **How the community runs.** The `posture:` the pack declares — whether the fleet may approach a member
-  who did not ask, and whether the community is discoverable (spec §2.15). It belongs in a health read
+  who did not ask, and whether the community is discoverable (spec section 2.15). It belongs in a health read
   because it is the community's own statement about itself, and because a health read that reported a
   "missed shift" without saying whether the community was even supposed to be on duty would be asking the
   reader to guess.

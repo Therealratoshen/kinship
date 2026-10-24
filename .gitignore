@@ -2,6 +2,9 @@
 
 # Real deployment configs contain channel tokens, sponsor contacts, and attendee sources.
 packs/**/pack.local.yaml
+# The community's working file: their copy, their next event, and their MEMBERS. It holds member
+# identifiers, so it is ignored exactly like the answers next to it.
+packs/**/pack.local.plan.yaml
 packs/**/*.local.yaml
 *.env
 *.env.local

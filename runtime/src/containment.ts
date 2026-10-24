@@ -1,5 +1,5 @@
 /**
- * §1.7 / §2.7 stranger-input containment. A community's hostile input arrives as a confident
+ * section 1.7 / section 2.7 stranger-input containment. A community's hostile input arrives as a confident
  * sentence from a person in the group, so the mechanics are behavioural, not advisory:
  *
  *  - member input is `low_trust_review` and cannot raise its own trust — there is no API that
@@ -10,14 +10,14 @@
  *  - the substitution is upward-only: the drafting lane reads the message at low trust,
  *    because a reply proposal that never saw the message is useless;
  *  - member input in an auto lane narrows the lane to `draft` — "yes, go ahead" in chat is
- *    input to a proposal, never a grant (§1.8 is the only grant path).
+ *    input to a proposal, never a grant (section 1.8 is the only grant path).
  */
 import { refuse } from './errors.ts';
 import { hashText } from './store.ts';
 import { narrowest } from './ladder.ts';
 import type { Autonomy, Ctx, FleetEvent, FleetState, QuarantinedInput, TrustLabel } from './types.ts';
 
-/** The fixed string. A masked preview is never a value (§1.9.3) — this is a sentence, not a redaction. */
+/** The fixed string. A masked preview is never a value (section 1.9.3) — this is a sentence, not a redaction. */
 export const LOW_TRUST_REPLACEMENT = '[member input withheld from this artefact — see the audit log for its arrival]';
 
 const RANK: Record<TrustLabel, number> = { organiser: 2, fleet: 1, low_trust_review: 0 };
@@ -31,7 +31,7 @@ export interface MemberInputArgs {
 /**
  * Wrap a member message. The wrapped value carries the text for the low-trust drafting lane;
  * the event log and state carry only arrival metadata + the text hash — the log is
- * member-readable (§2.3) and member messages do not belong in it verbatim.
+ * member-readable (section 2.3) and member messages do not belong in it verbatim.
  */
 export function wrapMemberInput(ctx: Ctx, args: MemberInputArgs): QuarantinedInput {
   const inputId = args.inputId ?? `input-${ctx.state.inputs.size + 1}`;
@@ -62,7 +62,7 @@ export function readForArtefact(input: QuarantinedInput, artefactTrust: TrustLab
 /** Second line of defence for assembly paths handed raw pieces instead of reads. */
 export function assertNoLowTrustInto(pieces: { trust: TrustLabel }[], artefactTrust: TrustLabel): void {
   if (pieces.some((p) => RANK[p.trust] < RANK[artefactTrust])) {
-    refuse('member_input_forbidden_here', 'spec §2.7 / §1.7',
+    refuse('member_input_forbidden_here', 'spec section 2.7 / section 1.7',
       'a higher-trust artefact does not assemble over quarantined member input — read it through readForArtefact or leave it out');
   }
 }

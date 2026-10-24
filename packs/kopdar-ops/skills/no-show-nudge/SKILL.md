@@ -16,7 +16,7 @@ reclassification risk, and lands as "the organiser is billing me because I misse
 surveillance to anyone who was simply sick.
 
 Tone: assume good faith, offer nothing to defend, one line about the recap, and an explicit "tell me to stop
-and I will" that actually writes a suppression rule (stored, revocable, one tap — `spec` §1.8).
+and I will" that actually writes a suppression rule (stored, revocable, one tap — `spec` section 1.8).
 
 **Assertion.** `assert channel in {email, telegram, discord}` and
 `assert suppression written when a recipient asks to stop` and `assert no nudge fires before the event phase == recap`.

@@ -5,13 +5,13 @@
  * refuses at the transport gate with its authorization intact, and the refusal lands in the
  * audit log rather than being swallowed.
  *
- * The per-run action cap (§1.6) is deliberately NOT wired here — a run belongs to a runner,
+ * The per-run action cap (section 1.6) is deliberately NOT wired here — a run belongs to a runner,
  * which calls `recordRunAction` between actions. The engine is the library the runner is
  * written against, and `src/runner.ts` is that runner: one call, one `Run`, one report.
  *
  * Commit order is the promise the pack makes to members, encoded as evaluation order:
- *   class availability → §2.11 member-data rule (content) → authorization/grant → per-member
- *   protections → §2.11 partner cap → disclosure + answerability → transport gate → execute. A
+ *   class availability → section 2.11 member-data rule (content) → authorization/grant → per-member
+ *   protections → section 2.11 partner cap → disclosure + answerability → transport gate → execute. A
  *   protection that fires ahead of the transport gate stays load-bearing the day a transport exists.
  */
 import { commitEvent, replay as foldEvents } from './apply.ts';
@@ -20,6 +20,7 @@ import { KinshipError, refuse } from './errors.ts';
 import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
 import { answerThread, openThread } from './threads.ts';
+import { localeCopy, localeTextForHash, type LocaleText } from './locales.ts';
 import { assertPostureContact, isOneToOneClass } from './posture.ts';
 import { answerableBy, assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
@@ -31,13 +32,13 @@ import {
   transitionPhase, assertWakeBacked,
 } from './lifecycle.ts';
 import { releaseShatter, tripShatter } from './shatter.ts';
-import { setBudget, recordSpend } from './budget.ts';
+import { setBudget, recordSpend, recordRunAction, type RunState } from './budget.ts';
 import { answersDigest, deepEqualState, seqProblems, type LogExpectation, type LogVerification } from './log.ts';
 import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
 import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
 import type {
-  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeRow,
+  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeAction, WakeRow,
 } from './types.ts';
 
 export interface AttemptArgs {
@@ -46,9 +47,9 @@ export interface AttemptArgs {
   origin: { kind: string; id: string };
   phase?: Phase | null;
   channel?: string;
-  textId: string;
-  textEn: string;
-  /** A member message that triggered this attempt — narrows any lane to draft (§2.7). */
+  /** The copy, in the community's declared languages (FR-5.6). */
+  text: LocaleText;
+  /** A member message that triggered this attempt — narrows any lane to draft (section 2.7). */
   triggerInput?: QuarantinedInput;
   idempotencyKey?: string;
 }
@@ -56,6 +57,26 @@ export interface AttemptArgs {
 export interface AttemptResult {
   disposition: 'card' | 'auto';
   card: Card | null;
+}
+
+/** What happened when a wake fired. */
+export interface WakeOutcome {
+  /** The wake row existed and was fired. */
+  fired: boolean;
+  /**
+   * `attempted` — the wake carried an action and it went through the gate.
+   * `refused` — the action was refused, and the refusal is an outcome, not a crash.
+   * `no-action` — a timer and nothing more.
+   * `not-found` — there was no such wake.
+   * `truncated` — the run's cap was reached, so this wake was not fired at all.
+   */
+  result: 'attempted' | 'refused' | 'no-action' | 'not-found' | 'truncated';
+  /** The card the attempt produced, when it produced one. */
+  card?: Card;
+  /** The refusal code, when the attempt was refused. */
+  code?: string;
+  /** The engine's sentence, when there is one. */
+  reason?: string;
 }
 
 export interface CommitArgs {
@@ -66,9 +87,9 @@ export interface CommitArgs {
   channel?: string;
   partner?: string;
   recipients: string[];
-  textId: string;
-  textEn: string;
-  /** The one-send token from an approved card (§1.5). Absent → a live grant is required (§1.8). */
+  /** The copy, in the community's declared languages (FR-5.6). */
+  text: LocaleText;
+  /** The one-send token from an approved card (section 1.5). Absent → a live grant is required (section 1.8). */
   authorizationToken?: string;
   /** FR-5.1 — required for member-facing commits. */
   onBehalfOf?: string;
@@ -94,19 +115,19 @@ export class Fleet {
     this.t = startAt;
   }
 
-  /** The boot gate: every `needs:` key is answered by the organiser, never invented (§2.7). */
+  /** The boot gate: every `needs:` key is answered by the organiser, never invented (section 2.7). */
   static boot(pack: Packed, answers: NeedAnswers = {}, startAt = 1_000): Fleet {
     for (const need of pack.needs) {
       const a = answers[need];
       if (a === undefined || a.trim() === '') {
-        refuse('need_unanswered', 'spec §2.7 / pack needs gate',
+        refuse('need_unanswered', 'spec section 2.7 / pack needs gate',
           `need \`${need}\` is unanswered — the organiser answers it, the fleet never invents it`);
       }
     }
     return new Fleet(pack, answers, startAt);
   }
 
-  /** §1.2 — fold the same log through the same reducer; the replay test asserts deep-equality. */
+  /** section 1.2 — fold the same log through the same reducer; the replay test asserts deep-equality. */
   static replay(events: LoggedEvent[], answers: NeedAnswers = {}, pack?: Packed): Fleet {
     const st = foldEvents(events);
     const last = events.length > 0 ? events[events.length - 1]!.at : 1_000;
@@ -120,7 +141,7 @@ export class Fleet {
   }
 
   /**
-   * §1.2 — verify a persisted log, as a pure read. Seam 3, tier 1: the rows must be dense in `seq`,
+   * section 1.2 — verify a persisted log, as a pure read. Seam 3, tier 1: the rows must be dense in `seq`,
    * they must fold, and (when the caller says what it expects) the state they fold to must be the
    * state the caller already holds.
    *
@@ -191,11 +212,23 @@ export class Fleet {
     };
   }
 
-  /** Log a refused attempt (§1.2 — refusals are outcomes; the near-miss discipline applies). */
-  private logRefusal(args: { actionClass: string; agent: string }, e: unknown): never {
+  /** Log a refused attempt (section 1.2 — refusals are outcomes; the near-miss discipline applies). */
+  /**
+   * Record a refusal in the log, and let the caller decide what happens next.
+   *
+   * `logRefusal` below throws, because an attempt that was refused has no result to return. The
+   * phase-origin claim on the wake path is the case that needs the other half: the refusal is
+   * recorded, and the caller turns it into a `refused` outcome. **A refusal that leaves no trace is
+   * a promise a reader cannot check** — the log would show the second timer firing and nothing else.
+   */
+  private recordRefusal(args: { actionClass: string; agent: string }, e: unknown): void {
     if (e instanceof KinshipError) {
       commitEvent(this.st, { type: 'CommitRefused', actionClass: args.actionClass, agent: args.agent, code: e.code, at: this.t });
     }
+  }
+
+  private logRefusal(args: { actionClass: string; agent: string }, e: unknown): never {
+    this.recordRefusal(args, e);
     throw e;
   }
 
@@ -206,13 +239,13 @@ export class Fleet {
       let level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, settings: this.resolved, channel: args.channel });
       if (args.triggerInput !== undefined) level = narrowForMemberTrigger(level);
       if (level === 'never') {
-        refuse('class_unavailable', 'spec §1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — not denied, absent`);
+        refuse('class_unavailable', 'spec section 1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — not denied, absent`);
       }
       if (level === 'draft') {
         const c = this.ctx();
         const cardArgs: CreateCardArgs = {
           actionClass: args.actionClass, agent: args.agent, origin: args.origin,
-          phase: args.phase ?? null, textId: args.textId, textEn: args.textEn,
+          phase: args.phase ?? null, text: args.text,
           ...(args.idempotencyKey !== undefined ? { idempotencyKey: args.idempotencyKey } : {}),
           ...(args.triggerInput !== undefined ? { forcedBy: 'member_input' } : {}),
         };
@@ -228,16 +261,16 @@ export class Fleet {
     try {
       const level = resolveAutonomy({ pack: this.pack, role: args.agent, actionClass: args.actionClass, state: this.st, answers: this.answers, settings: this.resolved, channel: args.channel });
       if (level === 'never') {
-        refuse('class_unavailable', 'spec §1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — a grant cannot resurrect it`);
+        refuse('class_unavailable', 'spec section 1.1', `class \`${args.actionClass}\` is absent from \`${args.agent}\`'s toolset — a grant cannot resurrect it`);
       }
 
-      // --- the partner-facing content rule (§2.11 / FR-6.1) -------------------------------------------
+      // --- the partner-facing content rule (section 2.11 / FR-6.1) -------------------------------------------
       // A CONTENT rule, not an authorization rule, so it runs ahead of the authorization branch and
       // covers the approved-card (one-send token) path as well as the grant path: an organiser who
       // approves a partner promo vouches for the copy's intent, not for a member's number travelling
       // toward a third party. It also runs ahead of the transport gate — `no_transport` is phase 1's
       // temporary lock and this rule is permanent, so the organiser learns the permanent one first.
-      if (args.partner !== undefined) assertNoMemberDataInPartnerCopy(this.st, args.textId, args.textEn);
+      if (args.partner !== undefined) assertNoMemberDataInPartnerCopy(this.st, args.text);
 
       // --- authorization or grant ------------------------------------------------------------------
       let grantId: string | undefined;
@@ -246,14 +279,14 @@ export class Fleet {
         const token = args.authorizationToken;
         const auth = this.st.authorizations.get(token);
         if (!auth || auth.consumedAt !== undefined) {
-          refuse('stale_target', 'spec §1.5', `authorization \`${token}\` is missing or already used — the send it authorised already happened`);
+          refuse('stale_target', 'spec section 1.5', `authorization \`${token}\` is missing or already used — the send it authorised already happened`);
         }
         if (auth && auth.actionClass !== args.actionClass) {
-          refuse('stale_target', 'spec §1.5', `authorization \`${token}\` was issued for \`${auth.actionClass}\`, not \`${args.actionClass}\``);
+          refuse('stale_target', 'spec section 1.5', `authorization \`${token}\` was issued for \`${auth.actionClass}\`, not \`${args.actionClass}\``);
         }
-        const revisionHash = hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`);
+        const revisionHash = hashText(localeTextForHash(args.text, this.pack.locale));
         if (auth && auth.revisionHash !== revisionHash) {
-          refuse('stale_target', 'spec §1.5', 'the content is not the revision that was approved — approve the new revision first');
+          refuse('stale_target', 'spec section 1.5', 'the content is not the revision that was approved — approve the new revision first');
         }
         authToken = token;
       } else {
@@ -263,13 +296,13 @@ export class Fleet {
           // Name the real reason when the organiser did grant this and the window simply ran out.
           const expired = grantWithClosedWindow(c, { actionClass: args.actionClass, channel: args.channel, partner: args.partner });
           if (expired?.window) {
-            refuse('grant_window_expired', 'spec §2.11',
+            refuse('grant_window_expired', 'spec section 2.11',
               `the always-grant \`${expired.id}\` for \`${args.actionClass}\` named the window \`${expired.window.from}\u2013${expired.window.to}\` and it has closed — a time-bounded grant does not revive itself; the organiser renews it`);
           }
-          refuse('grant_not_found', 'spec §1.8', `no live grant authorizes \`${args.actionClass}\`${args.channel ? ` in \`${args.channel}\`` : ''} — escalation is earned, and every always-grant is revocable`);
+          refuse('grant_not_found', 'spec section 1.8', `no live grant authorizes \`${args.actionClass}\`${args.channel ? ` in \`${args.channel}\`` : ''} — escalation is earned, and every always-grant is revocable`);
         }
         if (grant && args.channel !== undefined && grant.channel !== args.channel) {
-          refuse('grant_not_found', 'spec §1.8', `the live grant names \`${grant.channel ?? 'no channel'}\`, not \`${args.channel}\` — an always-grant binds its lane`);
+          refuse('grant_not_found', 'spec section 1.8', `the live grant names \`${grant.channel ?? 'no channel'}\`, not \`${args.channel}\` — an always-grant binds its lane`);
         }
         grantId = grant?.id;
       }
@@ -280,23 +313,23 @@ export class Fleet {
         const m = this.st.members.get(ref);
         if (m) assertSendHour(m.tz, this.t);
         assertWithinCap(this.ctx(), ref, this.t, this.st.commitsByMember.get(ref) ?? []);
-        // The community's own posture (spec §2.15) — a member protection the COMMUNITY declared,
+        // The community's own posture (spec section 2.15) — a member protection the COMMUNITY declared,
         // sitting with the other per-member protections because it is one: a community that does not
         // tolerate being approached says so, and the fleet does not approach.
         assertPostureContact(this.ctx(), ref, isOneToOneClass(args.actionClass));
       }
 
-      // --- the community's openness (spec §2.15) -----------------------------------------------------
+      // --- the community's openness (spec section 2.15) -----------------------------------------------------
       // Where it sits is a decision: with the per-member protections, because a closed community's
       // public post is a refusal of the same kind — a thing the community said no to — and before the
       // transport gate, because this rule is permanent and `no_transport` is phase 1's temporary lock.
       if (args.actionClass === 'commit.channel-post' && this.resolved.posture.openness === 'closed') {
-        refuse('posture_refused', 'spec §2.15 / FR-5.14',
+        refuse('posture_refused', 'spec section 2.15 / FR-5.14',
           `this community is closed — \`posture.openness: closed\` — so the fleet may not post publicly. A community that wants to be discoverable declares \`openness: open\``);
       }
 
-      // --- the partner-reach bound (§2.11 / FR-6.5) ---------------------------------------------------
-      // Where it sits is a decision: after the per-member protections, because §2.11's third bullet
+      // --- the partner-reach bound (section 2.11 / FR-6.5) ---------------------------------------------------
+      // Where it sits is a decision: after the per-member protections, because section 2.11's third bullet
       // says the member's rights survive the partnership — a send to a member who said stop is
       // reported as `member_suppressed`, never as a cadence problem; and before the transport gate,
       // because the cap is permanent while `no_transport` is phase 1's temporary lock.
@@ -304,14 +337,14 @@ export class Fleet {
         const cap = this.pack.budgets.crossPromoPerEventCap;
         const used = this.st.crossPromoByEvent.get(args.origin.id) ?? 0;
         if (cap !== null && used >= cap) {
-          refuse('cross_promo_cap', 'spec §2.11 / FR-6.5',
+          refuse('cross_promo_cap', 'spec section 2.11 / FR-6.5',
             `event \`${args.origin.id}\` already carries ${used} cross-promotion send(s) against a cap of ${cap} — a partner's reach is not our cadence, and the bound is the pack's, not the agent's`);
         }
       }
 
       // --- disclosure + answerability ----------------------------------------------------------------
       if (args.recipients.length > 0) {
-        assertDisclosed(args.textId, args.textEn, this.answers['community_name'] ?? '');
+        assertDisclosed(args.text, this.answers['community_name'] ?? '', this.pack.locale);
         assertAnswerability(args.onBehalfOf);
         // --- the transport gate: the outermost lock (D21) -------------------------------------------
         refuse('no_transport', 'D21 / D11',
@@ -323,7 +356,7 @@ export class Fleet {
       if (authToken !== undefined) consumeAuthorization(c, authToken);
       c.commit({
         type: 'CommitExecuted', actionClass: args.actionClass, agent: args.agent, origin: args.origin,
-        phase: args.phase ?? null, revisionHash: hashText(`${args.textId}\n\u2044\u2044\n${args.textEn}`),
+        phase: args.phase ?? null, revisionHash: hashText(localeTextForHash(args.text, this.pack.locale)),
         onBehalfOf: answerableBy(args.onBehalfOf), recipients: args.recipients, transport: 'none',
         ...(args.channel !== undefined ? { channel: args.channel } : {}),
         ...(args.partner !== undefined ? { partner: args.partner } : {}),
@@ -358,8 +391,7 @@ export class Fleet {
   raiseEscalation(purpose: string, to: string): Card {
     const card = createCard(this.ctx(), {
       actionClass: 'engine.escalation', agent: 'engine', origin: { kind: 'escalation', id: purpose }, phase: null,
-      textId: `Eskalasi: ${purpose}. Butuh keputusan ${to}.`,
-      textEn: `Escalation: ${purpose}. Needs a decision from ${to}.`,
+      text: localeCopy(this.ctx(), 'escalation', (spec) => spec.escalation(purpose, to)),
       forcedBy: 'escalation',
     });
     this.ctx().commit({ type: 'EscalationRaised', purpose, to, cardId: card.id, at: this.t });
@@ -368,24 +400,16 @@ export class Fleet {
 
   // --- members, inputs, lifecycle, budgets -----------------------------------------------------------
 
-  registerMember(ref: string, tz: string): void {
-    registerMember(this.ctx(), ref, tz);
-  }
-
-  suppressMember(ref: string, source: 'member' | 'organiser'): void {
-    suppressMember(this.ctx(), ref, { source });
-  }
-
-  /** Wrap a member message (§2.7). Returns the quarantined value; the log keeps metadata only. */
+  /** Wrap a member message (section 2.7). Returns the quarantined value; the log keeps metadata only. */
   registerInput(memberRef: string, text: string): QuarantinedInput {
     return wrapMemberInput(this.ctx(), { memberRef, text });
   }
 
   /**
-   * Open a thread: a question the community now owes an answer to (§2.14 / FR-5.13).
+   * Open a thread: a question the community now owes an answer to (section 2.14 / FR-5.13).
    *
    * The host calls this when it judges an input to be a question. The runtime does not judge — it
-   * tracks. The thread holds no text (the log never holds member text either, §2.7) and no read
+   * tracks. The thread holds no text (the log never holds member text either, section 2.7) and no read
    * prints the asker.
    */
   openThread(args: { memberRef?: string | null; pointer?: string | null } = {}): Thread {
@@ -394,7 +418,7 @@ export class Fleet {
 
   /**
    * Close a thread: the question has been answered. A note of how is required — a record with no
-   * substance is not a record, the same rule as a verdict without a why (§1.5).
+   * substance is not a record, the same rule as a verdict without a why (section 1.5).
    */
   answerThread(threadId: string, by: string, note: string): void {
     answerThread(this.ctx(), threadId, by, note);
@@ -420,7 +444,7 @@ export class Fleet {
     checkoutEvent(this.ctx(), eventId, agentId);
   }
 
-  scheduleWake(opts: { purpose: string; nextCheckAt: number; eventId?: string }): WakeRow {
+  scheduleWake(opts: { purpose: string; nextCheckAt: number; eventId?: string; action?: WakeAction }): WakeRow {
     return scheduleWake(this.ctx(), opts);
   }
 
@@ -428,8 +452,91 @@ export class Fleet {
     return assertWakeBacked(this.ctx(), purpose, eventId);
   }
 
-  fireWake(wakeId: string): void {
-    fireWake(this.ctx(), wakeId);
+  /**
+   * Fire a wake, and attempt the action it carries (D60).
+   *
+   * This is the seam the runtime was missing: it could schedule a timer and judge a card, and nothing
+   * connected the two — the caller handed the copy in, one `--text-id` at a time. A wake now carries
+   * the lane, the agent, the phase and the copy, so firing it *is* the fleet taking the action.
+   *
+   * The attempt goes through `attempt`, so every refusal that applies to a hand-fed action applies
+   * here too, and the refusal is an outcome rather than a crash: a batch of wakes that meets one
+   * refused action does not lose the rest (the runner's own rule, applied to timers). A phase-origin
+   * claim is taken first, because "one reminder per event per phase" is structural (the pack's
+   * `reminder-schedule` skill) and not a courtesy the second timer extends.
+   */
+  /**
+   * Register a member of this community, and record a stop if they asked for one.
+   *
+   * A member with no row cannot be contacted at all — "absent suppression is unknown, and unknown is
+   * held" (FR-5.2) — so a community that wants a send checked has to say who its members are. The
+   * host owns the list (it is the community's own file); the runtime owns what a row means.
+   */
+  registerMember(ref: string, tz: string): void {
+    registerMember(this.ctx(), ref, tz);
+  }
+
+  /** Record that a member has said stop. A stop beats any grant, any lane, any autonomy level. */
+  suppressMember(ref: string, source: 'member' | 'organiser'): void {
+    suppressMember(this.ctx(), ref, { source });
+  }
+
+  fireWake(wakeId: string, run?: RunState): WakeOutcome {
+    // The run cap is checked BEFORE the timer fires, so a wake that is over the cap is not fired at
+    // all — the crossing action is accounted for and dropped, exactly as `runActions` drops it
+    // (section 1.6). Before D60 the cap lived only in `runActions`, and the wake path — the path
+    // the fleet now actually uses — was not bounded by it at all.
+    if (run !== undefined) {
+      const gate = recordRunAction(run, this.pack);
+      if (gate === 'truncated') {
+        return { fired: false, result: 'truncated' };
+      }
+    }
+    const row = fireWake(this.ctx(), wakeId);
+    if (row === undefined) return { fired: false, result: 'not-found' };
+    const action = row.action;
+    if (action === undefined) return { fired: true, result: 'no-action' };
+    const eventId = row.eventId ?? row.id;
+    // **A timed lane must be a human-gated draft lane.** An `opt-in-auto` class is committed by the
+    // *runner* — and a wake is not a runner. So firing one would claim the phase origin, return
+    // "attempted", and do nothing at all: no card, no commit, and (before D62) no refusal logged,
+    // so the health read showed nothing either. The check is here rather than in the planner
+    // because the planner cannot see the resolved level — a grant or an org ceiling can narrow a
+    // class to `draft`, and the engine is where the truth is.
+    const level = resolveAutonomy({
+      pack: this.pack, role: action.agent, actionClass: action.actionClass,
+      state: this.st, answers: this.answers, settings: this.resolved, channel: action.channel,
+    });
+    if (level !== 'draft' && level !== 'never') {
+      // A class that is absent from the agent's toolset keeps its own code — `class_unavailable`,
+      // "absent, not denied" — so this check only fires for a class that IS declared and is not a
+      // draft lane. `attempt` handles the absent case, and says so.
+      const e = new KinshipError('timed_lane_not_draft',
+        'class `' + action.actionClass + '` is `' + level + '`, and a timer may only fire a human-gated draft lane — an unattended lane is exactly what phase 1 refuses (D21), and the runner that would commit it is not here',
+        'spec section 1.1 / D62');
+      this.recordRefusal({ actionClass: action.actionClass, agent: action.agent }, e);
+      return { fired: true, result: 'refused', code: e.code, reason: e.message };
+    }
+    // The phase-origin claim is a refusal like any other, and **a refusal that leaves no trace is a
+    // promise a reader cannot check**: the second timer for a phase was refused with a 409, and a
+    // reader of the log would have concluded the second reminder went out. So the claim's refusal
+    // is logged the same way `attempt` logs its own.
+    try {
+      claimPhaseOrigin(this.ctx(), eventId, 'event', eventId, action.phase, action.agent);
+    } catch (e) {
+      if (e instanceof KinshipError) {
+        this.recordRefusal({ actionClass: action.actionClass, agent: action.agent }, e);
+        return { fired: true, result: 'refused', code: e.code, reason: e.message };
+      }
+      throw e;
+    }
+    try {
+      const res = this.attempt({ ...action, origin: { kind: 'event', id: eventId } });
+      return { fired: true, result: 'attempted', ...(res.card !== null ? { card: res.card } : {}) };
+    } catch (e) {
+      if (e instanceof KinshipError) return { fired: true, result: 'refused', code: e.code, reason: e.message };
+      throw e;
+    }
   }
 
   setBudget(eventId: string, ceilingIdr: number | null): void {
@@ -448,35 +555,35 @@ export class Fleet {
     releaseShatter(this.ctx(), channel, by);
   }
 
-  // --- §1.2 the readable timeline ---------------------------------------------------------------------
+  // --- section 1.2 the readable timeline ---------------------------------------------------------------------
 
   auditTimeline(): string[] {
     return this.st.events.map((e) => `#${e.seq} ${timelineLine(e)}`);
   }
 
   /**
-   * The fleet-condition snapshot (§1.2 read side): a pure function over the log, so it dates itself,
+   * The fleet-condition snapshot (section 1.2 read side): a pure function over the log, so it dates itself,
    * appends nothing, and replays identically. It answers "what is the condition of this right now?"
    * — freezes, queue age, budget state, overdue wakes, refusal counts, idle agents (FR-1.11) — and
    * `unmeasured` answers the part of that question this runtime is not allowed to claim: how the
-   * community *feels* is not in the log, and PRD §5 keeps it out of v0.
+   * community *feels* is not in the log, and PRD section 5 keeps it out of v0.
    */
   health(): HealthReport {
     return deriveHealth(this.st, this.pack, this.t);
   }
 
   /**
-   * The organiser's worklist (§1.2 read side, sibling of `health()`): everything waiting on a human,
+   * The organiser's worklist (section 1.2 read side, sibling of `health()`): everything waiting on a human,
    * oldest first — undecided drafts, approved-but-never-delivered handoffs (D21), lanes frozen pending
    * a release, and wakes whose time passed with nothing re-arming them. A pure read like the snapshot:
-   * it appends nothing, replays identically, and carries no member identifier (§2.9).
+   * it appends nothing, replays identically, and carries no member identifier (section 2.9).
    */
   inbox(): InboxReport {
     return deriveInbox(this.st, this.t);
   }
 
   /**
-   * The settings artefact (D35, third §1.2 read side): what is in force and which file put it there.
+   * The settings artefact (D35, third section 1.2 read side): what is in force and which file put it there.
    * Same contract as `health()` and `inbox()` — a pure fold of the log plus the tier stack, so it
    * appends nothing, dates itself, and replays identically — and it carries the tier limits in its
    * own words, because a report that omits what it does not cover is how an unread field becomes a
@@ -493,7 +600,7 @@ function timelineLine(e: LoggedEvent): string {
     case 'MemberInputReceived': return `input from ${e.memberRef} received (sha ${e.textHash.slice(0, 8)})`;
     // A thread names its asker the way the input line does — the timeline is the actor-facing
     // surface, and it says who did what. What it never carries is the member's WORDS: the question
-    // itself is not in the log (§2.7), only a pointer and a hash.
+    // itself is not in the log (section 2.7), only a pointer and a hash.
     case 'ThreadOpened': return `question ${e.thread.id} raised by ${e.thread.memberRef ?? 'someone'}${e.thread.pointer !== null ? ` (${e.thread.pointer})` : ''}`;
     case 'ThreadAnswered': return `question ${e.threadId} answered by ${e.by}: "${e.note}"`;
     case 'SuppressionRecorded': return `member ${e.row.memberRef} stopped — source: ${e.row.source}`;

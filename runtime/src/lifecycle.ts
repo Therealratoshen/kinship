@@ -1,14 +1,14 @@
 /**
- * The event-lifecycle machine (pack skill `event-lifecycle`) plus the §1.3 / §1.4 / §1.9.4
+ * The event-lifecycle machine (pack skill `event-lifecycle`) plus the section 1.3 / section 1.4 / section 1.9.4
  * chassis rules that make the loop honest:
  * - phases may not be skipped — "did we already remind them?" is a lookup, not a judgement call;
- * - one origin produces one send per phase, enforced as a claim (§1.9.4 single-active-per-origin);
- * - one agent owns one event loop at a time; the second checkout is a 409 that is never retried (§1.4);
- * - a promise to follow up requires a persisted wake row — prose is not a waiting path (§1.3).
+ * - one origin produces one send per phase, enforced as a claim (section 1.9.4 single-active-per-origin);
+ * - one agent owns one event loop at a time; the second checkout is a 409 that is never retried (section 1.4);
+ * - a promise to follow up requires a persisted wake row — prose is not a waiting path (section 1.3).
  */
 import { refuse } from './errors.ts';
 import { PHASES } from './types.ts';
-import type { Ctx, FleetEvent, FleetState, Phase, WakeRow } from './types.ts';
+import type { Ctx, FleetEvent, FleetState, Phase, WakeAction, WakeRow } from './types.ts';
 
 const PHASE_INDEX = new Map<string, number>(PHASES.map((p, i) => [p, i]));
 
@@ -42,11 +42,11 @@ export function completePhase(ctx: Ctx, eventId: string, phase: Phase): void {
   ctx.commit({ type: 'PhaseCompleted', eventId, phase, at: ctx.now() });
 }
 
-/** §1.9.4 — the key is `(eventId, originKind, originId, phase)`; the second claim is a 409. */
+/** section 1.9.4 — the key is `(eventId, originKind, originId, phase)`; the second claim is a 409. */
 export function claimPhaseOrigin(ctx: Ctx, eventId: string, originKind: string, originId: string, phase: Phase, agent: string): void {
   const claimKey = `${eventId}|${originKind}|${originId}|${phase}`;
   if (ctx.state.phaseClaims.has(claimKey)) {
-    refuse('conflict_409', 'spec §1.4/§1.9.4', `origin \`${originKind}:${originId}\` is already active in phase \`${phase}\` — do not retry; pick different work`);
+    refuse('conflict_409', 'spec section 1.4 / section 1.9.4', `origin \`${originKind}:${originId}\` is already active in phase \`${phase}\` — do not retry; pick different work`);
   }
   ctx.commit({ type: 'PhaseOriginClaimed', claimKey, agent, at: ctx.now() });
 }
@@ -54,37 +54,47 @@ export function claimPhaseOrigin(ctx: Ctx, eventId: string, originKind: string, 
 export function checkoutEvent(ctx: Ctx, eventId: string, agentId: string): void {
   const holder = ctx.state.checkouts.get(eventId);
   if (holder !== undefined && holder !== agentId) {
-    refuse('conflict_409', 'spec §1.4', `event loop \`${eventId}\` is checked out by \`${holder}\` — never retried`);
+    refuse('conflict_409', 'spec section 1.4', `event loop \`${eventId}\` is checked out by \`${holder}\` — never retried`);
   }
   if (holder === agentId) return; // re-checkout by the owner is a no-op
   ctx.commit({ type: 'EventCheckedOut', eventId, agent: agentId, at: ctx.now() });
 }
 
-export function scheduleWake(ctx: Ctx, opts: { purpose: string; nextCheckAt: number; eventId?: string }): WakeRow {
+export function scheduleWake(ctx: Ctx, opts: { purpose: string; nextCheckAt: number; eventId?: string; action?: WakeAction }): WakeRow {
   const row: WakeRow = {
     id: `wake-${ctx.state.wakes.size + 1}`,
     purpose: opts.purpose,
     nextCheckAt: opts.nextCheckAt,
     attempts: 0,
     ...(opts.eventId !== undefined ? { eventId: opts.eventId } : {}),
+    ...(opts.action !== undefined ? { action: opts.action } : {}),
     scheduledAt: ctx.now(),
   };
   ctx.commit({ type: 'WakeScheduled', row, at: ctx.now() });
   return row;
 }
 
-/** §1.3 — the check every "I'm monitoring this" claim must pass. */
+/** section 1.3 — the check every "I'm monitoring this" claim must pass. */
 export function assertWakeBacked(ctx: Ctx, purpose: string, eventId?: string): WakeRow {
   for (const w of ctx.state.wakes.values()) {
     if (w.purpose === purpose && w.nextCheckAt > ctx.now() && (eventId === undefined || w.eventId === eventId)) return w;
   }
-  refuse('ghost_watcher', 'spec §1.3', `a promise to follow up on \`${purpose}\` needs a persisted wake row — prose is not a waiting path`);
+  refuse('ghost_watcher', 'spec section 1.3', `a promise to follow up on \`${purpose}\` needs a persisted wake row — prose is not a waiting path`);
 }
 
-export function fireWake(ctx: Ctx, wakeId: string): void {
+/**
+ * Fire a wake.
+ *
+ * The row it fired is returned, because the row is what carries the action (D60): the caller — the
+ * engine, which owns the gate — reads the action off the row and attempts it through the same path
+ * any other attempt takes, so every refusal still applies to a timer-driven action exactly as it
+ * applies to a hand-fed one. A wake with no action is a timer and nothing more, and says so.
+ */
+export function fireWake(ctx: Ctx, wakeId: string): WakeRow | undefined {
   const w = ctx.state.wakes.get(wakeId);
-  if (!w) return;
+  if (!w) return undefined;
   ctx.commit({ type: 'WakeFired', wakeId, at: ctx.now() });
+  return w;
 }
 
 // --- the applier ---------------------------------------------------------------------------------

@@ -40,7 +40,7 @@ const codeOnly = (src: string) => noTemplates(noComments(src))
   .replace(/'(?:[^'\\]|\\.)*'/g, "''")
   .replace(/"(?:[^"\\]|\\.)*"/g, '""');
 
-test('PHASES is exactly the sequence the pack skill and spec §1.9.4 name — not a reordered approximation', () => {
+test('PHASES is exactly the sequence the pack skill and spec section 1.9.4 name — not a reordered approximation', () => {
   assert.deepEqual([...PHASES], ['draft', 'scheduled', 'promoting', 't-minus-7', 't-minus-1', 'running', 'recap', 'report', 'closed'],
     'the order is the state machine: a re-entry or a renumbered countdown is a lifecycle change, not a tidy-up');
   assert.equal(new Set(PHASES).size, PHASES.length, 'no phase appears twice');

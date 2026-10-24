@@ -20,5 +20,5 @@ cost, and how to register must be answerable from the copy alone.
 needs.member_notice_text`. A single-language card fails the pack, not the review.
 
 `[UNVERIFIED]` There is no external benchmark for whether the bilingual card reads well to an Indonesian kopdar
-audience — no product ships a comparable rule, so PRD §9 measures **approval-acceptance rate for ID⇄EN drafts**
+audience — no product ships a comparable rule, so PRD section 9 measures **approval-acceptance rate for ID⇄EN drafts**
 instead of borrowing a number.

@@ -75,3 +75,44 @@ jobs:
 
       - name: Reference host tests
         run: npm test
+
+  # The type contract. This is NOT a fifth gate either: the gate list stays four (D24). It is the
+  # compiler checking the thing the repo's types are FOR — the vocabulary (`Revision`, `Lane`,
+  # `Verdict`, `CommunityCoverage`) is the spec, and a spec that is not checked is prose.
+  #
+  # It runs here and NOT in `runtime/package.json` on purpose. D53 recorded that the typecheck could
+  # not be a gate because a gate needs the dependency, and the dependency cannot live in the runtime
+  # package (D21: a fork installs nothing). That reasoning was right about the PACKAGE and wrong about
+  # the consequence: a CI job can install the compiler itself, and the runtime stays dependency-free
+  # for whoever forks it. The zero-install property is about what a FORK downloads, not about what CI
+  # downloads.
+  #
+  # And this was not theoretical. D58 changed the shape of the copy, and the TOUR broke — because
+  # `runtime/tsconfig.json` included only `src/**` and `test/**`, so the tour had never been
+  # typechecked at all, and the first thing the typecheck caught once the tour was inside it was a
+  # real latent defect. A type contract nobody runs is not a contract.
+  types:
+    name: Type contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['23', '24']
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The compiler and the node types are installed HERE, in the job, and nowhere in the repo's
+      # packages. Nothing a fork installs changes.
+      - name: Install the compiler (CI only — the runtime stays dependency-free)
+        run: npm install --no-save --no-package-lock --no-audit --no-fund typescript@5 @types/node@22
+
+      - name: Typecheck
+        run: npx tsc -p runtime/tsconfig.json --noEmit

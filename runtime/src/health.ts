@@ -15,8 +15,8 @@
  *     committed, so the snapshot is replayable and cannot invent a condition. A ratio against an
  *     unset ceiling is `null`, not zero; an empty queue's age is `null`, not 0ms — 0 would claim a
  *     card that aged nothing. Because it is a read, it must not append to the log: `Fleet.replay`
- *     still reproduces state exactly (§1.2), and so does the snapshot taken from it.
- *  2. **It counts the fleet, not the people.** `PRD §5` puts member-intelligence / churn scoring out
+ *     still reproduces state exactly (section 1.2), and so does the snapshot taken from it.
+ *  2. **It counts the fleet, not the people.** `PRD section 5` puts member-intelligence / churn scoring out
  *     of scope for v0 ("the feature most likely to make a volunteer organiser feel surveilled"), so
  *     there is no per-member row and no rate here — only counts of things that were recorded, and an
  *     explicit `unmeasured` list naming what this report will not say. The honest half of the
@@ -46,7 +46,7 @@ import type { CommunityCoverage, FleetState, Packed } from './types.ts';
  */
 export const IDLE_RETIREMENT_CYCLES = 3;
 
-/** A fixed sentence, not a masked preview (§1.9.3) — a preview value is never a value. */
+/** A fixed sentence, not a masked preview (section 1.9.3) — a preview value is never a value. */
 export const HEALTH_WITHHELD_MEMBER_REF = '[member identifier withheld from this report — see the audit log]';
 
 export interface FreezeRow {
@@ -69,7 +69,7 @@ export interface BudgetRow {
   eventId: string;
   ceilingIdr: number | null;
   spentIdr: number;
-  /** `null` when no ceiling is set (PRD §12-Q9) — never a division by nothing. */
+  /** `null` when no ceiling is set (PRD section 12-Q9) — never a division by nothing. */
   ratio: number | null;
   warned: boolean;
   stopped: boolean;
@@ -119,7 +119,7 @@ export interface HealthReport {
     onDutyNow: boolean | null;
     missedShift: { count: number; note: string } | null;
     /**
-     * Questions the community owes an answer to, right now (§2.14 / FR-5.13).
+     * Questions the community owes an answer to, right now (section 2.14 / FR-5.13).
      *
      * A **count**, because a list of them would be a list of people. The oldest one's age is the
      * number a community can act on, and it is `null` — never `0` — when nothing is open.
@@ -227,10 +227,10 @@ export function deriveHealth(state: FleetState, pack: Packed, now: number): Heal
     });
 
   const unmeasured = [
-    'member sentiment, morale, or satisfaction — not measured: PRD §5 puts member-intelligence and churn scoring out of scope for v0, and a fleet that infers how a community feels is the artefact this pack exists to prevent.',
+    'member sentiment, morale, or satisfaction — not measured: PRD section 5 puts member-intelligence and churn scoring out of scope for v0, and a fleet that infers how a community feels is the artefact this pack exists to prevent.',
     'member dormancy or churn risk — the same ban. Every number above counts rows the fleet itself wrote; nobody\'s absence is a signal this runtime gets to draw.',
     'whether anyone is happy with an event — nothing has sent yet: phase 1 ships no channel transport (D21) and no dated event exists (D9), so there is no member traffic to read. Printing a figure here would be invention.',
-    'why a member suppressed — a stop is one row with a source and no API that clears it (§2.9); the count is honest, the reason is not this report\'s to guess.',
+    'why a member suppressed — a stop is one row with a source and no API that clears it (section 2.9); the count is honest, the reason is not this report\'s to guess.',
     'delivery, read receipts, or reach — with no adapter there is nothing to observe downstream, so a phase-1 health read says nothing about whether a message landed.',
     'whether the community was neglected — the `community` block says who was ON DUTY, not whether anyone should have done more. A staffed shift that ended with an obligation open is a staffing fact; calling it neglect would be a judgement this runtime does not make.',
   ];

@@ -104,7 +104,7 @@ function runStory() {
   // 2) Draft-only: an attempt is a CARD for a human to decide, never a send.
   const draft = fleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
-    phase: 't-minus-1', textId: REMINDER_ID, textEn: REMINDER_EN,
+    phase: 't-minus-1', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
 
   // 3) The organiser approves — then the commit still hits the transport gate, and the authorisation survives.
@@ -113,16 +113,16 @@ function runStory() {
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
     phase: 't-minus-1', recipients: ['wa:62811'], onBehalfOf: 'organiser',
     authorizationToken: draft.card ? `auth-${draft.card.id}` : 'auth-none',
-    textId: REMINDER_ID, textEn: REMINDER_EN,
+    text: { id: REMINDER_ID, en: REMINDER_EN },
   }));
 
-  // 4) Cross-promotion without a partner_policy answer: the class is *absent*, not denied (spec §2.11).
+  // 4) Cross-promotion without a partner_policy answer: the class is *absent*, not denied (spec section 2.11).
   const noPartner = { ...ANSWERS };
   delete noPartner.partner_policy;
   const crossFleet = new Fleet(pack, noPartner, DAY);
   const cross = observe(() => crossFleet.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   }));
 
   // 5) A fork cannot widen a protection it did not write. Two shapes of the same rule, both through the
@@ -158,18 +158,18 @@ function runStory() {
   const declaredTools = Object.values(pack.agents).flatMap((a) => a.tools.map((t) => t.replace(/\s+/g, ' ').trim().toLowerCase()));
   const ladderReach = (pack.sanctionLadder ?? []).filter((r) => declaredTools.includes(r.via.replace(/\s+/g, ' ').trim().toLowerCase()));
 
-  // 6) The runner (§1.6): a run owns its own meter, stops at the pack's cap, keeps its partial results.
+  // 6) The runner (section 1.6): a run owns its own meter, stops at the pack's cap, keeps its partial results.
   //    The cap is tightened to 3 for the demo — the real pack says 15; the rule being shown is the same.
   const tight = { ...pack, budgets: { ...pack.budgets, maxActionsPerRun: 3 } };
   const runnerFleet = Fleet.boot(tight, ANSWERS, DAY);
   runnerFleet.issueGrant({ actionClass: 'draft.reminder', kind: 'allow_always', scope: 'the tour demo', by: 'organiser' });
   const action = (id: string): CommitArgs => ({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id },
-    recipients: [], onBehalfOf: 'organiser', textId: REMINDER_ID, textEn: REMINDER_EN,
+    recipients: [], onBehalfOf: 'organiser', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
   const runner = runActions(runnerFleet, [action('kopdar-1'), action('kopdar-2'), action('kopdar-3'), action('kopdar-4'), action('kopdar-5')]);
 
-  // 6b) The same cap, one handle handed in across two calls (D38). §1.6 says "per-run", and a run is the
+  // 6b) The same cap, one handle handed in across two calls (D38). section 1.6 says "per-run", and a run is the
   //     handle the caller holds — so a host that ticks once per agent can bound the *tick* instead of
   //     multiplying the cap by the number of agents. Two calls of two actions under a cap of 3 is the
   //     difference between 3 executed and 4: the handle is what decides which one the fleet gets.
@@ -181,22 +181,22 @@ function runStory() {
     second: runActions(tickFleet, [action('kopdar-c'), action('kopdar-d')], tick),
   };
 
-  // 7) §2.11: copy travelling toward a partner may not carry a member identifier — the refusal names
-  //    the member, never the sentence around it, because the timeline is member-readable (§2.3).
+  // 7) section 2.11: copy travelling toward a partner may not carry a member identifier — the refusal names
+  //    the member, never the sentence around it, because the timeline is member-readable (section 2.3).
   const leakyId = `Kopdar Sebelah ngadain meetup Sabtu — yang belum daftar hubungi wa:62811.\n\n${DISCLOSURE_ID}`;
   const leakyEn = `Kopdar Sebelah is hosting a meetup Saturday — if you have not registered, contact wa:62811.\n\n${DISCLOSURE_EN}`;
   const leak = observe(() => fleet.commit({
     actionClass: 'promote.cross-community', agent: 'engagement', channel: 'telegram',
     origin: { kind: 'event', id: 'kopdar-12' }, partner: 'Kopdar Sebelah',
-    recipients: ['wa:62811'], onBehalfOf: 'organiser', textId: leakyId, textEn: leakyEn,
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', text: { id: leakyId, en: leakyEn },
   }));
 
-  // 8) The fleet-condition snapshot (§1.2's read side): what the logged rows say about right now.
+  // 8) The fleet-condition snapshot (section 1.2's read side): what the logged rows say about right now.
   //    Its member-ref field is filled the way a real one would be — a wake whose purpose names a
   //    person — so the privacy property below has something true to catch, not an empty state.
   const healthFleet = Fleet.boot(pack, ANSWERS, DAY);
   healthFleet.registerMember('wa:62811', 'Asia/Jakarta');
-  // A question the community owes an answer to (spec §2.14 / FR-5.13), raised before the clock
+  // A question the community owes an answer to (spec section 2.14 / FR-5.13), raised before the clock
   // moves so the hour that follows is the thread's age. It is the community-facing half of the
   // health read: a thread is a debt to a member, and a thread still open when a staffed shift ended
   // is the community failing to keep its word.
@@ -205,7 +205,7 @@ function runStory() {
   healthFleet.beginEvent('kopdar-12');
   healthFleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
-    phase: 't-minus-1', textId: REMINDER_ID, textEn: REMINDER_EN,
+    phase: 't-minus-1', text: { id: REMINDER_ID, en: REMINDER_EN },
   });
   healthFleet.tripShatter('telegram', 'wa:62811');
   healthFleet.scheduleWake({ purpose: 'nudge wa:62811 about the venue change', nextCheckAt: DAY + 600_000, eventId: 'kopdar-12' });
@@ -214,7 +214,10 @@ function runStory() {
   // The same read over a pack that declares NO coverage window — the honest null case. An unstated
   // staffing promise is an unknown duty state, and the read must say so rather than counting zero
   // (which would claim the community was never on duty — a different, and false, statement).
-  const noCoverageFleet = Fleet.boot({ ...pack, coverage: undefined }, ANSWERS, DAY);
+  // The pack WITHOUT its coverage window — the key omitted rather than set to `undefined`, because
+  // `exactOptionalPropertyTypes` says an absent optional is not the same as an explicit undefined.
+  const { coverage: _droppedCoverage, ...packWithoutCoverage } = pack;
+  const noCoverageFleet = Fleet.boot(packWithoutCoverage, ANSWERS, DAY);
   const noCoverageHealth = noCoverageFleet.health();
   // 9) The organiser's inbox over the same log: not counts, the list — and the fifth thing a count
   //    cannot show is the approved card whose send is still sitting with a human (D21).
@@ -223,7 +226,7 @@ function runStory() {
   // 10) The tier stack (D35/D36): what is actually in force, and which file put it there. The same log
   //     read as health/inbox — it appends nothing, dates itself, and replays identically — and the only
   //     one that answers "is this number the pack's or the org's?", which is the question a member
-  //     protection has to be able to answer (§1.2).
+  //     protection has to be able to answer (section 1.2).
   const eventsBeforeSettings = fleet.state.events.length;
   const settings = fleet.settings();
   const settingsIsPureRead = fleet.state.events.length === eventsBeforeSettings
@@ -232,9 +235,49 @@ function runStory() {
   // The org floor the pack beat, read out of the provenance row rather than restated here.
   const capRow = settings.provenance.find((p) => p.key === 'member_message_cap_per_24h');
 
-  // 11) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
+  // 11) THE FLEET RUNS ON THE COMMUNITY'S OWN WORDS (D60 / spec section 2.18). This is the part the
+  //     product IS, and until now the tour did not show it: a wake that carries the action it will
+  //     attempt, a timer firing it, the card landing on a human's desk, and the second timer for the
+  //     same phase being refused — **and the refusal being in the log**, because a refusal that leaves
+  //     no trace is a promise a reader cannot check.
+  const planFleet = Fleet.boot(pack, ANSWERS, DAY);
+  const planText = { id: `Ingat ya besok kopdar!\n\n${DISCLOSURE_ID}`, en: `Reminder: kopdar tomorrow!\n\n${DISCLOSURE_EN}` };
+  const planWake = planFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-12',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const planFired = planFleet.fireWake(planWake.id);
+  // The second timer for the same event and phase: refused with a 409, and recorded.
+  const planTwin = planFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-12#twin',
+    nextCheckAt: DAY + 2_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const planTwinFired = planFleet.fireWake(planTwin.id);
+  // The run cap, on the path the fleet actually uses: the third wake is not fired at all.
+  const cappedFleet = Fleet.boot({ ...pack, budgets: { ...pack.budgets, maxActionsPerRun: 1 } }, ANSWERS, DAY);
+  const cappedWake = cappedFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-13',
+    nextCheckAt: DAY + 1_000,
+    eventId: 'kopdar-13',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const cappedRun = createRun();
+  cappedFleet.fireWake(cappedWake.id, cappedRun);
+  const cappedSecond = cappedFleet.scheduleWake({
+    purpose: 'draft.reminder@t-minus-1:kopdar-14',
+    nextCheckAt: DAY + 2_000,
+    eventId: 'kopdar-14',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: planText },
+  });
+  const cappedOutcome = cappedFleet.fireWake(cappedSecond.id, cappedRun);
+
+  // 12) The log as a FILE would be (seam 3): the rows the fleet produced, verified against the state
   //     it holds — and the same rows with one deleted, which must NOT verify. The verification is a
-  //     pure read in the runtime; the writing is the host's (D41's memo §3).
+  //     pure read in the runtime; the writing is the host's (D41's memo section 3).
   const soundLog = Fleet.verifyLog(fleet.events, ANSWERS, pack, { state: fleet.state });
   const tamperedLog = Fleet.verifyLog(fleet.events.filter((e) => e.seq !== 2), ANSWERS, pack, { state: fleet.state });
 
@@ -244,6 +287,9 @@ function runStory() {
     ladder: pack.sanctionLadder ?? [], ladderReach, seatLadderObs, toolLadderObs,
     settings, settingsIsPureRead, capRow,
     soundLog, tamperedLog,
+    planFired, planTwinFired, cappedOutcome,
+    planFleetInbox: planFleet.inbox(),
+    planFleetHealth: planFleet.health(),
     mainFleetHealth: fleet.health(),
     mainFleetInbox: fleet.inbox(),
     timeline: fleet.auditTimeline(),
@@ -282,6 +328,16 @@ function guarantees(s: ReturnType<typeof runStory>) {
     // Both halves, because a check that cannot fail is worth exactly nothing (D24).
     a_written_log_verifies_and_a_tampered_one_does_not: s.soundLog.ok && !s.tamperedLog.ok
       && s.tamperedLog.problems.some((p) => p.kind === 'seq_missing'),
+
+    // D60: the fleet runs on the community's own words (spec section 2.18). Four promises, and each
+    // is checked as a pair — what happened AND what the log says happened, because a guarantee that
+    // only checks the outcome would pass on a fleet that lied.
+    a_scheduled_wake_attempts_its_action: s.planFired.result === 'attempted' && s.planFired.card !== undefined
+      && s.planFired.card.actionClass === 'draft.reminder' && s.planFired.card.phase === 't-minus-1',
+    the_drafted_card_waits_on_a_human: s.planFleetInbox.counts.verdict === 1,
+    a_second_timer_for_the_same_phase_is_refused: s.planTwinFired.result === 'refused' && s.planTwinFired.code === 'conflict_409',
+    and_that_refusal_is_in_the_log: s.planFleetHealth.refusals.some((r) => r.code === 'conflict_409'),
+    the_run_cap_stops_the_fleet: s.cappedOutcome.result === 'truncated' && s.cappedOutcome.fired === false,
 
     boot_requires_all_needs: s.bootGate.threw && /need_unanswered/.test(s.bootGate.code),
     member_action_starts_as_draft: s.draft.disposition === 'card',
@@ -349,7 +405,7 @@ function guarantees(s: ReturnType<typeof runStory>) {
       && s.noCoverageHealth.community.missedShift === null,
     // The community-facing half: an open question is a debt to a member, it is counted rather than
     // itemised, and no read of it carries the asker's name or the words they used.
-    // The community's operating posture (spec §2.15) — the rules the COMMUNITY declared, resolved
+    // The community's operating posture (spec section 2.15) — the rules the COMMUNITY declared, resolved
     // org → pack, and reported with the provenance that says which file decided.
     the_community_declares_its_own_posture: s.settings.posture.contact === 'open'
       && s.settings.posture.openness === 'open'
@@ -403,7 +459,7 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  one-send authorisation left intact for the organiser's own hand: ${s.authorizationLeftIntact}`);
 
   hr('4. Governance refuses bad lanes and bad forks');
-  console.log(`  cross-promo without partner_policy → ${s.cross.code || '(reachable!)'} — absent, not denied (spec §2.11)`);
+  console.log(`  cross-promo without partner_policy → ${s.cross.code || '(reachable!)'} — absent, not denied (spec section 2.11)`);
   console.log(`  fork adds 'whatsapp | send' → boot ${s.tamper.threw ? `refused by ${/PKG-\d+/.exec(s.tamper.message)?.[0] ?? s.tamper.code}` : 'ACCEPTED (invariant broken!)'}`);
   console.log(`  fork raises the member cap 2 → 5, above its org's floor of 4 → boot ${s.orgFloor.threw ? `refused by ${/PKG-\d+/.exec(s.orgFloor.message)?.[0] ?? s.orgFloor.code}: ${/refused, not clamped/.test(s.orgFloor.message) ? 'refused, not clamped' : '(said nothing about clamping)'}` : 'ACCEPTED (the org tier is decorative!)'}`);
   console.log(`  pack names an agent after the human seat → ${s.seatFork.threw ? `refused: ${s.seatFork.code}` : 'ACCEPTED (an agent would hold the veto)'}`);
@@ -416,30 +472,34 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  fork wires the nudge rung to \`telegram | send\` (a declared tool) → boot ${s.toolLadderObs.threw ? `refused by ${/PKG-\d+/.exec(s.toolLadderObs.message)?.[0] ?? s.toolLadderObs.code}` : 'ACCEPTED (the ladder became a send lane!)'}`);
 
   hr('4c. The community\'s coverage window — the hours a human is on duty, and what waited past them');
-  console.log(`  the pack declares: ${s.health.community.coverage?.mode === 'staffed' ? `${s.health.community.coverage.timezone}, ${s.health.community.coverage.days.length} days, opens ${Math.floor(s.health.community.coverage.opens / 60)}:00, closes ${Math.floor(s.health.community.coverage.closes / 60)}:00` : '(no window declared)'}`);
+  const cov = s.health.community.coverage;
+  const covText = cov?.mode === 'staffed'
+    ? `${cov.timezone}, ${cov.windows.length} window(s): ${cov.windows.map((w) => `${w.days.length} days, ${Math.floor(w.opens / 60)}:00–${Math.floor(w.closes / 60)}:00`).join('; ')}`
+    : '(no window declared)';
+  console.log(`  the pack declares: ${covText}`);
   console.log(`  on duty at the moment of the read: ${s.health.community.onDutyNow === null ? 'unknown (the pack declares no window — null, not zero)' : s.health.community.onDutyNow ? 'yes' : 'no'}`);
   console.log(`  obligations that outlived a staffed shift: ${s.health.community.missedShift === null ? 'unknown' : s.health.community.missedShift.count} — ${s.health.community.missedShift?.note ?? 'a pack with no window cannot say'}`);
   console.log(`  a pack with no window reads: coverage ${s.noCoverageHealth.community.coverage === null ? 'null' : 'set'}, on duty ${s.noCoverageHealth.community.onDutyNow === null ? 'null' : 'set'}, missed ${s.noCoverageHealth.community.missedShift === null ? 'null' : 'set'} — silence is not a number`);
 
-  hr('5. The runner (spec §1.6) — a run meters itself and stops at the pack\'s cap');
+  hr('5. The runner (spec section 1.6) — a run meters itself and stops at the pack\'s cap');
   console.log(`  5 actions handed to a run capped at ${s.runner.cap} → executed ${s.runner.executed}, dropped ${s.runner.dropped}, truncated: ${s.runner.truncated}`);
   console.log(`  metered attempts: ${s.runner.actions} · actions never attempted: ${s.runner.notAttempted.length} — partial results kept, no retry storm`);
   console.log(`  this run\'s cap bounded: ${s.runner.capScope} (a call with no handle bounds only itself, so a per-agent tick is cap × agents)`);
   console.log(`  one handle, two calls of 2 under the same cap of ${s.sharedRun.second.cap} → executed ${s.sharedRun.first.executed} then ${s.sharedRun.second.executed} (${s.sharedRun.second.capScope}): the second call is bounded by the first — ${s.sharedRun.second.truncated ? 'truncated, not restarted' : 'NOT bounded'}`);
 
-  hr('6. Cross-promotion (spec §2.11) — copy travels, people do not');
+  hr('6. Cross-promotion (spec section 2.11) — copy travels, people do not');
   console.log(`  partner promo carrying a member ref → refused: ${s.leak.code || '(IT PASSED — a member number reached a partner!)'}`);
-  console.log('  the refusal names the member, not the sentence: the audit timeline is readable by members too (§2.3)');
+  console.log('  the refusal names the member, not the sentence: the audit timeline is readable by members too (section 2.3)');
 
-  hr('7. The fleet-condition snapshot (spec §1.2, read side) — what the log says about right now');
+  hr('7. The fleet-condition snapshot (spec section 1.2, read side) — what the log says about right now');
   console.log(`  frozen lanes: ${s.health.freezes.map((f2) => `${f2.channel} (${f2.ageMs / 3_600_000}h)`).join(', ') || 'none'}`);
   console.log(`  approval queue: ${s.health.queue.pending} pending of ${s.health.queue.cap}, oldest ${s.health.queue.oldestPendingAgeMs}ms · ${s.health.wakes.overdue.length} wake(s) past due`);
   console.log(`  hand deliveries so far (no_transport refusals on the tour fleet): ${s.mainFleetHealth.refusals.find((r) => r.code === 'no_transport')?.count ?? 0} — D21, as a number`);
   console.log(`  idle agents (FR-1.11): ${s.mainFleetHealth.idleAgents.map((a) => `${a.agent}:${a.recommendation}`).join(' ')}`);
   console.log(`  a member identifier in a wake purpose was substituted, not forwarded: ${JSON.stringify(s.health).includes('wa:62811') ? 'NO — LEAK' : 'yes'}`);
-  console.log(`  what this report will not say: ${s.health.unmeasured.length} named items, incl. sentiment and churn (PRD §5 keeps them out of v0)`);
+  console.log(`  what this report will not say: ${s.health.unmeasured.length} named items, incl. sentiment and churn (PRD section 5 keeps them out of v0)`);
 
-  hr('8. The organiser inbox (spec §1.2, read side) — not the condition, the list');
+  hr('8. The organiser inbox (spec section 1.2, read side) — not the condition, the list');
   console.log(`  counts: ${Object.entries(s.inbox.counts).map(([k, v]) => `${k}=${v}`).join(' ')}`);
   for (const item of s.inbox.items) {
     console.log(`  · ${item.kind.padEnd(7)} ${item.ageMs / 60_000}min  ${item.detail.slice(0, 72)}${item.detail.length > 72 ? '…' : ''}`);
@@ -449,12 +509,12 @@ function printHuman(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarant
   console.log(`  member inputs: ${s.inbox.memberInputs.received} received, ${s.inbox.memberInputs.awaitingVerdict} awaiting a verdict, joinable: ${s.inbox.memberInputs.linkable} — ${s.inbox.memberInputs.note.slice(0, 58)}…`);
   console.log(`  ordering means waiting, not importance: ${s.inbox.limits.length} stated limits`);
 
-  hr('9. The tier stack (spec §1.7, PRD FR-1.18) — what is in force, and which file put it there');
+  hr('9. The tier stack (spec section 1.7, PRD FR-1.18) — what is in force, and which file put it there');
   console.log(`  resolved from: ${s.settings.tiers.join(' -> ')} · org ${s.settings.orgKey ?? '(none — this pack is its own top tier)'}`);
   for (const row of s.settings.provenance.filter((p) => p.tier === 'guardrail')) {
     console.log(`  · ${row.key.padEnd(28)} ${String(row.effective).padEnd(5)} from ${row.source.padEnd(7)} ${row.note.slice(0, 60)}${row.note.length > 60 ? '…' : ''}`);
   }
-  console.log(`  human seats: ${s.settings.humanSeats.join(', ')} — one, while PRD §12-Q12 (delegation) is the owner's unanswered question`);
+  console.log(`  human seats: ${s.settings.humanSeats.join(', ')} — one, while PRD section 12-Q12 (delegation) is the owner's unanswered question`);
   console.log(`  agent roles the org recognises: ${s.settings.agentRoles.join(', ')}`);
   console.log(`  ceilings that only narrow: ${Object.entries(s.settings.autonomyCeiling).map(([c, l]) => `${c}<=${l}`).join(' ') || 'none'}`);
   console.log(`  a settings read that wrote to the log would be a fifth governing actor: ${s.settingsIsPureRead ? 'it appends nothing, and replays identical' : 'FAIL — it mutated state'}`);
@@ -493,8 +553,8 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       autonomyByClass: actionClasses(s.pack),
     },
     tierStack: {
-      whatItIs: 'runtime/src/settings.ts (`Fleet.settings()`, resolved once in the constructor) — the org -> pack resolution the spec names (§1.7 / PRD FR-1.18). `orgs/<key>.yaml` holds floors and an autonomy ceiling; the pack holds its own numbers; enforcement reads the RESOLVED values, never the raw pack.',
-      note: 'The org tier has exactly two powers, and the third it does not have is the design: it can REFUSE a pack whose declared value is weaker than its floor, and it can FILL a key the pack never wrote. It can never replace a number a pack declared — refuse, not clamp — so the effective value always appears in a file. Guardrail floors are validations (`pack_invalid`); ceilings are real narrowings (§1.7); `never` in an org ceiling is refused because absence is the pack\'s to declare (invariant #1); a seat set is an org declaration, size one while PRD §12-Q12 is unanswered.',
+      whatItIs: 'runtime/src/settings.ts (`Fleet.settings()`, resolved once in the constructor) — the org -> pack resolution the spec names (section 1.7 / PRD FR-1.18). `orgs/<key>.yaml` holds floors and an autonomy ceiling; the pack holds its own numbers; enforcement reads the RESOLVED values, never the raw pack.',
+      note: 'The org tier has exactly two powers, and the third it does not have is the design: it can REFUSE a pack whose declared value is weaker than its floor, and it can FILL a key the pack never wrote. It can never replace a number a pack declared — refuse, not clamp — so the effective value always appears in a file. Guardrail floors are validations (`pack_invalid`); ceilings are real narrowings (section 1.7); `never` in an org ceiling is refused because absence is the pack\'s to declare (invariant #1); a seat set is an org declaration, size one while PRD section 12-Q12 is unanswered.',
       resolved: s.settings,
       proof: {
         fork_below_org_floor: s.orgFloor.threw ? s.orgFloor.message : 'ACCEPTED — the tier is decorative',
@@ -505,7 +565,7 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
     guarantees: g,
     sanctionLadder: {
       whatItIs: 'packs/kopdar-ops/.kinship.yaml (`sanction_ladder:`), parsed by runtime/src/pack.ts and gated again by runtime/src/settings.ts. A community\'s graduated response — nudge, private word, public correction, removal — written as data: each rung names the human who acts, what the member is told, and (on the last) how to appeal.',
-      note: 'It is a promise, not a capability. Nothing in `runtime/` reads these rungs to DO anything: no rung may appear in an agent\'s `tools:` list (PKG-63 / `settings.ts`), every rung must name a human seat (PKG-62 / §2.7), and the fleet has no sanction class to execute. The gap this closes is that a normal community has rungs and tells the member, and this pack previously had a flag and a freeze and no vocabulary in between — while the ladder staying unreachable is what keeps it out of invariant #1\'s way (a sanction the fleet can execute is a moderation lane, not a ladder). Absence is legal: a community that does not moderate declares nothing, and the runtime will not hand it a ladder it did not write down.',
+      note: 'It is a promise, not a capability. Nothing in `runtime/` reads these rungs to DO anything: no rung may appear in an agent\'s `tools:` list (PKG-63 / `settings.ts`), every rung must name a human seat (PKG-62 / section 2.7), and the fleet has no sanction class to execute. The gap this closes is that a normal community has rungs and tells the member, and this pack previously had a flag and a freeze and no vocabulary in between — while the ladder staying unreachable is what keeps it out of invariant #1\'s way (a sanction the fleet can execute is a moderation lane, not a ladder). Absence is legal: a community that does not moderate declares nothing, and the runtime will not hand it a ladder it did not write down.',
       declared: s.ladder,
       declared_reachable_by_a_declared_tool: s.ladderReach.map((r) => r.rung),
       proof: {
@@ -515,13 +575,13 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
     },
     fleetCondition: {
       whatItIs: 'runtime/src/health.ts (`Fleet.health()`) — a read-only snapshot derived from rows already in the log: live lane freezes and their age, queue depth plus the age of the oldest pending card and escalation, budget state per event, overdue wakes, refusals counted by code, idle agents (FR-1.11), and `unmeasured`.',
-      note: 'It reports the fleet\'s condition, not the community\'s feelings: PRD §5 puts member-intelligence / churn scoring out of v0, and phase 1 ships no transport (D21/D9), so there is no member traffic to read. The `unmeasured` array is part of the artefact, not a disclaimer bolted on. No member identifier rides in it (§2.9/FR-5.3): a free-text field naming a registered member is substituted with a fixed sentence.',
+      note: 'It reports the fleet\'s condition, not the community\'s feelings: PRD section 5 puts member-intelligence / churn scoring out of v0, and phase 1 ships no transport (D21/D9), so there is no member traffic to read. The `unmeasured` array is part of the artefact, not a disclaimer bolted on. No member identifier rides in it (section 2.9/FR-5.3): a free-text field naming a registered member is substituted with a fixed sentence.',
       snapshot: s.health,
       tourFleet: s.mainFleetHealth,
     },
     organiserInbox: {
       whatItIs: 'runtime/src/inbox.ts (`Fleet.inbox()`) — the same log read as a list instead of counts: undecided drafts (verdict), approved-but-undelivered cards whose one-send authorization is still live (handoff, D21), lanes frozen pending a human release (release), and wakes past due with nothing re-arming them (overdue). Ordered by waiting time, oldest first.',
-      note: 'It is a read: it appends nothing and replays identically (§1.2). It borrows health.ts\'s privacy sweep rather than re-implementing it, so no member identifier rides in it (§2.9), and it counts member inputs without itemising them because the log carries no input→card link. Age is the ordering, not importance — `limits` says so, because PRD §5 keeps ranking judgement out of the runtime.',
+      note: 'It is a read: it appends nothing and replays identically (section 1.2). It borrows health.ts\'s privacy sweep rather than re-implementing it, so no member identifier rides in it (section 2.9), and it counts member inputs without itemising them because the log carries no input→card link. Age is the ordering, not importance — `limits` says so, because PRD section 5 keeps ranking judgement out of the runtime.',
       items: s.inbox.items,
       tourFleet: s.mainFleetInbox,
     },
@@ -532,7 +592,7 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       intentionalSeams: [
         {
           id: 'per-run-action-cap',
-          spec: '§1.6 / budgets.max_actions_per_run',
+          spec: 'section 1.6 / budgets.max_actions_per_run',
           where: 'runtime/src/runner.ts (`runActions`) · runtime/src/engine.ts (header)',
           status: 'The engine is still not a scheduler on purpose (D10 — phase 1 schedules inside the organiser\'s own instance), and the cap is not wired into `Fleet.commit`. The run side does now ship: `runActions()` meters a run, stops at the first crossing with partial results kept, drops the tail without attempting it, and returns a report. Since D38 the run is **the handle the caller hands in**: omit it and the cap bounds one call, pass one `createRun()` across calls and it bounds a tick — and `report.capScope` says which one the reader is looking at. Wiring it into a real scheduler is the open contribution, not writing the meter.',
         },
@@ -541,8 +601,8 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         { id: 'channel-transport', where: 'DECISIONS.md D21', note: 'Behind the shadow-mode gate (D9). Do NOT open a PR adding a transport — "phase 1 sends nothing" is the point.' },
         { id: 'whatsapp-send', where: 'DECISIONS.md D11/D13/D17', note: 'The validator refuses `whatsapp | send` at pack boot. Never add it.' },
         { id: 'host-adapter-inside-runtime', where: 'spec/HOST-CONTRACT.md (D33) · runtime/test/boundary.test.ts (D32)', note: 'An adapter — a provider SDK, a channel socket, a scheduler, a key — belongs in a sibling package (`adapters/<host>/`), never under `runtime/src`: the boundary gate fails the build on it there, on purpose. Do NOT open a PR adding one inside runtime/ before D9.' },
-        { id: 'second-human-seat', where: 'PRD §12-Q12 · runtime/src/roles.ts · orgs/*.yaml (`human_seats`)', note: 'The seat SHAPE is a set; the SIZE is one, and that is the owner\'s open question about delegation, not a runtime limitation to "fix" by adding a `delegate`. A second seat means deciding who can veto a member-facing send on someone else\'s behalf — a decision log entry before it is code.' },
-        { id: 'org-tier-clamp', where: 'runtime/src/settings.ts · spec §1.7 / PRD FR-1.18', note: 'A pack weaker than its org\'s floor is REFUSED, never silently rounded to the floor. Do NOT open a PR "simplifying" this into strictest-wins-with-a-warning: a value edited to 20 and enforced at 4 is a file that lies about the system it configures.' },
+        { id: 'second-human-seat', where: 'PRD section 12-Q12 · runtime/src/roles.ts · orgs/*.yaml (`human_seats`)', note: 'The seat SHAPE is a set; the SIZE is one, and that is the owner\'s open question about delegation, not a runtime limitation to "fix" by adding a `delegate`. A second seat means deciding who can veto a member-facing send on someone else\'s behalf — a decision log entry before it is code.' },
+        { id: 'org-tier-clamp', where: 'runtime/src/settings.ts · spec section 1.7 / PRD FR-1.18', note: 'A pack weaker than its org\'s floor is REFUSED, never silently rounded to the floor. Do NOT open a PR "simplifying" this into strictest-wins-with-a-warning: a value edited to 20 and enforced at 4 is a file that lies about the system it configures.' },
         { id: 'fleet-executed-sanction', where: 'packs/kopdar-ops/.kinship.yaml (`sanction_ladder:`) · PKG-62 / PKG-63 · DECISIONS.md D37', note: 'The ladder is what a community promises its members; it is deliberately not something the fleet can do. Do NOT open a PR adding a `moderate.sanction` class, a ban/mute/remove tool, or a rung whose `via` names a declared tool — a rung the fleet can execute stops being a graduated response and becomes an autonomous moderation lane (invariant #1). The human acts.' },
       ],
       readFirst: [

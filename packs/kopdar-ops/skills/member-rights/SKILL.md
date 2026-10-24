@@ -10,7 +10,7 @@ trigger: any member-visible utterance, any suppression request, any flag, any re
 The other skills govern the relationship between the fleet and the organiser. This one governs the
 relationship between the fleet and **the person who has no account, no dashboard, and never approved a card** —
 and who is therefore the only party in the system that cannot be protected by an organiser's good intentions.
-Semantics: `spec/GOVERNANCE-SPEC-OUTLINE.md` §2.9; requirements: PRD **FR-5.1–5.9**. Source:
+Semantics: `spec/GOVERNANCE-SPEC-OUTLINE.md` section 2.9; requirements: PRD **FR-5.1–5.9**. Source:
 `community/MEMBER-LENS-2026-10-17.md` — a **simulated** lens, so the rules below are written as constraints the
 build can honour or fail, not as predictions about what members will appreciate.
 
@@ -27,7 +27,7 @@ checked **before** any `commit.*` or `nudge.*` runs, in every lane including the
 send. Suppression **beats grants**: an organiser's `allow always` on `nudge.no_show` does not resurrect it for
 someone who said stop, and no autonomy escalation can reach it, because `member.opt-out-override` is absent from
 the toolset rather than denied. Absence of a suppression row is **unknown**, not **consented** — a first-contact
-message to an unlisted member is held at `draft` (fail closed, §1.7), never reasoned about as "probably fine".
+message to an unlisted member is held at `draft` (fail closed, section 1.7), never reasoned about as "probably fine".
 Snooze is a different object from stop; ask which one was meant, once, and record the answer.
 
 **3. "What did you say about me, and to whom?"** Two obligations. Retrospective: when a flag is raised against a

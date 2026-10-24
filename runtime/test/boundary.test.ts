@@ -42,7 +42,7 @@ const SRC = join(RUNTIME, 'src');
 
 /** `node:` builtins the governance core may use, and the one module each is permitted in. */
 const BUILTIN_USE: Record<string, string> = {
-  'node:crypto': 'store.ts', // the revision hash — §1.5's approval binds to it
+  'node:crypto': 'store.ts', // the revision hash — section 1.5's approval binds to it
   'node:fs': 'pack.ts', // reading a pack folder is the only file read the runtime has
   'node:path': 'pack.ts', // and only to locate that folder
 };
@@ -117,7 +117,7 @@ test('runtime/package.json still declares no dependencies — the on-ramp is "no
   }
 });
 
-test('the only file the runtime reads is a pack folder, and only from pack.ts (§2.7 / the BYOD line)', () => {
+test('the only file the runtime reads is a pack folder, and only from pack.ts (section 2.7 / the BYOD line)', () => {
   const readers = srcFiles().filter((f) => /readFileSync|writeFileSync|appendFile|createReadStream/.test(codeOnly(readFileSync(join(SRC, f), 'utf8'))));
   assert.deepEqual(readers, ['pack.ts'], 'a runtime module reading a config file is how a key would enter Kinship — the host holds it, not us');
 });

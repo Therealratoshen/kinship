@@ -118,8 +118,10 @@ export function isOnDuty(coverage: CommunityCoverage, at: number): boolean {
   // `Packed` in memory can, and a READ that throws is a read that takes a fleet down. An unknown zone
   // reads as "not on duty", which is the honest answer: nobody is on duty in a calendar that does
   // not exist.
-  if (!coverage.days.includes(f.weekday)) return false;
-  return f.minuteOfDay >= coverage.opens && f.minuteOfDay < coverage.closes;
+  // A SPLIT week: the community is on duty in ANY of its windows. (A one-window week is just the list
+  // of one, and reads exactly as it always did.)
+  return coverage.windows.some((w) =>
+    w.days.includes(f.weekday) && f.minuteOfDay >= w.opens && f.minuteOfDay < w.closes);
 }
 
 /**
@@ -139,6 +141,7 @@ export function shiftCompletedBetween(coverage: CommunityCoverage, from: number,
   const startDay = localDayIndex(coverage.timezone, from);
   const endDay = localDayIndex(coverage.timezone, to);
   const endMinute = localMinuteOfDay(coverage.timezone, to);
+  const fromMinute = localMinuteOfDay(coverage.timezone, from);
 
   // The loop walks the calendar days between `from` and `to`, so a host whose clock jumps by years
   // would make a health read iterate thousands of days. It is bounded here, and the bound is stated
@@ -149,22 +152,26 @@ export function shiftCompletedBetween(coverage: CommunityCoverage, from: number,
   const firstDay = endDay - startDay > MAX_DAYS ? endDay - MAX_DAYS : startDay;
 
   for (let d = firstDay; d <= endDay; d++) {
-    if (!coverage.days.includes(weekdayOf(d))) continue;
-    const shiftEndMinute = coverage.closes;
-    // The shift on date `d` ends at local `closes` on `d`. It ends after `from` when `d` is later
-    // than `from`'s date, or on the same date but later in the day than `from` was.
-    if (d > startDay) {
-      // A later date always ends after `from`; it ends at or before `to` when it is earlier than
-      // `to`'s date, or on `to`'s date at a minute not after `to`'s minute.
+    const weekday = weekdayOf(d);
+    // A SPLIT week: a day may carry more than one window, and each window's END is a shift end. For a
+    // one-window week this is the same single check it always was.
+    for (const w of coverage.windows) {
+      if (!w.days.includes(weekday)) continue;
+      const shiftEndMinute = w.closes;
+      // The shift on date `d` ends at local `closes` on `d`. It ends after `from` when `d` is later
+      // than `from`'s date, or on the same date but later in the day than `from` was.
+      if (d > startDay) {
+        // A later date always ends after `from`; it ends at or before `to` when it is earlier than
+        // `to`'s date, or on `to`'s date at a minute not after `to`'s minute.
+        if (d < endDay) return true;
+        if (shiftEndMinute <= endMinute) return true;
+        continue;
+      }
+      // Same date as `from`: the shift ends after `from` only if it closes later in the day.
+      if (shiftEndMinute <= fromMinute) continue;
       if (d < endDay) return true;
       if (shiftEndMinute <= endMinute) return true;
-      continue;
     }
-    // Same date as `from`: the shift ends after `from` only if it closes later in the day.
-    if (d < firstDay) continue; // the range was truncated: this date is outside the bounded window
-    if (shiftEndMinute <= localMinuteOfDay(coverage.timezone, from)) continue;
-    if (d < endDay) return true;
-    if (shiftEndMinute <= endMinute) return true;
   }
   return false;
 }

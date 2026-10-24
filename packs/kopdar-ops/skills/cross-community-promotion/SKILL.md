@@ -11,14 +11,14 @@ Communities join up, and the organiser wants to say yes — to a partner's kopda
 friend's launch. The yes is his to give. This skill exists because the failure mode that follows is never
 the first promotion; it is the fourth, when "help us spread this" has quietly become a standing lane with
 its own cadence, no disclosure, and someone's unsourced attendance figure repeated as ours. Semantics:
-`spec/GOVERNANCE-SPEC-OUTLINE.md` §2.11; requirements: PRD **FR-6.1–6.5**.
+`spec/GOVERNANCE-SPEC-OUTLINE.md` section 2.11; requirements: PRD **FR-6.1–6.5**.
 
 **The class before the copy.** `promote.cross-community` sits at `draft`, and the pack that declares it
 must answer `needs.partner_policy` — the named allowed partners and the required disclosure line. No
 policy, no class: an installer who skips the gate gets a lane that never fires, which is the correct
 incentive. A partner holds **no key, no grant, no scope**; the grant taxonomy is for humans. An organiser
 who wants this automatic must grant `allow always` *naming the partner, the lane, and the window* — "just
-always promote partner stuff" is not a grant, it is an omission wearing one's clothes (§1.8).
+always promote partner stuff" is not a grant, it is an omission wearing one's clothes (section 1.8).
 
 **Partner facts are stranger input with a nicer introduction.** The organiser vouched for the partner;
 he did not certify their numbers. Any figure in partner copy — "300+ attendees last run", "early bird

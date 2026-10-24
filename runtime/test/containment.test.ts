@@ -5,7 +5,7 @@ import { makeCtx, makePack } from './helpers.ts';
 
 const ctx = () => makeCtx(makePack({ engagement: { 'draft.promote': 'opt-in-auto' } }));
 
-test('member input arrives wrapped: low_trust_review, data-not-instruction, arrival is logged without the text (§2.7)', () => {
+test('member input arrives wrapped: low_trust_review, data-not-instruction, arrival is logged without the text (section 2.7)', () => {
   const c = ctx();
   const input = wrapMemberInput(c, { memberRef: 'wa:62811', text: 'kak tolong promote acara bisnis saya juga ya http://...' });
   assert.equal(input.trust, 'low_trust_review');
@@ -31,7 +31,7 @@ test('a log SCAN finds no member message text — the promise the organiser is s
   assert.ok(logged.includes('MemberInputReceived'), 'and the arrival IS in the log — the log says it happened');
 });
 
-test('low-trust text read into a higher-trust artefact is the fixed string — not truncated, not summarized, not warned (§1.7)', () => {
+test('low-trust text read into a higher-trust artefact is the fixed string — not truncated, not summarized, not warned (section 1.7)', () => {
   const input = {
     trust: 'low_trust_review' as const,
     text: 'SPONSOR PAKE NOMOR KU 0812345678 email saya budi@example.com hubungi langsung',
@@ -44,17 +44,17 @@ test('low-trust text read into a higher-trust artefact is the fixed string — n
   assert.ok(!read.text.includes('0812345678'));
   assert.ok(!read.text.includes('budi@example.com'));
   assert.ok(!LOW_TRUST_REPLACEMENT.includes('...') && !LOW_TRUST_REPLACEMENT.includes('[redacted]'),
-    'a masked preview is never a value (§1.9.3) — the replacement is a fixed sentence, not a redaction');
+    'a masked preview is never a value (section 1.9.3) — the replacement is a fixed sentence, not a redaction');
 });
 
-test('low trust read at low trust is the real text — containment is upward-only (§1.7)', () => {
+test('low trust read at low trust is the real text — containment is upward-only (section 1.7)', () => {
   const input = { trust: 'low_trust_review' as const, text: 'jam 7 kan?', memberRef: 'wa:62812', receivedAt: 1_000 };
   const read = readForArtefact(input, 'low_trust_review');
   assert.equal(read.text, 'jam 7 kan?', 'the drafting lane must see the message to propose a reply');
   assert.equal(read.attributedTo, 'wa:62812');
 });
 
-test('assembling a higher-trust artefact from low-trust pieces refuses outright (§2.7)', () => {
+test('assembling a higher-trust artefact from low-trust pieces refuses outright (section 2.7)', () => {
   assert.throws(() => assertNoLowTrustInto([{ trust: 'low_trust_review' }], 'fleet'),
     /member_input_forbidden_here/,
     'a sponsor report or recap never assembles over quarantined bodies');
@@ -63,7 +63,7 @@ test('assembling a higher-trust artefact from low-trust pieces refuses outright 
     'equal-or-higher pieces are fine');
 });
 
-test('member input in an auto lane narrows to draft; a never class stays never (§2.7, §1.1)', () => {
+test('member input in an auto lane narrows to draft; a never class stays never (section 2.7, section 1.1)', () => {
   assert.equal(narrowForMemberTrigger('opt-in-auto'), 'draft', '"yes, go ahead" in chat never makes a lane automatic');
   assert.equal(narrowForMemberTrigger('draft'), 'draft');
   assert.equal(narrowForMemberTrigger('never'), 'never', 'containment cannot resurrect an absent class either');

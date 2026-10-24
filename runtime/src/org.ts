@@ -14,7 +14,7 @@
  *
  * Three shape rules are decisions, not preferences, and each has a test:
  *
- *  - **Exactly one human seat while PRD §12-Q12 is unanswered.** The runtime gates four acts on a
+ *  - **Exactly one human seat while PRD section 12-Q12 is unanswered.** The runtime gates four acts on a
  *    seat and has no delegation path, so a manifest naming two seats would be a company setting the
  *    code does not have. The refusal names the open question, because the person who can answer it
  *    is the person most likely to hit the failure.
@@ -22,7 +22,7 @@
  *    … }` and an agent holds the human seat — the four seat-gated acts would accept it.
  *  - **A ceiling may not say `never`.** Invariant #1: `never` means the tool is *absent*, and the
  *    review is a grep of the pack's toolset. A central `never` would make a class present-but-
- *    unreachable — denied-not-absent, which §1.1 forbids.
+ *    unreachable — denied-not-absent, which section 1.1 forbids.
  *
  * Like the pack parser, this one is hand-rolled and deliberately small: it covers the flat YAML
  * subset an org manifest uses, and anything it cannot read refuses rather than guessing, because a
@@ -112,10 +112,10 @@ export function parseOrg(yaml: string, origin = 'the manifest'): PackedOrg {
   const name = topScalar(yaml, 'name');
 
   const humanSeats = topList(yaml, 'human_seats');
-  if (humanSeats === null) at('no `human_seats:` — an org with no human seat is an unattended fleet, and spec §2.7 puts approval and veto with a named human');
+  if (humanSeats === null) at('no `human_seats:` — an org with no human seat is an unattended fleet, and spec section 2.7 puts approval and veto with a named human');
   if (!humanSeats.length) at('`human_seats` is empty — same failure in the other direction: a list that exists but names nobody');
   const extra = humanSeats.slice(1);
-  if (extra.length) at(`\`human_seats\` declares ${humanSeats.length} seats (${humanSeats.join(', ')}), and only one is supported: a second seat is delegation, and delegation is PRD §12-Q12 — the owner's open question, not a feature to half-build`);
+  if (extra.length) at(`\`human_seats\` declares ${humanSeats.length} seats (${humanSeats.join(', ')}), and only one is supported: a second seat is delegation, and delegation is PRD section 12-Q12 — the owner's open question, not a feature to half-build`);
   const seatDupes = dupes(humanSeats);
   if (seatDupes.length) at(`\`human_seats\` repeats ${seatDupes.join(', ')} — a list that dedupes hides the second declaration, and the second declaration was someone's intent`);
 
@@ -124,7 +124,7 @@ export function parseOrg(yaml: string, origin = 'the manifest'): PackedOrg {
   const roleDupes = dupes(agentRoles);
   if (roleDupes.length) at(`\`agent_roles\` repeats ${roleDupes.join(', ')}`);
   const collisions = agentRoles.filter((r) => humanSeats.includes(r));
-  if (collisions.length) at(`\`${collisions.join(', ')}\` is both a human seat and an agent role — a pack could then give an agent the seat that decideCard, issueGrant, revokeGrant and releaseShatter accept (§2.7)`);
+  if (collisions.length) at(`\`${collisions.join(', ')}\` is both a human seat and an agent role — a pack could then give an agent the seat that decideCard, issueGrant, revokeGrant and releaseShatter accept (section 2.7)`);
 
   const floors: Partial<PackedGuardrails> = {};
   for (const { k, v, line } of topBlock(yaml, 'floors')) {

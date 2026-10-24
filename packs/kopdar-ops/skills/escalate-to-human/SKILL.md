@@ -9,7 +9,7 @@ trigger: ambiguity, contradiction, distress, money, or a precondition you cannot
 
 Hands the decision to the named `needs.escalation_contact` with: what was read, what was drafted, the one
 decision needed, and the deadline if there is one — stated as a fact, never as pressure. The approval queue
-must never be timed so tight that approving is easier than reading (`spec` §2.4).
+must never be timed so tight that approving is easier than reading (`spec` section 2.4).
 
 Escalate, do not improvise, when: venue or time is ambiguous; a number has no source; a member has been
 contradicted twice on the same fact; someone appears to be in distress or is being harmed; money, pricing, or

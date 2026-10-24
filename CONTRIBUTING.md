@@ -57,6 +57,14 @@ node --test runtime/test/*.test.ts
 node runtime/tour.ts
 ```
 
+And the type contract, which CI runs as a job of its own. The runtime is TypeScript and node strips the
+types when it runs them, so nothing checks them unless something does:
+
+```bash
+npm install --no-save typescript@5 @types/node@22
+npx tsc -p runtime/tsconfig.json --noEmit
+```
+
 Four gates, not a smaller number. The list lives in `scripts/gates.mjs`; `scripts/gates.test.mjs`
 (which gate 2 runs) fails if a contributor-facing doc stops printing it, so a new gate is added in
 one place and the test tells you which files then have to change.
@@ -72,7 +80,7 @@ failing control), `gates.test.mjs` proves the four
 commands above are the commands CI runs *and* the commands these docs, `README.md`, `AGENTS.md`, and
 the tour's own `--json` map print — and, since the decision log was found rendering as literal text
 after its eighteenth row, also proves that every markdown table in the repository has its header
-attached to its rows, and `claims.test.mjs` proves the claim ceiling (PRD §2.3, FR-4.4)
+attached to its rows, and `claims.test.mjs` proves the claim ceiling (PRD section 2.3, FR-4.4)
 is enforced where the copy actually is — the root `README.md` and a pack's own `README.md` included —
 and that the banned list still matches the documents it claims to enforce.
 

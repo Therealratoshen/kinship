@@ -19,7 +19,7 @@ A sponsor report is a **dated, regenerable deliverable**, not a paragraph an age
 Never fabricate reach, sentiment, or demographic splits. If a number can't be sourced, the report says
 "not measured" and that is a complete answer — an unverifiable claim handed to a sponsor is the exact failure
 the honesty contract exists to prevent, and the industry has visible precedents of agent vendors inventing
-customer testimonials (landscape pass §6).
+customer testimonials (landscape pass section 6).
 
 **Assertion.** `assert re-running with the same window + sources reproduces every figure` and
 `assert no metric appears without a named source or an explicit "not measured"`.

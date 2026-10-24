@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Fleet } from '../src/engine.ts';
 import { answersDigest, deepEqualState, seqProblems } from '../src/log.ts';
 import { makePack } from './helpers.ts';
-import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import {disclosureLine} from '../src/disclosure.ts';
 
 const DAY = 25_200_000; // 07:00 UTC = 14:00 WIB
 
@@ -25,13 +25,12 @@ function aRun(): Fleet {
   f.beginEvent('kopdar-12');
   const promo = f.attempt({
     actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, phase: 'promoting',
-    textId: `Promo.\n\n${disclosureLineId(ANSWERS.community_name)}`,
-    textEn: `Promo.\n\n${disclosureLineEn(ANSWERS.community_name)}`,
+    text: { id: `Promo.\n\n${disclosureLine('id', ANSWERS.community_name)}`, en: `Promo.\n\n${disclosureLine('en', ANSWERS.community_name)}` },
   });
   f.decideCard(promo.card!.id, { verdict: 'approve', by: 'organiser', why: 'tanggal sudah benar' });
   assert.throws(() => f.commit({
     actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' }, phase: 'promoting',
-    recipients: ['wa:62811'], onBehalfOf: 'organiser', textId: 'x', textEn: 'y',
+    recipients: ['wa:62811'], onBehalfOf: 'organiser', text: { id: 'x', en: 'y' },
   }), /grant_not_found/); // refused — no live grant, and the refusal is logged
   return f;
 }

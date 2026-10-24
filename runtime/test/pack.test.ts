@@ -11,6 +11,24 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PACK_DIR = join(REPO_ROOT, 'packs', 'kopdar-ops');
 const DAY = 25_200_000; // 07:00 UTC = 14:00 WIB
 
+/**
+ * Copy the pack into a temp folder **together with the organisation it names**.
+ *
+ * The loader resolves the org manifest by walking up from the pack folder and falling back to the
+ * working directory. A temp copy in `/tmp` has neither, so without this the pack refuses to boot —
+ * fail-closed, and correct, but for the wrong reason: the test would be asserting a locale or a
+ * ladder while the refusal was actually "your org manifest is not here".
+ *
+ * **And that is the rule the fallback was hiding:** a pack that names an organisation must travel
+ * with that organisation. The reference host's own test already does this. The suite used to pass
+ * only because the gates happen to run from the repo root, where `orgs/` happens to be the
+ * working directory's child — a test result that depended on the cwd.
+ */
+function copyPackWithOrg(target: string): void {
+  cpSync(PACK_DIR, target, { recursive: true });
+  cpSync(join(REPO_ROOT, 'orgs'), join(target, '..', 'orgs'), { recursive: true });
+}
+
 const ANSWERS = {
   community_name: 'AI Builders ID',
   schedule: 'every other Saturday',
@@ -48,7 +66,7 @@ test('a pack that declares a language pair the runtime does not implement refuse
   const dir = mkdtempSync(join(tmpdir(), 'kinship-locale-'));
   try {
     const target = join(dir, 'kopdar-ops');
-    cpSync(PACK_DIR, target, { recursive: true });
+    copyPackWithOrg(target);
     const f = join(target, '.kinship.yaml');
     writeFileSync(f, readFileSync(f, 'utf8').replace(/^locale:.*$/m, 'locale: [en]'));
     assert.throws(
@@ -76,7 +94,7 @@ test('the real pack loads through the validator + parser, and the parsed numbers
   assert.equal(p.guardrails.reportAggregationFloor, 10);
   assert.equal(p.guardrails.memberMessageCapPer24h, 2);
   assert.equal(p.guardrails.defaultsDeny, true);
-  assert.equal(p.budgets.llmPerEventIdr, null, 'the ceiling is a real field with an UNSET value (PRD §12-Q9)');
+  assert.equal(p.budgets.llmPerEventIdr, null, 'the ceiling is a real field with an UNSET value (PRD section 12-Q9)');
   assert.equal(p.budgets.queueMax, 20);
   assert.equal(p.budgets.maxActionsPerRun, 15);
   assert.equal(p.budgets.crossPromoPerEventCap, 1);
@@ -90,24 +108,24 @@ test('boot refuses while any need is unanswered — the real gate, not a test fi
   assert.ok(fleet, 'all eight answered — the pack boots');
 });
 
-test('the partner gate holds on the real pack: cross-promo is unreachable until partner_policy answers (§2.11)', () => {
-  // §2.7 already refuses boot without the answer (test above); the ladder gate is the second
+test('the partner gate holds on the real pack: cross-promo is unreachable until partner_policy answers (section 2.11)', () => {
+  // section 2.7 already refuses boot without the answer (test above); the ladder gate is the second
   // lock for engines constructed or replayed without boot — no path reaches the class without it.
   const { partner_policy: _omitted, ...withoutPartner } = ANSWERS;
   const gated = new Fleet(loadPack(PACK_DIR), withoutPartner, DAY);
   assert.throws(() => gated.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   }), /class_unavailable/, 'partner_policy unset → the class is never, even though the pack declares it at draft');
   const open = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
   const r = open.attempt({
     actionClass: 'promote.cross-community', agent: 'engagement', origin: { kind: 'event', id: 'kopdar-12' },
-    textId: 'promo partner', textEn: 'partner promo',
+    text: { id: 'promo partner', en: 'partner promo' },
   });
   assert.equal(r.disposition, 'card', 'partner_policy answered → the class resolves to its declared draft');
 });
 
-// --- the sanction ladder (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §5, DECISIONS.md D37) ----
+// --- the sanction ladder (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md section 5, DECISIONS.md D37) ----
 // A normal community does not have a refusal code. It has a set of rungs a person climbs before they are
 // gone, and every rung comes with an explanation. This pack had the flag and the freeze and nothing else,
 // so the norms the community actually runs on lived in nobody's file. Writing them down is the addition —
@@ -170,23 +188,21 @@ test('a rung with no name refuses to boot — an unreadable rung is not a skippe
   }
 });
 
-test('the real pack runs the draft-only story end to end, with its own guardrails (§1.1, D21)', () => {
+test('the real pack runs the draft-only story end to end, with its own guardrails (section 1.1, D21)', () => {
   const fleet = Fleet.boot(loadPack(PACK_DIR), ANSWERS, DAY);
   fleet.registerMember('wa:62811', 'Asia/Jakarta');
   const disclosureId = `pesan ini dikirim oleh asisten otomatis komunitas AI Builders ID — bukan oleh manusia. balas di sini untuk eskalasi ke organiser.`;
   const disclosureEn = `this message was sent by the automated assistant of AI Builders ID — not a human. reply here to escalate to the organiser.`;
   const r = fleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' }, phase: 't-minus-1',
-    textId: `Ingat ya besok kopdar!\n\n${disclosureId}`,
-    textEn: `Reminder: kopdar tomorrow!\n\n${disclosureEn}`,
+    text: { id: `Ingat ya besok kopdar!\n\n${disclosureId}`, en: `Reminder: kopdar tomorrow!\n\n${disclosureEn}` },
   });
   assert.equal(r.disposition, 'card');
   fleet.decideCard(r.card!.id, { verdict: 'approve', by: 'organiser', why: 'waktu dan tempat sudah benar' });
   assert.throws(() => fleet.commit({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' }, phase: 't-minus-1',
     recipients: ['wa:62811'], onBehalfOf: 'organiser', authorizationToken: `auth-${r.card!.id}`,
-    textId: `Ingat ya besok kopdar!\n\n${disclosureId}`,
-    textEn: `Reminder: kopdar tomorrow!\n\n${disclosureEn}`,
+    text: { id: `Ingat ya besok kopdar!\n\n${disclosureId}`, en: `Reminder: kopdar tomorrow!\n\n${disclosureEn}` },
   }), /no_transport/, 'the real pack cannot send either — no transport ships in phase 1');
 });
 
@@ -204,7 +220,7 @@ test('the real pack runs the draft-only story end to end, with its own guardrail
 function forkCopy(): { dir: string; mutate(edit: (yaml: string) => string): void; cleanup(): void } {
   const tmp = mkdtempSync(join(tmpdir(), 'kinship-pack-'));
   const dir = join(tmp, 'kopdar-ops'); // PKG-06: path and slug must agree, or the wrong rule fires
-  cpSync(PACK_DIR, dir, { recursive: true });
+  copyPackWithOrg(dir);
   return {
     dir,
     mutate: (edit) => {
@@ -339,7 +355,7 @@ test('the real pack boots into a Fleet whose settings carry the org tier', () =>
 const withCoverageBlock = (body: string): string => {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-coverage-'));
   const target = join(dir, 'kopdar-ops');
-  cpSync(PACK_DIR, target, { recursive: true });
+  copyPackWithOrg(target);
   const f = join(target, '.kinship.yaml');
   const text = readFileSync(f, 'utf8');
   assert.match(text, /^coverage:\s*$/m, 'the shipped pack must carry a coverage block for this test to replace it');
@@ -347,19 +363,21 @@ const withCoverageBlock = (body: string): string => {
   return target;
 };
 
+/** One staffed window, in the file's spelling. */
+const WINDOW = (days: string, opens: string, closes: string): string =>
+  `  windows:\n    - days: ${days}\n      opens: "${opens}"\n      closes: "${closes}"`;
+
 test('the shipped pack parses its coverage window into the numbers the file states', () => {
   const p = loadPack(PACK_DIR);
   assert.deepEqual(p.coverage, {
     mode: 'staffed',
     timezone: 'Asia/Jakarta',
-    days: [1, 2, 3, 4, 5],
-    opens: 9 * 60,
-    closes: 18 * 60,
+    windows: [{ days: [1, 2, 3, 4, 5], opens: 9 * 60, closes: 18 * 60 }],
   });
 });
 
 test('a coverage window with no timezone refuses to load — business hours without a zone is not a commitment', () => {
-  const target = withCoverageBlock('  mode: staffed\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: staffed\n${WINDOW('mon,tue', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -375,7 +393,7 @@ test('a coverage window with no timezone refuses to load — business hours with
 });
 
 test('a coverage window that closes before it opens refuses to load', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon', '18:00', '09:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -407,7 +425,7 @@ test('a coverage window with an unrecognised mode refuses to load', () => {
 });
 
 test('a coverage window with an unknown weekday refuses to load', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon,funday', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -426,7 +444,7 @@ test('a pack with no coverage block loads with no window at all — an unstated 
   const dir = mkdtempSync(join(tmpdir(), 'kinship-nocov-'));
   try {
     const target = join(dir, 'kopdar-ops');
-    cpSync(PACK_DIR, target, { recursive: true });
+    copyPackWithOrg(target);
     const f = join(target, '.kinship.yaml');
     writeFileSync(f, readFileSync(f, 'utf8').replace(/^coverage:\s*$[\s\S]*?(?=^\S)/m, ''));
     const p = loadPack(target);
@@ -458,7 +476,7 @@ test('a 24/7 community that names its zone keeps it', () => {
 });
 
 test('a coverage block with an unknown key refuses to load — a key the runtime does not read is a key the community believes it wrote', () => {
-  const target = withCoverageBlock('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon');
+  const target = withCoverageBlock(`  mode: staffed\n  timezone: Asia/Jakarta\n${WINDOW('mon', '09:00', '18:00')}\n  dayz: mon`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -474,7 +492,7 @@ test('a coverage block with an unknown key refuses to load — a key the runtime
 });
 
 test('`mode: always` alongside a shift the runtime cannot have refuses to load — the file may not disagree with itself', () => {
-  const target = withCoverageBlock('  mode: always\n  days: mon\n  opens: "09:00"\n  closes: "18:00"');
+  const target = withCoverageBlock(`  mode: always\n${WINDOW('mon', '09:00', '18:00')}`);
   try {
     assert.throws(
       () => loadPack(target),
@@ -515,22 +533,25 @@ test('the parser refuses an unknown mode, on its own door', () =>
   parserRefuses('  mode: whenever\n  timezone: Asia/Jakarta', /mode/));
 
 test('the parser refuses a staffed window with no zone, on its own door', () =>
-  parserRefuses('  mode: staffed\n  days: mon\n  opens: "09:00"\n  closes: "18:00"', /timezone/));
+  parserRefuses('  mode: staffed\n  windows:\n    - days: mon\n      opens: "09:00"\n      closes: "18:00"', /timezone/));
 
 test('the parser refuses an unknown weekday, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,funday\n  opens: "09:00"\n  closes: "18:00"', /days|funday/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon,funday\n      opens: "09:00"\n      closes: "18:00"', /days|funday/));
 
 test('the parser refuses hours that are not HH:MM, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "9 in the morning"\n  closes: "18:00"', /opens|closes/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "9 in the morning"\n      closes: "18:00"', /opens|closes/));
 
 test('the parser refuses a shift that closes before it opens, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "18:00"\n  closes: "09:00"', /opens|closes/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "18:00"\n      closes: "09:00"', /opens|closes/));
 
 test('the parser refuses a key the window does not have, on its own door', () =>
-  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon\n  opens: "09:00"\n  closes: "18:00"\n  dayz: mon', /dayz/));
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon\n      opens: "09:00"\n      closes: "18:00"\n  dayz: mon', /dayz/));
 
 test('the parser refuses a line it cannot read, on its own door', () =>
   parserRefuses('  mode: staffed\n  ??? not a key\n  timezone: Asia/Jakarta', /cannot read/));
+
+test('the parser refuses a community with no window at all, on its own door', () =>
+  parserRefuses('  mode: staffed\n  timezone: Asia/Jakarta', /windows/));
 
 test('the parser refuses a block written twice, on its own door', () => {
   assert.throws(
@@ -569,8 +590,8 @@ test('the parser refuses a window written in a shape it cannot read, rather than
 
 test('the parser reads a well-formed window, and one with no window at all', () => {
   assert.deepEqual(
-    parse('  mode: staffed\n  timezone: Asia/Jakarta\n  days: mon,tue\n  opens: "09:00"\n  closes: "18:00"'),
-    { mode: 'staffed', timezone: 'Asia/Jakarta', days: [1, 2], opens: 540, closes: 1080 },
+    parse('  mode: staffed\n  timezone: Asia/Jakarta\n  windows:\n    - days: mon,tue\n      opens: "09:00"\n      closes: "18:00"'),
+    { mode: 'staffed', timezone: 'Asia/Jakarta', windows: [{ days: [1, 2], opens: 540, closes: 1080 }] },
   );
   assert.equal(parseCoverage('locale: [id, en]\n', 'test/pack'), undefined, 'no block means no promise');
 });

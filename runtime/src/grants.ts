@@ -1,8 +1,8 @@
 /**
- * §1.8 the grant taxonomy: once, always, and revocation. Collapsing once into always is the
+ * section 1.8 the grant taxonomy: once, always, and revocation. Collapsing once into always is the
  * bug that turns a helper into an unattended bot three weeks later, so the store keeps them
  * distinct and makes every always-grant name its scope. Grants are issued by the organiser
- * only — §2.7 makes a member's "yes, go ahead" an input to a proposal, never a grant.
+ * only — section 2.7 makes a member's "yes, go ahead" an input to a proposal, never a grant.
  */
 import { refuse } from './errors.ts';
 import { assertSeat } from './roles.ts';
@@ -30,14 +30,14 @@ export function currentTemplateHash(actionClass: string): string {
 }
 
 export function issueGrant(ctx: Ctx, args: IssueGrantArgs): Grant {
-  assertSeat(ctx, args.by, 'spec §1.8/§2.7');
+  assertSeat(ctx, args.by, 'spec section 1.8 / section 2.7');
   const isCross = args.actionClass.startsWith('promote.cross');
   if (args.kind === 'allow_always') {
     if (!args.scope || args.scope.trim() === '') {
-      refuse('grant_scope_unnamed', 'spec §1.8', 'an "always" grant must name its scope — the next event is not the one that was approved');
+      refuse('grant_scope_unnamed', 'spec section 1.8', 'an "always" grant must name its scope — the next event is not the one that was approved');
     }
     if (isCross && (!args.partner || !args.channel || !args.window)) {
-      refuse('grant_scope_unnamed', 'spec §2.11', 'a cross-promotion always-grant must name partner + lane + window');
+      refuse('grant_scope_unnamed', 'spec section 2.11', 'a cross-promotion always-grant must name partner + lane + window');
     }
   }
   const nextId = `grant-${ctx.state.grantCount + 1}`; // the applier advances the counter on commit
@@ -59,11 +59,11 @@ export function issueGrant(ctx: Ctx, args: IssueGrantArgs): Grant {
 
 /**
  * Instant, no reason required, works on once-grants too (nothing to consume after revoke) — and
- * only ever by the human who holds the grant. §1.8 makes revocation the organiser's act; gating it
+ * only ever by the human who holds the grant. section 1.8 makes revocation the organiser's act; gating it
  * at the caller would leave this file's own tests able to un-gate it, so the rule lives here.
  */
 export function revokeGrant(ctx: Ctx, grantId: string, by: string): void {
-  assertSeat(ctx, by, 'spec §1.8/§2.7');
+  assertSeat(ctx, by, 'spec section 1.8 / section 2.7');
   const g = ctx.state.grants.get(grantId);
   if (!g || g.revokedAt !== undefined || g.consumedAt !== undefined) return;
   ctx.commit({ type: 'GrantRevoked', grantId, by, at: ctx.now() });
@@ -75,7 +75,7 @@ export function consumeGrant(ctx: Ctx, grantId: string, commitSeq: number): void
   ctx.commit({ type: 'GrantConsumed', grantId, commitSeq, at: ctx.now() });
 }
 
-/** §1.8 — the class definition changed materially; the grant is dead, not adapted. */
+/** section 1.8 — the class definition changed materially; the grant is dead, not adapted. */
 export function supersedeGrant(ctx: Ctx, grantId: string, reason: string): void {
   const g = ctx.state.grants.get(grantId);
   if (!g || g.revokedAt !== undefined) return;
@@ -108,7 +108,7 @@ export function findLiveGrant(ctx: Ctx, q: LiveGrantQuery): Grant | null {
 
 /**
  * A diagnostic, never an authorization path: the row that `findLiveGrant` skipped because its
- * named window closed. §1.2 says "why not" is part of the product, and "no live grant —
+ * named window closed. section 1.2 says "why not" is part of the product, and "no live grant —
  * escalation is earned" is the wrong sentence for a grant the organiser did issue and that simply
  * ran out. Only an *expired* window is reported; a window that has not opened yet is truthfully
  * "no live grant". Revoked and consumed rows are excluded — for those, the existing message is
@@ -127,7 +127,7 @@ export function grantWithClosedWindow(ctx: Ctx, q: LiveGrantQuery): Grant | null
   return null;
 }
 
-/** §1.8 — "every always-grant is enumerable… if it cannot be listed, it cannot be governed." */
+/** section 1.8 — "every always-grant is enumerable… if it cannot be listed, it cannot be governed." */
 export function listGrants(ctx: Ctx): Grant[] {
   return [...ctx.state.grants.values()];
 }

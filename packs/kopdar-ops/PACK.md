@@ -5,7 +5,7 @@ name: Kopdar event-ops squad
 version: 0.1.0
 category: event-ops
 bundled: true                      # core pack: the invariants below are held by us, not by the fork
-license: MIT                       # proposed, pending PRD §12-Q4 — see "License" note at the bottom
+license: MIT                       # proposed, pending PRD section 12-Q4 — see "License" note at the bottom
 defaultInstall: false
 recommendedFor: [recurring-offline-meetup, ai-builder-community, indonesia-bilingual]
 manager: agents/event-ops/AGENTS.md
@@ -45,9 +45,9 @@ lives here and in `agents/*/AGENTS.md`, because a forked community is edited by 
 markdown — they do not diff a 95-line YAML.
 
 That shape is adopted from Paperclip's teams-catalog (`TEAM.md` + `.paperclip.yaml` + `agents/*/AGENTS.md`),
-verified in code at `master` on 2026-10-17 — see `research/PAPERCLIP-OSS-STUDY-2026-10-17.md` §5. The filename is
+verified in code at `master` on 2026-10-17 — see `research/PAPERCLIP-OSS-STUDY-2026-10-17.md` section 5. The filename is
 `AGENTS.md` on purpose: it matches the donor layout *and* the wider open convention for agent instruction files
-(`research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` §5), so a pack can be read by tooling that already speaks it.
+(`research/AGENT-GOVERNANCE-LANDSCAPE-2026-10-17.md` section 5), so a pack can be read by tooling that already speaks it.
 Six of its properties are load-bearing here:
 
 1. **Namespaced keys** make a fork addressable, which is the precondition for the attribution trail
@@ -65,7 +65,7 @@ Six of its properties are load-bearing here:
 ## What this squad does
 
 Three agents on one event lifecycle, in one approval queue. Nothing is member-facing without a human verdict,
-and the verdict distinguishes **allow once** from **allow always** (`spec/GOVERNANCE-SPEC-OUTLINE.md` §1.8).
+and the verdict distinguishes **allow once** from **allow always** (`spec/GOVERNANCE-SPEC-OUTLINE.md` section 1.8).
 
 | Agent | Owns | Tools it has | Tools it does **not** have |
 |---|---|---|---|
@@ -105,16 +105,16 @@ skill nobody can test is a suggestion.
 | `escalate-to-human` | all | When to hand off, to whom, over which channel, with what context | `needs.escalation_contact` is unset |
 | `fleet-health` | all | Bounded `complain` + ≤3 constructive suggestions per run, no double-firing | a complaint and a suggestion fire for the same event |
 
-`complain` / `suggestion-box` as a *fleet* signal is taken from Paperclip's skill pair (`study §6.8`); it is
+`complain` / `suggestion-box` as a *fleet* signal is taken from Paperclip's skill pair (`study section 6.8`); it is
 the cheapest early warning that the reminder lane has become a mess.
 
 **Not built, on purpose:** a workflow-canvas skill, a memory-engine skill, an eval-harness skill. All three
-are commodities (`research/COMPETITOR-ANALYSIS-2026-10-17.md` §3) — adopt, do not author (`DECISIONS.md` D12).
+are commodities (`research/COMPETITOR-ANALYSIS-2026-10-17.md` section 3) — adopt, do not author (`DECISIONS.md` D12).
 
 ## "Isn't this what a free Discord bot already does?"
 
 Yes, partly — and more of it than this section claimed when it was first written. Corrected 2026-10-17 after
-`research/COMMUNITY-SAAS-AND-BOT-LANDSCAPE-2026-10-17.md` §2: **Apollo** ships recurring events, button signups,
+`research/COMMUNITY-SAAS-AND-BOT-LANDSCAPE-2026-10-17.md` section 2: **Apollo** ships recurring events, button signups,
 per-option capacity, auto-waitlists, up to 5 custom reminders, digests, gcal sync and cross-server posting for
 $0/$8/$25 per month, and **Luma Plus already bundles automated reminders** via email/SMS/push/WhatsApp. So the
 honest answer is not "bots can't do event lifecycle" — some of them can. Free bots already cover: scheduled
@@ -128,7 +128,7 @@ What the surveyed bots do not do, and what these skills exist for:
 - **cross-channel** sequencing with cost awareness (email before a paid WhatsApp template), across a fleet the
   community already runs rather than inside one bot's own server.
 - an **approval queue that binds to a content revision** and distinguishes *once* from *always* — a bot's
-  "auto-post" toggle is a per-feature switch, not a grant with a named scope (§1.8).
+  "auto-post" toggle is a per-feature switch, not a grant with a named scope (section 1.8).
 - **audit replay** a sponsor or a member can be shown, including the near-misses the gate caught.
 - **per-event spend in the organiser's currency**, with a hard stop.
 - the **bilingual ID+EN pairing** on every member-facing card, which no foreign vendor ships as a rule.
@@ -150,29 +150,29 @@ events / we send your reminders" is banned copy for the same reason: an incumben
    is not what an organiser is asking for, and the unofficial route that *does* scale risks their own number
    with permanent, no-appeal bans. Falsifier: a raised cap retires D11/D13 for this lane.
 3. **`budgets.llm_per_event_idr` has no sanctioned default.** The field is real and enforced; the number is the
-   owner's to set (PRD §12-Q9). Shipping a made-up ceiling would be exactly the invented figure the honesty
+   owner's to set (PRD section 12-Q9). Shipping a made-up ceiling would be exactly the invented figure the honesty
    contract forbids.
 4. **Luma writes require Luma Plus** (vendor-subscription dependency, price unverified as current). Without
    it, `venue_source` degrades to gcal or manual; the pack must stay installable either way.
 5. **Nothing here licenses the sentence "runs itself."** The load-bearing sentence is: the fleet proposes, the
    organiser approves, every action is logged and replayable.
 6. **License.** `license: MIT` is a *proposal* recorded as the recommendation with evidence (the category's
-   proven shape; Paperclip is MIT with an EE policy-editing layer while core keeps enforcement). PRD §12-Q4
+   proven shape; Paperclip is MIT with an EE policy-editing layer while core keeps enforcement). PRD section 12-Q4
    is still the owner's call, and this field must not be copied into a repo README until he takes it.
 
 ## Open, and honest about being open
 
-- The `once`/`always` grant store is specified in the governance spec (§1.8) and **now implemented in
+- The `once`/`always` grant store is specified in the governance spec (section 1.8) and **now implemented in
   `runtime/src/grants.ts`** — corrected 2026-10-18; this bullet read "implemented nowhere" when it was written,
   before the runtime landed under `DECISIONS.md` **D21**. Shape is checked by the validator, semantics by
   `runtime/test/grants.test.ts`. **What is still true:** neither proves a *deployed* system honours it — that
   proof needs a transport, and none ships (see the section above).
 - `identity-disclosure` and `commit.channel-post` at any posture above `draft` are **unproven**. Promotion
-  thresholds are a shadow-mode output (PRD §9), not a pack setting to decide here.
+  thresholds are a shadow-mode output (PRD section 9), not a pack setting to decide here.
 - No primary user research backs any lane in this pack. It is a faithful model of one organiser's workflow —
   the organiser who wrote it.
 - **No member has been asked anything.** The three member-facing skills encode what a *simulated* member lens
   said it would refuse, which is a constraint the build can honour or fail and not evidence of demand. The one
   contradiction that lens surfaced — deferring the hub (D6, Branch B) also defers the member's only *positive*
-  benefit, so v0's member value is subtraction alone — is open as PRD §12 **Q10** and is the owner's call, not
+  benefit, so v0's member value is subtraction alone — is open as PRD section 12 **Q10** and is the owner's call, not
   this pack's.

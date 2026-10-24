@@ -11,7 +11,7 @@
  *
  *   - a value the pack **declared** may only be equal or stricter — weaker refuses `pack_invalid`;
  *   - a value the pack **omitted** inherits the org's floor, and provenance says `org`;
- *   - an `autonomy_ceiling` genuinely narrows, because §1.7 already does exactly that, and it may
+ *   - an `autonomy_ceiling` genuinely narrows, because section 1.7 already does exactly that, and it may
  *     not widen, and may not say `never` (invariant #1: absence belongs to the pack).
  *
  * Which means: **an org can never change a community's number. It can refuse the community, or fill
@@ -54,17 +54,17 @@ interface GuardrailKey {
 const KEYS: readonly GuardrailKey[] = [
   {
     key: 'member_message_cap_per_24h', floor: 'member_message_cap_per_24h', field: 'memberMessageCapPer24h',
-    rule: 'spec §2.9 / FR-5.5', direction: 'lower is stricter',
+    rule: 'spec section 2.9 / FR-5.5', direction: 'lower is stricter',
     strictest: (a, b) => Math.min(a as number, b as number),
   },
   {
     key: 'report_aggregation_floor', floor: 'report_aggregation_floor', field: 'reportAggregationFloor',
-    rule: 'spec §2.9 / FR-5.3', direction: 'higher is stricter',
+    rule: 'spec section 2.9 / FR-5.3', direction: 'higher is stricter',
     strictest: (a, b) => Math.max(a as number, b as number),
   },
   {
     key: 'identity_disclosure', floor: 'identity_disclosure', field: 'identityDisclosure',
-    rule: 'spec §2.8', direction: 'required is stricter',
+    rule: 'spec section 2.8', direction: 'required is stricter',
     // true is the stricter side, so the strictest pair is a disjunction. `a && b` here would read as
     // "both must agree", which is not a direction: a pack that turned disclosure off under an org
     // that requires it would be clamped up silently instead of refused.
@@ -72,7 +72,7 @@ const KEYS: readonly GuardrailKey[] = [
   },
   {
     key: 'defaults_deny', floor: 'defaults', field: 'defaultsDeny',
-    rule: 'spec §1.1 / invariant #1', direction: 'deny is stricter',
+    rule: 'spec section 1.1 / invariant #1', direction: 'deny is stricter',
     strictest: (a, b) => Boolean(a || b),
   },
 ];
@@ -84,7 +84,7 @@ const isDeclared = (pack: Packed, floor: string): boolean =>
 const LIMITS: readonly string[] = [
   'The event tier is not built. The resolution order the spec names is org -> pack -> event, and the third tier has no shape, no caller, and no rule: nothing in the runtime supplies an event-scoped setting, so an `event:` parameter here would be a claim rather than a setting. A per-event override is a dated decision (DECISIONS.md) before it is a field.',
   'The org tier cannot change a value a pack declared — it can only refuse the pack or fill a blank the pack left. There is no clamp on this path, so an effective number always appears in a file: either the pack\'s, or the org\'s with provenance `org`.',
-  'Autonomy ceilings match exact class names. There is no wildcard, because the ladder has none and a glob would widen reach without anyone writing the class down (§1.1).',
+  'Autonomy ceilings match exact class names. There is no wildcard, because the ladder has none and a glob would widen reach without anyone writing the class down (section 1.1).',
   '`agent_roles` is reporting, not a whitelist: an org lists the roles it recognises so a snapshot can name them, and a community may add an agent without an org\'s permission. The one hard rule is that a role name may not be a human seat.',
   'Budgets are not floors. `llm_per_event_idr`, `queue_max` and `max_actions_per_run` stay the pack\'s: spend and queue depth are the organiser\'s own cost, not a promise to a member, and an org that can force a volunteer to spend is a different product.',
 ];
@@ -114,7 +114,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
         // Refuse, never clamp: the pack wrote a number, the org holds a floor, and a fork that
         // weakens a member protection is not allowed to boot into a "fine, we'll ignore it".
         if (k.strictest(packValue, orgValue) !== packValue) {
-          refuse('pack_invalid', 'org floor (spec §1.7 / PRD FR-1.18)',
+          refuse('pack_invalid', 'org floor (spec section 1.7 / PRD FR-1.18)',
             `pack \`${pack.key}\` sets \`${k.floor}\` to ${String(packValue)}, weaker than org \`${org.key}\`'s floor of ${String(orgValue)} — the pack is refused, not clamped, because a value silently rounded down is a file that lies about the system it configures`);
         }
         notes.push(`stricter than org \`${org.key}\`'s floor of ${String(orgValue)}`);
@@ -136,27 +136,27 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
   for (const seat of humanSeats) {
     provenance.push({
       key: `human_seat:${seat}`, tier: 'seat', effective: seat, source: seatSource,
-      note: org ? `declared by org \`${org.key}\` — one seat only while PRD §12-Q12 is unanswered` : 'no org tier: the single seat the runtime has always gated on',
+      note: org ? `declared by org \`${org.key}\` — one seat only while PRD section 12-Q12 is unanswered` : 'no org tier: the single seat the runtime has always gated on',
     });
   }
 
   // The seat set is closed, so a pack cannot hand itself a human act by naming an agent `organiser`.
   const squatters = Object.keys(pack.agents).filter((role) => humanSeats.includes(role));
   if (squatters.length) {
-    refuse('pack_invalid', 'seat collision (spec §2.7 / PRD FR-1.18)',
+    refuse('pack_invalid', 'seat collision (spec section 2.7 / PRD FR-1.18)',
       `pack \`${pack.key}\` declares agent(s) ${squatters.map((r) => `\`${r}\``).join(', ')} whose name is a human seat held by ${org ? `org \`${org.key}\`` : 'the runtime'} — decideCard, issueGrant, revokeGrant and releaseShatter accept a seat, so an agent with that name would hold the veto over its own output`);
   }
 
   // The sanction ladder (D37) — a community's own rungs, read once here. Two properties of it are not
   // the community's to author: WHO performs a rung, and whether the bottom of the ladder has a way
-  // back. A rung an agent performs puts a sanction on the same side of §2.7 as a send (the fleet flags,
+  // back. A rung an agent performs puts a sanction on the same side of section 2.7 as a send (the fleet flags,
   // the human acts); a last rung with no appeal is the dead end every declining forum is remembered by,
   // and a pack that writes "removal" without writing "and here is how you come back" has not finished
   // the thought it started.
   const ladder = pack.sanctionLadder ?? [];
   if (ladder.length === 1) {
     refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37)',
-      `pack \`${pack.key}\` declares a sanction ladder of one rung (\`${ladder[0]!.rung}\`) — one step is a binary, not a graduated response, and the ladder exists because a commons that escalates in visible stages is the thing that survives its own disputes (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md §1). Two rungs, or none`);
+      `pack \`${pack.key}\` declares a sanction ladder of one rung (\`${ladder[0]!.rung}\`) — one step is a binary, not a graduated response, and the ladder exists because a commons that escalates in visible stages is the thing that survives its own disputes (research/COMMUNITY-GOVERNANCE-PATTERNS-2026-10-19.md section 1). Two rungs, or none`);
   }
   // The capabilities the fleet actually holds, normalised so `telegram|send` and `telegram | send` are
   // one string. A rung that matches one has stopped describing a human act.
@@ -167,11 +167,11 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
   }
   ladder.forEach((rung, i) => {
     if (!rung.memberTold) {
-      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.9.4)',
-        `pack \`${pack.key}\` sanctions at rung \`${rung.rung}\` without saying what the member is told — §2.9.4 already promises a flagged member is told, after the fact, with a reason, so a rung with no \`member_told\` is a sanction delivered in the dark`);
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec section 2.9.4)',
+        `pack \`${pack.key}\` sanctions at rung \`${rung.rung}\` without saying what the member is told — section 2.9.4 already promises a flagged member is told, after the fact, with a reason, so a rung with no \`member_told\` is a sanction delivered in the dark`);
     }
     if (!humanSeats.includes(rung.by)) {
-      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.7)',
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec section 2.7)',
         `pack \`${pack.key}\` gives sanction rung \`${rung.rung}\` to \`${rung.by || '(empty)'}\`, which is not a human seat (${humanSeats.join(', ')}) — the fleet flags and a person sanctions, so a rung that names an agent is refused rather than quietly re-pointed at the organiser`);
     }
     const holder = toolHolders.get(norm(rung.via));
@@ -180,8 +180,8 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
         `pack \`${pack.key}\` sanctions at rung \`${rung.rung}\` by \`${rung.via}\`, which agent \`${holder}\` declares as a tool — a rung the fleet can execute is not a ladder, it is a moderation lane wearing a document, and invariant #1 says the capability is removed from the tool list rather than denied at runtime`);
     }
     if (i === ladder.length - 1 && !rung.appeal) {
-      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec §2.9.4)',
-        `pack \`${pack.key}\` ends its sanction ladder at \`${rung.rung}\` and names no appeal — the last rung is exactly the one a member needs a route back from, and the pack's own §2.9.4 says a flag re-enters the organiser queue rather than closing the door`);
+      refuse('pack_invalid', 'sanction ladder (DECISIONS.md D37 / spec section 2.9.4)',
+        `pack \`${pack.key}\` ends its sanction ladder at \`${rung.rung}\` and names no appeal — the last rung is exactly the one a member needs a route back from, and the pack's own section 2.9.4 says a flag re-enters the organiser queue rather than closing the door`);
     }
   });
 
@@ -189,7 +189,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
   for (const [cls, level] of Object.entries(autonomyCeiling)) {
     provenance.push({
       key: `ceiling:${cls}`, tier: 'ceiling', effective: level, source: 'org',
-      note: `org \`${org?.key ?? '?'}\` holds \`${cls}\` at or below ${level}; it cannot raise it, and cannot make it absent (§1.1)`,
+      note: `org \`${org?.key ?? '?'}\` holds \`${cls}\` at or below ${level}; it cannot raise it, and cannot make it absent (section 1.1)`,
     });
   }
 
@@ -197,7 +197,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
   //
   // The org's value is its most-PERMISSIVE posture: an operator running a closed professional
   // community sets the floor to `never`/`closed` and every pack under it inherits that. A pack that
-  // tries to be looser is REFUSED, not clamped — the same rule the guardrails follow (spec §1.10,
+  // tries to be looser is REFUSED, not clamped — the same rule the guardrails follow (spec section 1.10,
   // "refuse, never clamp"), because a value silently rounded toward the org is a file that lies about
   // the system it configures.
   const CONTACT_ORDER: Record<CommunityPosture['contact'], number> = { never: 0, asked_only: 1, open: 2 };
@@ -215,7 +215,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
     if (orgValue !== undefined && org) {
       if (packValue !== undefined) {
         if (order[packValue] > order[orgValue]) {
-          refuse('pack_invalid', 'org floor (spec §1.10 / PRD FR-1.18)',
+          refuse('pack_invalid', 'org floor (spec section 1.10 / PRD FR-1.18)',
             `pack \`${pack.key}\` sets \`posture.${axis}\` to \`${packValue}\`, looser than org \`${org.key}\`'s floor of \`${orgValue}\` — the pack is refused, not clamped, because a posture silently rounded toward the org is a file that lies about the system it configures`);
         }
         return {

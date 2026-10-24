@@ -1,9 +1,9 @@
 # Shadow-mode test protocol
 
 **This is the one piece of work that converts this repository's assumptions into evidence.**
-It is copied from the real test plan in `../../design-thinking/05-test-results.md` §B and made
-runnable against a single event. Predictions were fixed on 2026-10-17; **do not edit §3 after
-the event** — add a row to §6 instead. Editing a prediction after the fact destroys the only
+It is copied from the real test plan in `../../design-thinking/05-test-results.md` section B and made
+runnable against a single event. Predictions were fixed on 2026-10-17; **do not edit section 3 after
+the event** — add a row to section 6 instead. Editing a prediction after the fact destroys the only
 measurement value this file has.
 
 ---
@@ -40,15 +40,15 @@ conversation window for the outsider.
 | P-2 | Diary moves ≥2 steps on the 8-point pair for the organiser. | Feelings didn't move → polite self-praise counts as **KILL**. |
 | P-3 | The organiser asks to raise autonomy for **reminders** first, and refuses it for member-facing replies. | If they escalate member-facing lanes before trust data justifies it, that is the Say-vs-Do gap inverted and worth logging as its own finding. |
 | P-4 | Refusal rate for full autonomy among external organisers: near-total (matches E6). | If someone grants day-one autonomy, E6's "human-gated is mandated" needs re-reading. |
-| P-5 | ≥60% of value-producing work comes from **more than one** agent's tools. | If one agent does it all, the fleet claim (D3) is overkill → collapse scope to one agent + rails (PRD §10 risk 1). |
-| P-6 *(added 2026-10-17, after the member-lens pass and before any run — not part of the original five, and not a §4 gate)* | At least one card per run needs a **member-rights field the organiser did not plan for**: a suppression check that changed the copy, an `on_behalf_of` name that had to be real, or a name dropped to keep a report aggregate. | If the counters in `EVENT-TEMPLATE.md` are zero-for-the-wrong-reason (unimplemented) across three runs, FR-5's retrofit-cost argument is unsupported and the member group moves to phase 2/3 as triaged. If they are zero because nothing was needed, that is a real finding about a draft-only run and says nothing about production. **Either way this does not change §4's verdict** — it changes where FR-5 sits in the sequence. |
+| P-5 | ≥60% of value-producing work comes from **more than one** agent's tools. | If one agent does it all, the fleet claim (D3) is overkill → collapse scope to one agent + rails (PRD section 10 risk 1). |
+| P-6 *(added 2026-10-17, after the member-lens pass and before any run — not part of the original five, and not a section 4 gate)* | At least one card per run needs a **member-rights field the organiser did not plan for**: a suppression check that changed the copy, an `on_behalf_of` name that had to be real, or a name dropped to keep a report aggregate. | If the counters in `EVENT-TEMPLATE.md` are zero-for-the-wrong-reason (unimplemented) across three runs, FR-5's retrofit-cost argument is unsupported and the member group moves to phase 2/3 as triaged. If they are zero because nothing was needed, that is a real finding about a draft-only run and says nothing about production. **Either way this does not change section 4's verdict** — it changes where FR-5 sits in the sequence. |
 
 ## 4. Thresholds — pre-committed, decide here and nowhere else
 
 | Verdict | Trigger | Consequence |
 |---|---|---|
 | **CONTINUE-TO-BUILD** | ≥2 of 3 organisers run event #2 with the fleet **and** ≥1 requests an autonomy increase. | Phase 2 (`PLAN.md` W6–W9): publish spec + packs. |
-| **REPOSITION** | Approval-gated work functions, but member-facing identity triggers complaints. | Back-office wedge. New PRD. This is §2.4's disqualifying answer, handled as designed — not a failure of the plan. |
+| **REPOSITION** | Approval-gated work functions, but member-facing identity triggers complaints. | Back-office wedge. New PRD. This is section 2.4's disqualifying answer, handled as designed — not a failure of the plan. |
 | **KILL** | No second-event behaviour after 4 weeks of real events. Silence and polite praise both count. | Return to Define. The corpse shape it would have been is documented: GPT Store, Flarum, 164 dead AI tools. |
 
 ## 5. Instruments
@@ -83,6 +83,6 @@ conversation window for the outsider.
 | | | | | | | |
 | | *(no runs yet — as of 2026-10-17 this row is empty, and that is the honest state)* | | | | | |
 
-**Iteration decision** (CONTINUE / REPOSITION / KILL, per §4, with the number that produced it):
+**Iteration decision** (CONTINUE / REPOSITION / KILL, per section 4, with the number that produced it):
 
 > `[to be written in W5 — do not pre-fill]`

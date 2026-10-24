@@ -49,7 +49,7 @@ test('closed is terminal — nothing re-enters a finished event loop', () => {
   assert.throws(() => transitionPhase(c, 'kopdar-12', 'running'), /phase_sequence_violated/);
 });
 
-test('single-active-per-origin: a second claim for the same (event, origin, phase) is a 409 that is never retried (§1.9.4, §1.4)', () => {
+test('single-active-per-origin: a second claim for the same (event, origin, phase) is a 409 that is never retried (section 1.9.4, section 1.4)', () => {
   const c = ctx();
   beginEvent(c, 'kopdar-12');
   claimPhaseOrigin(c, 'kopdar-12', 'rsvp-export', 'sheet-1', 'promoting', 'event-ops');
@@ -57,7 +57,7 @@ test('single-active-per-origin: a second claim for the same (event, origin, phas
   claimPhaseOrigin(c, 'kopdar-12', 'rsvp-export', 'sheet-1', 't-minus-7', 'engagement'); // another phase is a different claim
 });
 
-test('exclusive ownership of the event loop: two agents, one 409, and the caller picks different work (§1.4)', () => {
+test('exclusive ownership of the event loop: two agents, one 409, and the caller picks different work (section 1.4)', () => {
   const c = ctx();
   beginEvent(c, 'kopdar-12');
   checkoutEvent(c, 'kopdar-12', 'event-ops');
@@ -66,7 +66,7 @@ test('exclusive ownership of the event loop: two agents, one 409, and the caller
   checkoutEvent(c, 'kopdar-12', 'event-ops'); // re-checkout by the owner is a no-op, not a conflict
 });
 
-test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake row with nextCheckAt (§1.3)', () => {
+test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake row with nextCheckAt (section 1.3)', () => {
   const c = ctx();
   assert.throws(() => assertWakeBacked(c, 'chase rsvp non-responders'), /ghost_watcher/,
     'prose is not a waiting path');
@@ -74,4 +74,42 @@ test('no ghost watchers: "I\'ll follow up Thursday" requires a persisted wake ro
   assert.doesNotThrow(() => assertWakeBacked(c, 'chase rsvp non-responders'));
   fireWake(c, w.id);
   assert.equal(c.state.wakes.get(w.id)?.attempts, 1, 'the attempts counter exists, so "monitoring" is countable');
+});
+
+// --- the wake carries the action it will attempt (D60) ----------------------------------------------------
+
+test('a scheduled wake carries the action it will attempt, and the row records it', () => {
+  const c = ctx();
+  const w = scheduleWake(c, {
+    purpose: 'draft.reminder@t-minus-1:kopdar-12',
+    nextCheckAt: c.now() + 86_400_000,
+    eventId: 'kopdar-12',
+    action: { actionClass: 'draft.reminder', agent: 'event-ops', phase: 't-minus-1', text: { id: 'halo', en: 'hello' } },
+  });
+  assert.equal(w.action?.actionClass, 'draft.reminder');
+  assert.equal(w.action?.phase, 't-minus-1');
+  assert.deepEqual(w.action?.text, { id: 'halo', en: 'hello' });
+});
+
+test('a wake with no action is still a wake — the promise is unchanged by what it will do', () => {
+  const c = ctx();
+  const w = scheduleWake(c, { purpose: 'chase rsvp non-responders', nextCheckAt: c.now() + 86_400_000 });
+  assert.equal(w.action, undefined);
+  assert.doesNotThrow(() => assertWakeBacked(c, 'chase rsvp non-responders'));
+});
+
+test('firing a wake returns the row it fired, so the caller can read the action off it', () => {
+  const c = ctx();
+  const w = scheduleWake(c, { purpose: 'chase rsvp non-responders', nextCheckAt: c.now() + 86_400_000 });
+  const fired = fireWake(c, w.id);
+  assert.equal(fired?.id, w.id);
+  assert.equal(fired?.action, undefined, 'a wake with no action is a timer and nothing more');
+  assert.equal(c.state.wakes.get(w.id)?.attempts, 1);
+});
+
+test('firing a wake that does not exist returns nothing, and logs nothing', () => {
+  const c = ctx();
+  const before = c.state.events.length;
+  assert.equal(fireWake(c, 'wake-999'), undefined);
+  assert.equal(c.state.events.length, before, 'a wake that was never scheduled cannot be fired');
 });

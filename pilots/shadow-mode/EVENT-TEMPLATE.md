@@ -50,7 +50,7 @@ reason is a lost finding.
 | 5 | slow_commitment · assemble-recap | Turnout + 3 photo picks + next-date poll | | draft | | |
 | 6 | moderator · flag | `flagged(reason, confidence)` — acted on? | | flag | | |
 
-**Approval-without-edit rate:** `___ / ___` (PRD §9 target: ≥50% by phase-2 exit; this is the
+**Approval-without-edit rate:** `___ / ___` (PRD section 9 target: ≥50% by phase-2 exit; this is the
 trust proxy, and it is also the quality signal — a low rate means the drafts aren't usable,
 which is a rebuild question, not a UX question).
 
@@ -61,11 +61,11 @@ which is a rebuild question, not a UX question).
 The member is the only party in this run who never approved a card, so their side gets counted from the
 rows you already wrote above. **No new logging. Five tallies, ~2 minutes, at the end of the week** — each
 one is a field that would have been impossible to reconstruct after a send (`community/MEMBER-LENS-2026-10-17.md`
-§5; PRD FR-5).
+section 5; PRD FR-5).
 
 | Counter | Count | What a non-zero means | What a permanent zero means |
 |---|---|---|---|
-| Member-facing cards that needed a disclosure line | `___ / ___` | disclosure is real work, not a footer | if every card is internal, the run never tested §2.8 |
+| Member-facing cards that needed a disclosure line | `___ / ___` | disclosure is real work, not a footer | if every card is internal, the run never tested section 2.8 |
 | Cards with a **named human** in the approval path (`on_behalf_of` non-null) | `___ / ___` | FR-5.1 is honourable at build time | a zero here means the field does not exist, **not** that nobody asked |
 | Times a suppression / opt-out check changed or blocked a card | | a member's "Stop." had an effect | check the reason: unimplemented is a defect, unexercised is fine |
 | Times a first-contact message had **no** suppression row and was held anyway | | fail-closed on unknown consent worked (FR-5.2) | if nothing was held, was anything actually checked? |
@@ -90,7 +90,7 @@ was too formal, a reminder that would have double-sent.
 |---|---|---|---|
 | | | | |
 
-> Prediction P-1 in `TEST-PROTOCOL.md` §3 says the after-feeling lands **only** when the gate
+> Prediction P-1 in `TEST-PROTOCOL.md` section 3 says the after-feeling lands **only** when the gate
 > visibly catches something. If this table is empty after a "clean" run, that is not a success
 > — it is the condition under which P-1 predicts relief without trust. Note it explicitly.
 
@@ -102,7 +102,7 @@ count as evidence; only the first is a governance story and only the second is a
 
 | Type | Happened? | Detail |
 |---|---|---|
-| Member reacted to an agent utterance | ☐ | *(sub-question in §2 — observe, don't settle)* |
+| Member reacted to an agent utterance | ☐ | *(sub-question in section 2 — observe, don't settle)* |
 | Shatter-guard would have fired | ☐ | complaint → freeze-to-draft; did it fire spuriously? |
 | Two agents wanted the same thread | ☐ | 409 + no-retry behaviour correct? |
 | Ghost-watcher attempt | ☐ | agent claimed a follow-up with no persisted monitor |

@@ -22,7 +22,7 @@ place to put rows, a way to reach a person — are exactly the four things `runt
 |---|---|---|---|---|
 | 1 | **Credential** | every provider key, token, and secret, held outside this repo | a cost figure to meter, not an API call to make | `PKG-57` (packs), D32 gate (`runtime/src` may not reach the network), `runtime/package.json` has no dependencies |
 | 2 | **Clock / tick** | when anything runs, and whether it ever runs | a deterministic `now`, and an `overdue` list when the host forgets | D32 gate (no timer or scheduler import), `health().wakes.overdue`, `inbox()`'s `overdue` kind |
-| 3 | **Store** | persisting, pruning, backing up, and access-controlling the event log | `Fleet.events` to write down, and `Fleet.replay(events)` to prove the write | spec §1.2, `test/replay.test.ts`, `test/store.test.ts` |
+| 3 | **Store** | persisting, pruning, backing up, and access-controlling the event log | `Fleet.events` to write down, and `Fleet.replay(events)` to prove the write | spec section 1.2, `test/replay.test.ts`, `test/store.test.ts` |
 | 4 | **Transport** | the channel socket and the act of delivery | the decision to honour, and the receipt it can hand back | D32 gate, `no_transport` at the commit gate, `tour.ts`'s `gatedByDesign` |
 
 ---
@@ -35,7 +35,7 @@ sees a provider key, and a pack must never contain one.
 **What the host does.** Calls the model with its own credential, in its own process, and passes
 Kinship only the number the governance semantics need: `Fleet.recordSpend(eventId, amountIdr, note)`
 meters cost against `budgets.llm_per_event_idr` without knowing which model produced the text.
-Drafts arrive as text (`attempt({ textId, textEn })`), not as completions-in-progress.
+Drafts arrive as text (`attempt({ text: { <language>: <copy> } })`), not as completions-in-progress. **The copy is a map keyed by language code, not a pair of fields** (D58): the field names `textId` / `textEn` *were* the decision that this product serves Indonesian communities, and they were removed so a community in English and Arabic could be expressed at all. A host written against the old pair will not typecheck against the current runtime — which is the point.
 
 **What the runtime guarantees.** No code under `runtime/src` reads an environment variable or holds a
 secret-shaped configuration — `process` appears there only inside a prose comment, and the D32 gate
@@ -61,8 +61,11 @@ There is no scheduler in `runtime/`, and phase 1 does not add one: D10 records t
 inside an organiser's existing agent instance, which already has a scheduler, and D21 keeps everything
 member-facing behind the shadow-mode gate.
 
-**What the host does.** Decides when a run happens. It calls `attempt` / `commit` / `runActions`, and
-it re-arms promises by calling `fireWake` for the rows in `health().wakes.overdue`. Because the host owns
+**What the host does.** Decides when a run happens, and — since D60 — *what* the run is about: it reads
+the community's working file, asks `planWakes` what the fleet would do, schedules the timers, and fires
+the ones that are due by calling `fireWake` for the rows in `health().wakes.overdue`. **A wake now
+carries the action it will attempt**, so firing it *is* the fleet acting, through the same gate any
+hand-fed action goes through. Because the host owns
 the tick, it also owns **what "a run" is** (D38): `runActions(fleet, actions)` mints its own counter, so a
 host that calls it once per agent per tick bounds each agent separately and attempts `agents × max_actions_per_run`
 across the tick. To make the pack's number mean the tick instead, hold one `createRun()` from
@@ -73,7 +76,7 @@ across the tick. To make the pack's number mean the tick instead, hold one `crea
 a number, every event carries the `at` it was committed at, and no module reads a wall clock —
 `Date.now()` appears nowhere in `runtime/src`, and the only `new Date` there is `members.ts` formatting
 a timestamp it was handed. So a replay run in 2027 produces the state the log recorded, which is spec
-§1.2's whole point. The D32 gate backs this structurally without claiming to: it allows three `node:`
+section 1.2's whole point. The D32 gate backs this structurally without claiming to: it allows three `node:`
 modules in `runtime/src` (`crypto`, `fs`, `path`), so `node:timers` cannot be imported, and it rejects
 dynamic `import()`, so a scheduler cannot be pulled in at runtime. What it does **not** check is a bare
 `setTimeout` call written inline — seam 2 stays a design rule plus an import rule, and the honest form
@@ -81,7 +84,7 @@ of that is "no scheduler is reachable from `runtime/src` today, and two of the t
 gated".
 
 **The failure mode this seam exists for.** A wake whose due time has passed and never fired is a
-promise that silently stopped existing — the §1.3 near-miss, in the host's half. `health()` and
+promise that silently stopped existing — the section 1.3 near-miss, in the host's half. `health()` and
 `inbox()` both surface it as overdue rather than pretending it ran.
 
 ## Seam 3 — store: the host persists, Kinship proves
@@ -122,9 +125,9 @@ gate's scope is `runtime/src/**`, so an adapter placed there fails CI on purpose
 outside it is a package a reviewer can see has network access.
 
 **A transport adapter must keep every promise it inherits.** Deliver only content carrying a live,
-unconsumed authorization for that exact revision (§1.5); never send into a suppressed member's lane,
-whatever the grant says (§2.9); ship the disclosure line inside the approved text (§2.5); respect the
-recipient's own timezone for quiet hours (§2.9); and call `recordSpend` for what it cost. An adapter
+unconsumed authorization for that exact revision (section 1.5); never send into a suppressed member's lane,
+whatever the grant says (section 2.9); ship the disclosure line inside the approved text (section 2.5); respect the
+recipient's own timezone for quiet hours (section 2.9); and call `recordSpend` for what it cost. An adapter
 that bypasses one of these is not a bug in the adapter — it is the absence of the product.
 
 ---
@@ -137,15 +140,15 @@ already operates. The mapping a `adapters/paperclip/` would implement:
 | Kinship | Paperclip host |
 |---|---|
 | `Card` pending a verdict | an issue awaiting a human disposition, with the card id in its metadata |
-| `decideCard(…, { verdict, by, why })` | the board/user decision path — a verdict without a `why` is not a verdict (§1.5) |
+| `decideCard(…, { verdict, by, why })` | the board/user decision path — a verdict without a `why` is not a verdict (section 1.5) |
 | `Run` / `runActions` | a heartbeat window, with `max_actions_per_run` as the in-window action count |
 | `scheduleWake` / `fireWake` | adapter poll cadence, and the issue's monitor columns |
-| `Fleet.events` | the issue trail plus one durable log of its own, because §1.2's replay needs the full ordered list |
+| `Fleet.events` | the issue trail plus one durable log of its own, because section 1.2's replay needs the full ordered list |
 | `Ctx.now()` | the host's clock, snapshotted per run |
 | `budgets.llm_per_event_idr` | the host's budget reporting, converted to the ID figure the organiser chose |
 
-**Deliberately not mapped: Paperclip's exclusive card checkout** (`assigneeAgentId` → 409, study §3).
-It has no analogue to key against yet — `by` is a bare string, and PRD §12-Q12 (human roles: who is the
+**Deliberately not mapped: Paperclip's exclusive card checkout** (`assigneeAgentId` → 409, study section 3).
+It has no analogue to key against yet — `by` is a bare string, and PRD section 12-Q12 (human roles: who is the
 organiser, may authority be delegated) is unratified. A lock keyed on an identity that does not exist is
 either inert or it pre-empts that decision. Recorded in D31's row; it becomes buildable the day Q12 has
 an answer.
@@ -167,4 +170,5 @@ an answer.
 
 | Version | Date | Change |
 |---|---|---|
-| v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D33: the four seams named in one place, the adapter-location rule made mechanical, the Paperclip mapping written down, and Paperclip's card checkout recorded as declined pending PRD §12-Q12. |
+| v0.2 | 2026-10-23 | **D60/D61.** The host now *plans* as well as ticks: the community's working file carries its own copy, its next event and its members, and `runtime/src/plan.ts` turns that into the actions the fleet takes. A wake carries the action it will attempt, so firing it is the fleet acting. The run cap now covers that path (it lived only in `runActions` before), a refused phase-origin claim is **logged** rather than silently dropped, and the `textId` / `textEn` field names left this file in D58 — the copy is a map keyed by language code. Seam 1 is unchanged: the host still holds every credential and it still cannot reach a person. |
+| v0.1 | 2026-10-19 | Opened as `DECISIONS.md` D33: the four seams named in one place, the adapter-location rule made mechanical, the Paperclip mapping written down, and Paperclip's card checkout recorded as declined pending PRD section 12-Q12. |

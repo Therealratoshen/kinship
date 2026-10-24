@@ -48,6 +48,14 @@ function liveCounts() {
     domainLines: dirLines(join(ROOT, 'runtime', 'src')),
     testLines: dirLines(join(ROOT, 'runtime', 'test')),
     tourLines: lineCount(read('runtime/tour.ts')),
+    // The tour's guarantee count, computed by RUNNING the tour — not by counting a literal.
+    tourGuarantees: (() => {
+      const t = spawnSync('node', ['runtime/tour.ts', '--json'], { cwd: ROOT, encoding: 'utf8' });
+      assert.equal(t.status, 0, `the tour must hold its guarantees for its own count to mean anything:\n${t.stderr}`);
+      return Object.keys(JSON.parse(t.stdout).guarantees ?? {}).length;
+    })(),
+    // The reference host's own cases, counted the way the rest are counted.
+    hostCases: countOf(read('adapters/reference/test/host.test.ts'), /^test\(/gm),
   };
 }
 
@@ -66,6 +74,10 @@ const COUNT_CLAIMS = [
   ['packs/kopdar-ops/README.id.md', /\d+\s+prosedur/, (c) => `${c.packSkills} prosedur`],
   ['packs/kopdar-ops/README.id.md', /\d+\s+agent di atas satu/, (c) => `${c.packAgents} agent di atas satu`],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /prints [\d,]+ as of/, (c) => `prints ${c.runtimeLines.toLocaleString('en-US')} as of`],
+  // The two counts that were quoted in a live document and protected by nothing. A count in prose is
+  // a claim, and a claim nobody checks is a claim that rots (the sweep found both of these stale).
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /the tour now prints \d+/, (c) => `the tour now prints ${c.tourGuarantees}`],
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /adapters\/reference\/test\/host\.test\.ts` \(\d+ cases/, (c) => 'adapters/reference/test/host.test.ts` (' + c.hostCases + ' cases'],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /split [\d,]+ domain code \/ [\d,]+ tests \/ [\d,]+ tour/, (c) => `split ${c.domainLines.toLocaleString('en-US')} domain code / ${c.testLines.toLocaleString('en-US')} tests / ${c.tourLines.toLocaleString('en-US')} tour`],
 ];
 
@@ -237,6 +249,20 @@ test('CI runs this list rather than keeping a private copy of it', () => {
   // The supported range is a claim in runtime/package.json; CI holds to it (D22).
   for (const major of ['23', '24']) assert.ok(wf.includes(`'${major}'`), `CI no longer gates node ${major}`);
   assert.match(wf, /runs-on:\s*ubuntu-24\.04/, 'CI drifted to a floating runner image — reproducibility is the product');
+});
+
+test('the type contract is a CI job, and the tour is inside it', () => {
+  // A type contract nobody runs is not a contract. D58 changed the shape of the copy and the tour
+  // broke — because `runtime/tsconfig.json` included only `src/**` and `test/**`, so the tour had
+  // never been typechecked at all, and the first thing the typecheck caught once the tour was
+  // inside it was a real latent defect.
+  const wf = read('.github/workflows/test.yml');
+  assert.match(wf, /tsc -p runtime\/tsconfig\.json --noEmit/, 'CI must run the typecheck');
+  assert.match(wf, /typescript@5/, 'and it must install the compiler itself — the runtime package stays dependency-free, so a fork still downloads nothing');
+  const tsconfig = JSON.parse(read('runtime/tsconfig.json'));
+  assert.ok(tsconfig.include.includes('tour.ts'), 'the tour must be inside the typecheck — it is the demo the README shows');
+  assert.ok(tsconfig.include.includes('src/**/*.ts') && tsconfig.include.includes('test/**/*.ts'),
+    'and so must the runtime and its tests');
 });
 
 test('the Node range package.json claims is the Node range CI actually tests', () => {

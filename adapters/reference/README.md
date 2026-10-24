@@ -46,7 +46,7 @@ Not because a transport is unconfigured — because the refusal is a line of cod
 
 That distinction is the whole claim, and it is why this host has no transport at all: opening a
 port converts the repo's strongest claim from *cannot* to *does not unless wired*, which is a
-different sentence and needs its own dated row (`DECISIONS.md` D41's memo §4, O1 versus O2). The
+different sentence and needs its own dated row (`DECISIONS.md` D41's memo section 4, O1 versus O2). The
 artefact phase 1 is supposed to produce is **"here is what the fleet drafted and what it refused,
 in a file you can hand a reviewer"** — not "here is a delivered send".
 

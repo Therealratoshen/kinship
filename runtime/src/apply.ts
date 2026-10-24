@@ -81,7 +81,7 @@ export function applyEvent(state: FleetState, event: LoggedEvent): void {
 function applyEngine(state: FleetState, event: Extract<FleetEvent, { type: 'CommitExecuted' | 'CommitRefused' | 'EscalationRaised' }>): void {
   switch (event.type) {
     case 'CommitExecuted': {
-      // Per-member commit times feed the 24h cap (§2.9). With no transport this phase, only
+      // Per-member commit times feed the 24h cap (section 2.9). With no transport this phase, only
       // recipient-less commits execute — the cap is latent, and load-bearing the day one lands.
       for (const ref of event.recipients) {
         if (state.members.has(ref)) {
@@ -104,7 +104,7 @@ function applyEngine(state: FleetState, event: Extract<FleetEvent, { type: 'Comm
 export function replay(events: LoggedEvent[]): FleetState {
   const state = freshState();
   for (const e of events) applyEvent(state, e);
-  // The log is part of state (§1.2) — a fold that dropped it would not be deep-equal to the
+  // The log is part of state (section 1.2) — a fold that dropped it would not be deep-equal to the
   // live state, and the replay test exists precisely to catch that.
   state.events = [...events];
   state.seq = events.length > 0 ? events[events.length - 1]!.seq : 0;
@@ -114,7 +114,7 @@ export function replay(events: LoggedEvent[]): FleetState {
 /**
  * The engine's commit contract, in one place: append to the log, then run the reducer on the
  * logged form. Live runs, replays, and the test harness all go through this — a caller that
- * applied without appending would break the §1.2 replay property while every functional test
+ * applied without appending would break the section 1.2 replay property while every functional test
  * still passed, which is exactly why it lives here and not in each caller.
  */
 export function commitEvent(state: FleetState, event: FleetEvent): LoggedEvent {

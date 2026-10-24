@@ -31,58 +31,127 @@ These rules are enforced by tested code, not by prose.
 
 ## Try it now
 
+You need Node 23 or newer. There is nothing to install and nothing to build.
+
 ```bash
-# Clone and run — zero install step
 git clone https://github.com/Therealratoshen/kinship.git
 cd kinship
 
-# All four gates, in one command. CI runs exactly this line.
 node scripts/gates.mjs
-
-# Or one at a time, from the repo root — the list lives in scripts/gates.mjs, and
-# scripts/gates.test.mjs fails the build if a doc below drifts from it:
-node scripts/validate-pack.mjs packs/kopdar-ops   # shape: does the pack obey the invariants?
-node --test scripts/*.test.mjs                    # contracts: can the pack — or these docs — drift silently?
-node --test runtime/test/*.test.ts                # semantics: do the rules actually work? (recount: runtime/tour.ts --json)
-node runtime/tour.ts                              # the pack, driven live: drafts, approves, then refuses to send (D21)
-# → the audit trail, live. Add --json for the machine-readable contribution map.
 ```
 
-Node ≥ 23. No npm. No build step.
-
-### …and end in a file you can hand a reviewer
-
-The gates above end in printed guarantees. The **reference host** ends in an artefact:
+That runs the four checks CI runs, in the order CI runs them:
 
 ```bash
-# The host is its own package, and its one dependency is a local path — this creates a symlink
-# and fetches nothing (`--offline` works too).
+node scripts/validate-pack.mjs packs/kopdar-ops   # does the pack obey the invariants?
+node --test scripts/*.test.mjs                    # can the pack, or the docs, drift without anyone noticing?
+node --test runtime/test/*.test.ts                # do the rules actually hold?
+node runtime/tour.ts                              # drive the pack live: it drafts, a human approves, it refuses to send
+```
+
+The list lives in `scripts/gates.mjs`. A test in `scripts/gates.test.mjs` fails the build if this
+README stops printing the same four commands, so the copy here cannot go stale.
+
+`node runtime/tour.ts --json` prints the same tour plus a machine-readable map of which test file
+covers which source file.
+
+There is one more check CI runs, and it is the only one that needs an install. The runtime is written
+in TypeScript, and node runs the `.ts` files directly by stripping the types, which means the types are
+never checked unless something checks them:
+
+```bash
+npm install --no-save typescript@5 @types/node@22
+npx tsc -p runtime/tsconfig.json --noEmit
+```
+
+CI runs that in a job of its own, so the runtime still installs nothing for whoever forks it.
+
+### Run it on your own community
+
+The checks above print results. The reference host runs the fleet and writes a file.
+
+```bash
 cd adapters/reference && npm install --no-audit --no-fund && cd ../..
+```
 
-# Copy the answers template and fill in your community's eight answers. The file is gitignored.
-cp packs/kopdar-ops/pack.local.example.yaml packs/kopdar-ops/pack.local.yaml
-$EDITOR packs/kopdar-ops/pack.local.yaml
+That is the only `npm install` in the repository. The host's one dependency is a path to
+`runtime/`, so npm creates a symlink and downloads nothing. `--offline` works too.
 
-# Boot, draft something, and read back what was written.
-node adapters/reference/src/host.ts run    --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
-node adapters/reference/src/host.ts draft  --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs \
-  --class draft.reminder --agent event-ops \
-  --text-id "Reminder: tomorrow 19:00" --text-en "Reminder: tomorrow 19:00"
+**Two files, both gitignored, because both hold your community's own data.** The first is who you are;
+the second is what you are doing next.
+
+```bash
+cp packs/kopdar-ops/pack.local.example.yaml     packs/kopdar-ops/pack.local.yaml
+cp packs/kopdar-ops/pack.local.plan.example.yaml packs/kopdar-ops/pack.local.plan.yaml
+$EDITOR packs/kopdar-ops/pack.local.yaml         # eight answers: your name, your channels, your contacts
+$EDITOR packs/kopdar-ops/pack.local.plan.yaml    # your copy, your next event, your members
+```
+
+`pack.local.yaml` is the eight answers the pack needs before it will boot. `pack.local.plan.yaml` is
+your working file: **the copy you wrote** for each lane and phase, **the next event** with the facts
+your copy may use, and **your members** with the timezone that decides their own quiet hours.
+
+**Your copy is your copy.** There is no model in this repository. The runtime writes no member-facing
+text of its own and invents no fact. A `{slot}` with no value refuses the whole template rather than
+leaving a hole in a message, and a copy written for a lane your pack does not declare is refused too.
+
+Now run the fleet. `--now` is the moment the host acts as if it were, which is how you rehearse a
+week's worth of reminders without waiting a week.
+
+`plan` is a read. It writes nothing. It tells you what the fleet would do, and what is broken in your
+copy before the event rather than during it.
+
+```bash
+node adapters/reference/src/host.ts plan --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs
+```
+
+`run` schedules the timers, fires the ones that are due, and drafts the cards. The copy in them is
+yours, with your facts filled in and the disclosure line in the place you put it.
+
+```bash
+node adapters/reference/src/host.ts run --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --plan packs/kopdar-ops/pack.local.plan.yaml --log logs --now "2026-11-07T19:00:00+07:00"
+```
+
+Now you are the human in the loop, and you can say no:
+
+```bash
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --why "tanggal dan tempat sudah benar"
+
+node adapters/reference/src/host.ts approve --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-1 --verdict reject --why "terlalu awal, kita umumkan besok"
+```
+
+And then you try to publish, and the gate stops you:
+
+```bash
+node adapters/reference/src/host.ts publish --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs --card card-2 --recipient wa:62811
+```
+
+```
+refused: no_transport
+  [no_transport] (D21 / D11) phase 1 ships no channel transport — delivery is the organiser's hand;
+  the authorization is left intact and the refusal is logged
+```
+
+**That refusal is the product.** Phase 1 ships no channel transport, so every member-facing commit
+stops at `no_transport` and the log records that it stopped. A member who has said stop is stopped
+earlier still, at `member_suppressed`.
+
+Two files appear under `logs/kinshipai/bundled/event-ops/kopdar/`:
+
+```
+events.jsonl     one row per action, in order — this is exactly what replay reads
+manifest.json    what a reader needs to know before opening the log
+```
+
+Check the log is honest:
+
+```bash
 node adapters/reference/src/host.ts verify --pack packs/kopdar-ops --config packs/kopdar-ops/pack.local.yaml --log logs
 ```
 
-Two files appear under `logs/<pack-key>/`:
-
-```
-logs/kinshipai/bundled/event-ops/kopdar/events.jsonl     # one LoggedEvent per line — replay's exact input
-logs/kinshipai/bundled/event-ops/kopdar/manifest.json    # the cover: what a reader needs to know first
-```
-
-The host **sends nothing** — every member-facing commit still refuses `no_transport` (D21). What you
-get is the artefact phase 1 is for: *"here is what the fleet drafted and what it refused, in a file you
-can hand a reviewer."* The cover states the privacy posture in the file itself — member identifiers
-are in it, member **message text** is not, and the draft copy is — and carries a digest of the
-answers rather than their values, so a log that travels carries no second person's name.
+The manifest states the privacy position inside the file: member identifiers are in the log, member
+message text is not, and the draft copy is. It carries a digest of your eight answers rather than
+their values, so the log can travel without carrying a second person's name.
 
 ## Adopting it
 
@@ -110,13 +179,13 @@ not to the library.
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs,
   or if any markdown table in the repository loses the header that gives its rows meaning
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
-- The sanction ladder (`sanction_ladder:` in a pack, spec §2.12 / PRD FR-5.11, `DECISIONS.md` D37) — a community
+- The sanction ladder (`sanction_ladder:` in a pack, spec section 2.12 / PRD FR-5.11, `DECISIONS.md` D37) — a community
   may write down the graduated consequences it applies, each rung naming a human seat and what the member is
   told, and the fleet still cannot carry one out: no `moderation.sanction` class, no tool, and `PKG-63` refuses
   any rung whose `via:` matches a declared tool. Deleting the key is legal; a default ladder is never supplied
 - The tier above the pack (`orgs/kinshipai.yaml`) — org **floors** and an **autonomy ceiling** resolved org →
   pack with **refuse, never clamp**: an operator can reject a pack that goes below a floor or fill a blank the
-  pack left, and cannot rewrite a number a community declared (spec §1.10 / PRD FR-1.18)
+  pack left, and cannot rewrite a number a community declared (spec section 1.10 / PRD FR-1.18)
 - **A reference host** (`adapters/reference/`) — it owns the clock, the store and the printing, and it **sends
   nothing**: no transport, so every member-facing commit still refuses `no_transport` (D21). It boots the pack
   (or continues its own log on restart), writes `events.jsonl` + `manifest.json`, and verifies what it wrote
@@ -127,11 +196,11 @@ not to the library.
   in `seq`, they must fold, and the state they fold to must be the state the fleet holds. The file carries a
   **digest** of the `needs:` answers, never their values — one of them is a named human (spec/HOST-CONTRACT.md
   seam 3; PRD FR-4.4, `DECISIONS.md` D48)
-- The claim ceiling (PRD §2.3, FR-4.4) — the banned strings are code (`scripts/claim-scan.mjs`) rather than a
+- The claim ceiling (PRD section 2.3, FR-4.4) — the banned strings are code (`scripts/claim-scan.mjs`) rather than a
   comment, the sweep reaches the copy that actually ships (the root `README.md` and a pack's own `README.md`
   included), and `scripts/claims.test.mjs` fails if a forbidden cell in the PRD is neither enforced nor named as
   a rule no sweep can enforce
-- **The community's coverage window** (`coverage:` in a pack, spec §2.13 / PRD FR-5.12, `DECISIONS.md` D54) — a
+- **The community's coverage window** (`coverage:` in a pack, spec section 2.13 / PRD FR-5.12, `DECISIONS.md` D54) — a
   community can write down the hours a human is **on duty** for it, in its own timezone, and the health read reports
   the window, whether anyone was on duty at the moment of the read, and how many obligations outlived a staffed
   shift. This is **not** the member's quiet hours: that clock is the member's and answers "may I contact this
@@ -197,7 +266,7 @@ pitch that rests on honesty is the one asset a silent flip destroys in a single 
 
 MIT. See [LICENSE](LICENSE).
 
-One honest caveat while PRD §12-**Q4** stays the owner's open decision: MIT is what these files and this
+One honest caveat while PRD section 12-**Q4** stays the owner's open decision: MIT is what these files and this
 README already state, and Q4 is where it becomes a ratified commitment rather than a working default. The
 reasoning is written up as a question with a recommendation in
 [LICENSE-MEMO-2026-10-18.md](LICENSE-MEMO-2026-10-18.md), not as a decision.
