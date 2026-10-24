@@ -40,6 +40,7 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
   changelog without the version, a manifest that disagrees with the release, a stale count, or a
   failing gate. The package it builds is the **vendoring promise made mechanical**: the two folders
   an adopter copies, side by side, because the runtime reaches the validator by a relative path.
+  The package refuses to be built without its licence.
 - **A developer-experience milestone** (`DECISIONS.md` D94) — **`runtime/src/index.ts` is the public
   surface** (one file, and the tour goes through it), **`runtime/examples/one-complete-example.ts` is
   the example an adopter copies** (it imports only that surface, and the vendoring check runs it from

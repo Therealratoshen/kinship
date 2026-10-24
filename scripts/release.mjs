@@ -31,7 +31,7 @@
  * folders works on its own, so the published artefact is the thing that was proved.
  */
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -154,7 +154,12 @@ export function preflight(repo = REPO, version = null) {
  * artefact is the vendored promise, and the vendoring check already proved it runs.
  */
 export function buildPackage(repo = REPO, version = null) {
-  const dir = mkdtempSync(join(repo, 'logs', 'release-pkg-'));
+  // The staging directory lives under `logs/`, which is gitignored — so on a fresh clone it does
+  // not exist, and a checkout that has never run the quickstart must still be able to build a
+  // package. (CI caught this: a local tree that had run the quickstart was hiding it.)
+  const staging = join(repo, 'logs');
+  if (!existsSync(staging)) mkdirSync(staging, { recursive: true });
+  const dir = mkdtempSync(join(staging, 'release-pkg-'));
   // The two folders go in **side by side**, not one inside the other, because the runtime
   // imports the validator by relative path: `runtime/src/pack.ts` reaches `../../scripts/
   // validate-pack.mjs`. A package that shipped `runtime/` alone would fail to import — and the
@@ -178,8 +183,16 @@ export function buildPackage(repo = REPO, version = null) {
     },
   };
   writeFileSync(join(dir, 'package.json'), JSON.stringify(published, null, 2) + '\n');
-  cpSync(join(repo, 'LICENSE'), join(dir, 'LICENSE'));
-  if (existsSync(join(repo, 'README.md'))) cpSync(join(repo, 'README.md'), join(dir, 'README.md'));
+  // The licence and the readme travel with the package. If either is missing the release is
+  // refused rather than crashing: a package without its licence is not a package.
+  for (const file of ['LICENSE', 'README.md']) {
+    const from = join(repo, file);
+    if (!existsSync(from)) {
+      if (file === 'LICENSE') throw new Error(`no LICENSE in ${repo} — a package without its licence is not a package`);
+      continue;
+    }
+    cpSync(from, join(dir, file));
+  }
   return { dir, manifest: published };
 }
 
