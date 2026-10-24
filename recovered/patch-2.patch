@@ -1,0 +1,160 @@
+--- /workspace/kinship/runtime/src/capabilities.ts
++++ /workspace/kinship/runtime/src/capabilities.ts
+@@ -113,62 +113,139 @@
+  */
+ const DISABLING_WORDS: ReadonlySet<string> = new Set(['off', 'none', 'disabled', 'false', 'no', 'never']);
+ 
+ /** What the runtime says when a manifest declares a capability it does not know. */
+-function unknownCapability(orgKey: string, name: string): never {
+-  refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-    `org \`${orgKey}\` declares a capability \`${name}\`, which this runtime does not have (${CAPABILITY_NAMES.join(', ')}) — an unknown capability is refused rather than ignored, because a name this runtime cannot act on would be a setting that lies about what the fleet may do`);
++function unknownCapability(tier: CapabilityTier, key: string, name: string): never {
++  refuse(TIER_CODE[tier], 'capability manifest (DECISIONS.md D103)',
++    `${tier} \`${key}\` declares a capability \`${name}\`, which this runtime does not have (${CAPABILITY_NAMES.join(', ')}) — an unknown capability is refused rather than ignored, because a name this runtime cannot act on would be a setting that lies about what the fleet may do`);
+ }
+ 
+ /**
+- * Parse and shape-check the capability block of an organisation manifest.
++ * Parse and shape-check a capability block.
+  *
+- * Every failure is `org_invalid`, and every message names the org — the same rule the rest of the
+- * org parser follows, for the same reason: "which one failed" has to be in the first line.
++ * Every failure is the tier's own refusal code, and every message names the file — the same rule
++ * the rest of the parsers follow, for the same reason: "which one failed" has to be in the first
++ * line.
+  */
+ export function parseCapabilities(
+   raw: Record<string, { shape?: string; reason?: string }>,
+-  args: { orgKey: string },
++  args: { tier: CapabilityTier; key: string },
+ ): CommunityCapabilities {
+   const out: CommunityCapabilities = {};
+   for (const [name, fields] of Object.entries(raw)) {
+-    if (!CAPABILITY_NAMES.includes(name)) unknownCapability(args.orgKey, name);
++    if (!CAPABILITY_NAMES.includes(name)) unknownCapability(args.tier, args.key, name);
+ 
+     // An unknown field is refused, not ignored. A field this runtime does not read is a setting
+     // that lies — and the first version of this manifest carried a `seat:` that the runtime then
+     // resolved elsewhere, which is exactly the kind of second copy of a fact that goes stale.
+     const unknown = Object.keys(fields).filter((k) => k !== 'shape' && k !== 'reason');
+     if (unknown.length) {
+-      refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-        `org \`${args.orgKey}\` gives capability \`${name}\` the field${unknown.length > 1 ? 's' : ''} ${unknown.map((k) => `\`${k}\``).join(', ')}, which this runtime does not read — a field nothing reads is a setting that lies, and the seat that answers is resolved from the community's declared seat set rather than written here`);
++      refuse(TIER_CODE[args.tier], 'capability manifest (DECISIONS.md D103)',
++        `${args.tier} \`${args.key}\` gives capability \`${name}\` the field${unknown.length > 1 ? 's' : ''} ${unknown.map((k) => `\`${k}\``).join(', ')}, which this runtime does not read — a field nothing reads is a setting that lies, and the seat that answers is resolved from the community's declared seat set rather than written here`);
+     }
+ 
+     const shape = fields.shape;
+     if (shape === undefined) {
+-      refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-        `org \`${args.orgKey}\` declares capability \`${name}\` with no \`shape:\` — a capability that does not say how it behaves is a setting with no behaviour`);
++      refuse(TIER_CODE[args.tier], 'capability manifest (DECISIONS.md D103)',
++        `${args.tier} \`${args.key}\` declares capability \`${name}\` with no \`shape:\` — a capability that does not say how it behaves is a setting with no behaviour`);
+     }
+     if (DISABLING_WORDS.has(shape.trim().toLowerCase())) {
+-      refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-        `org \`${args.orgKey}\` sets capability \`${name}\` to \`${shape}\` — **the human check's existence is a floor, not a setting**: there is no off state, because a community that can switch the check off has not configured a check. Its *shape* (\`push\`, \`pull\`) is configurable; its existence is not`);
++      refuse(TIER_CODE[args.tier], 'capability manifest (DECISIONS.md D103)',
++        `${args.tier} \`${args.key}\` sets capability \`${name}\` to \`${shape}\` — **the human check's existence is a floor, not a setting**: there is no off state, because a community that can switch the check off has not configured a check. Its *shape* (\`push\`, \`pull\`) is configurable; its existence is not`);
+     }
+     if (!REVIEW_SHAPES.includes(shape as ReviewShape)) {
+-      refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-        `org \`${args.orgKey}\` sets capability \`${name}\` to \`${shape}\`, which is not a shape this runtime has (${REVIEW_SHAPES.join(', ')})`);
++      refuse(TIER_CODE[args.tier], 'capability manifest (DECISIONS.md D103)',
++        `${args.tier} \`${args.key}\` sets capability \`${name}\` to \`${shape}\`, which is not a shape this runtime has (${REVIEW_SHAPES.join(', ')})`);
+     }
+ 
+     const reason = (fields.reason ?? '').trim();
+     if (!reason) {
+-      refuse('org_invalid', 'capability manifest (DECISIONS.md D103)',
+-        `org \`${args.orgKey}\` declares capability \`${name}\` with no \`reason:\` — "we turned this on" is not a decision, and a decision nobody can read later is not a decision`);
++      refuse(TIER_CODE[args.tier], 'capability manifest (DECISIONS.md D103)',
++        `${args.tier} \`${args.key}\` declares capability \`${name}\` with no \`reason:\` — "we turned this on" is not a decision, and a decision nobody can read later is not a decision`);
+     }
+ 
+     out[name] = { shape: shape as ReviewShape, reason };
+   }
+   return out;
+ }
+ 
+ /**
++ * Read a `capabilities:` block out of a manifest, at either tier.
++ *
++ * **The shape is two levels deep** — a capability, then its fields — and the reader is
++ * hand-rolled and deliberately small: it covers the flat YAML subset a manifest uses, and
++ * anything it cannot read **refuses** rather than guessing, because a parser that guesses is a
++ * trust boundary with holes.
++ *
++ * **It lives here, not in either tier's file**, because the org manifest and the pack manifest
++ * declare capabilities identically and two readers would be two rules in two places.
++ */
++export function parseCapabilityBlock(
++  yaml: string,
++  args: { tier: CapabilityTier; key: string },
++): CommunityCapabilities | undefined {
++  const code = TIER_CODE[args.tier];
++  const label = `${args.tier} \`${args.key}\``;
++  const lines = yaml.split('\n');
++  const idx = lines.findIndex((l) => /^capabilities:/.test(l));
++  if (idx === -1) return undefined;
++
++  const raw: Record<string, { shape?: string; reason?: string }> = {};
++  let current: string | null = null;
++
++  for (let i = idx + 1; i < lines.length; i++) {
++    const l = lines[i]!;
++    if (l.trim() === '' || l.trimStart().startsWith('#')) continue;
++    const indent = l.length - l.trimStart().length;
++    if (indent === 0) break; // the block ended
++
++    const content = stripComment(l).trim();
++
++    if (indent === 2) {
++      const name = content.replace(/:.*$/, '').trim();
++      if (!/^[a-z][a-z0-9_]*$/.test(name)) {
++        refuse(code, 'capability manifest shape gate',
++          `${label}: capabilities line ${i + 1} names \`${name}\`, which is not a capability name this runtime can read (\`lowercase_snake_case\`)`);
++      }
++      if (content !== `${name}:`) {
++        refuse(code, 'capability manifest shape gate',
++          `${label}: capabilities line ${i + 1} is \`${content}\` — a capability opens a block of its own fields, it does not carry a value`);
++      }
++      current = name;
++      raw[current] = {};
++      continue;
++    }
++
++    if (indent === 4) {
++      if (current === null) {
++        refuse(code, 'capability manifest shape gate',
++          `${label}: capabilities line ${i + 1} sets a field before any capability is named`);
++      }
++      const kv = /^([^:]+):[ \t]*(.*)$/.exec(content);
++      if (!kv) {
++        refuse(code, 'capability manifest shape gate',
++          `${label}: capabilities line ${i + 1} is not \`key: value\` — this parser does not guess at a field it cannot read`);
++      }
++      const k = kv[1]!.trim();
++      const v = unquote(kv[2]!.trim());
++      const fields = raw[current]!;
++      if (k in fields) {
++        refuse(code, 'capability manifest shape gate',
++          `${label}: capability \`${current}\` sets \`${k}\` twice — a duplicate field is a second intent, and this parser keeps the first, which would hide it`);
++      }
++      (fields as Record<string, string>)[k] = v;
++      continue;
++    }
++
++    refuse(code, 'capability manifest shape gate',
++      `${label}: capabilities line ${i + 1} is indented ${indent} — this block is two levels deep (a capability, then its fields) and nothing deeper`);
++  }
++
++  if (Object.keys(raw).length === 0) return undefined;
++  return parseCapabilities(raw, args);
++}
++
++/**
+  * Resolve the capabilities in force.
+  *
+  * **The org tier only, in v0.** The org manifest is the tier that already exists for exactly this
+  * job — an operator who runs several communities stating once what the fleet may do — so the

@@ -1,0 +1,52 @@
+--- /workspace/kinship/runtime/src/capabilities.ts
++++ /workspace/kinship/runtime/src/capabilities.ts
+@@ -54,8 +54,49 @@
+ /** The shapes the human check can take. See `ReviewShape`. */
+ export const REVIEW_SHAPES: readonly ReviewShape[] = ['push', 'pull'];
+ 
+ /**
++ * Which tier a capability declaration was read from.
++ *
++ * **Two tiers, one vocabulary, one reader.** The org manifest and a community's own pack declare
++ * capabilities in the same shape, so they are parsed by the same reader — two implementations of
++ * "how a capability is read" is two rules in two places, which is the failure class this repository
++ * keeps recording. The tier only changes the refusal code and the wording, because a pack's shape
++ * error and an org's shape error are the same error at two altitudes.
++ */
++export type CapabilityTier = 'org' | 'pack';
++
++/** The refusal code each tier's shape errors carry. */
++const TIER_CODE: Record<CapabilityTier, string> = { org: 'org_invalid', pack: 'pack_invalid' };
++
++/**
++ * How wide each shape is — and this is the direction the pack-level override turns on.
++ *
++ * **`pull` is the narrow end.** Under `pull` the runtime writes no `ReviewRequested` row and
++ * interrupts nobody: the human opens the inbox. Under `push` the runtime writes a row per waiting
++ * card and obliges the host to turn that row into a notification. So narrowing means **the runtime
++ * does less** — and the check itself survives every shape, because the check's *existence* is a
++ * floor (spec section 1.12) and no shape removes it.
++ *
++ * **The consequence, said once so nobody discovers it by surprise:** a community that narrows to
++ * `pull` accepts that its cards wait for a human to come and look. That is the community's own
++ * choice about its own operation, and the reason the direction is "narrow, never widen" and not
++ * "the pack decides".
++ */
++export const REVIEW_SHAPE_WIDTH: Record<ReviewShape, number> = { pull: 0, push: 1 };
++
++/**
++ * Is this shape narrower than that one?
++ *
++ * One function, so the question has one answer in the codebase — the same reason the gates are
++ * single-sourced (D28). A `pull` that is "narrower than push" written in one place and "wider than
++ * push" in another would make the override a coin flip.
++ */
++export function isNarrower(shape: ReviewShape, than: ReviewShape): boolean {
++  return REVIEW_SHAPE_WIDTH[shape] < REVIEW_SHAPE_WIDTH[than];
++}
++
++/**
+  * The shape in force when no manifest says otherwise: `pull`.
+  *
+  * The runtime asks nobody until a community says it wants to be asked. That is the conservative
+  * reading — a fleet that starts by interrupting a human it was never introduced to is a fleet that
