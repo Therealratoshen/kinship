@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { assertAnswersMatchNeeds, parseAnswers } from '../src/config.ts';
 import { bootHost, persist, runCommand, verifyHost, type HostOptions } from '../src/host.ts';
 import { FORMAT_VERSION } from '../src/store.ts';
-import { readEvents } from '../src/store.ts';
+import { readEvents, appendEvents, withLogLock } from '../src/store.ts';
 
 const REPO = join(import.meta.dirname, '..', '..', '..');
 const PACK = join(REPO, 'packs', 'kopdar-ops');
@@ -318,4 +318,35 @@ test('init scaffolds the two working files from the examples, and never overwrit
   assert.ok(again.some((l) => l.includes('nothing was overwritten')), again.join('\n'));
   assert.equal(readFileSync(join(packDir, 'pack.local.yaml'), 'utf8'), 'community_name: "Mine"\n',
     "a community's own answers survive init");
+});
+
+test('one writer per log: a second writer is refused instead of duplicating a seq', () => {
+  const { opts, dir } = aHost();
+  const logDir = join(dir, 'logs');
+  // The first host writes.
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const eventsPath = join(logDir, 'kinshipai', 'bundled', 'event-ops', 'kopdar', 'events.jsonl');
+  const after = readFileSync(eventsPath, 'utf8').trim().split('\n');
+  assert.ok(after.length > 0);
+
+  // A second host, booted from the same log, tries to append rows whose seq continues from ITS OWN
+  // memory — which is now behind the file. The reconciliation refuses it, rather than writing a
+  // duplicate seq that would replay to a different state on another machine.
+  const rows = JSON.parse(after[0]) as { seq: number };
+  assert.throws(
+    () => appendEvents(eventsPath, [{ seq: rows.seq, type: 'Test', at: 1 } as never]),
+    /another writer has advanced the log|ONE writer per log/,
+    'the write is refused, not silently duplicated',
+  );
+});
+
+test('a lock left behind by a dead process is taken over, not obeyed forever', () => {
+  const { dir } = aHost();
+  const eventsPath = join(dir, 'logs', 'kinshipai', 'bundled', 'event-ops', 'kopdar', 'events.jsonl');
+  mkdirSync(join(eventsPath, '..'), { recursive: true });
+  // A pid that cannot be running: the lock is stale.
+  writeFileSync(`${eventsPath}.lock`, '999999999');
+  let wrote = false;
+  withLogLock(eventsPath, () => { wrote = true; });
+  assert.equal(wrote, true, 'a stale lock is taken over — a lock nobody can clear is a log nobody can write');
 });

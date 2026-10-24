@@ -19,7 +19,7 @@
  * eight answers is `escalation_contact` — a named human — and a log that travels to a co-organiser
  * should not carry a second person's identifier. Drift shows up as a digest mismatch instead.
  */
-import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { hashText } from 'kinship-runtime/src/store.ts';
 import { answersDigest } from 'kinship-runtime/src/log.ts';
@@ -111,11 +111,97 @@ export function readEvents(eventsPath: string): LoggedEvent[] {
   return rows;
 }
 
-/** Append rows. The file is append-only: a row is never rewritten in place. */
+/**
+ * Append rows. The file is append-only: a row is never rewritten in place.
+ *
+ * **Under a single-writer lock, and reconciled against what is already on disk.**
+ *
+ * The `seq` of a row comes from the writer's in-memory state, so two hosts that booted from the same
+ * log would each believe they own the next number — and the file would carry two rows with the same
+ * `seq`. That is not a theoretical hazard: it is what the D68 test reproduces, and a duplicate `seq`
+ * is a log that replays to a different state on a different machine.
+ *
+ * So the append takes an **exclusive lock** for its duration, and **re-reads the file under that
+ * lock**: if the file's last `seq` is not the one this writer expected to continue from, the writer
+ * refuses instead of writing a duplicate. One writer, many readers — the other processes read the log
+ * and hand their intents to the writer (seam 3: the store is the host's).
+ */
 export function appendEvents(eventsPath: string, rows: readonly LoggedEvent[]): void {
   if (rows.length === 0) return;
   mkdirSync(join(eventsPath, '..'), { recursive: true });
-  appendFileSync(eventsPath, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', { mode: 0o600 });
+  const lock = withLogLock(eventsPath, () => {
+    // Reconcile: what is on disk is the truth, not what this writer remembers.
+    const onDisk = readEvents(eventsPath);
+    const lastOnDisk = onDisk.length > 0 ? onDisk[onDisk.length - 1]!.seq : 0;
+    const first = rows[0]!.seq;
+    if (first !== lastOnDisk + 1) {
+      throw new Error(
+        `${eventsPath} is at seq ${lastOnDisk} and this writer is holding seq ${first} — another writer has ` +
+        'advanced the log, so these rows would duplicate a sequence number. ONE writer per log: the others ' +
+        'read it and hand their intents to the writer.',
+      );
+    }
+    appendFileSync(eventsPath, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', { mode: 0o600 });
+  });
+  void lock;
+}
+
+/**
+ * Run `fn` holding an exclusive lock on this log.
+ *
+ * The lock is a file created with `wx` (exclusive create), so exactly one process can hold it. It
+ * carries the holder's pid, so a lock left behind by a process that died is **taken over** rather
+ * than blocking the log forever — a lock nobody can clear is a log nobody can write.
+ */
+export function withLogLock<T>(eventsPath: string, fn: () => T): T {
+  const lockPath = `${eventsPath}.lock`;
+  mkdirSync(join(eventsPath, '..'), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const fd = openSync(lockPath, 'wx', 0o600);
+      try {
+        writeFileSync(fd, String(process.pid));
+        return fn();
+      } finally {
+        closeSync(fd);
+        try { unlinkSync(lockPath); } catch { /* already gone */ }
+      }
+    } catch (e) {
+      if ((e as { code?: string }).code !== 'EEXIST') throw e;
+      // A lock exists. If the process that took it is gone, the lock is stale: take it over.
+      if (!lockIsHeld(lockPath)) {
+        try { unlinkSync(lockPath); } catch { /* someone else got there first */ }
+        continue;
+      }
+      throw new Error(
+        `another host is writing this log (${lockPath} is held by pid ${readLockPid(lockPath)}) — ` +
+        'ONE writer per log: the others read it and hand their intents to the writer.',
+      );
+    }
+  }
+  throw new Error(`could not take the lock on ${eventsPath}`);
+}
+
+/** Is the process that took this lock still alive? */
+function lockIsHeld(lockPath: string): boolean {
+  const pid = readLockPid(lockPath);
+  if (pid === null) return false;
+  try {
+    process.kill(pid, 0); // signal 0 asks "are you there?"
+    return true;
+  } catch (e) {
+    // EPERM means the process exists but is not ours to signal; ESRCH means it is gone.
+    return (e as { code?: string }).code === 'EPERM';
+  }
+}
+
+function readLockPid(lockPath: string): number | null {
+  try {
+    const pid = Number(readFileSync(lockPath, 'utf8').trim());
+    return Number.isInteger(pid) && pid > 0 ? pid : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Write the cover. `0600`: the file holds member identifiers, and seam 3 makes retention the host's policy. */

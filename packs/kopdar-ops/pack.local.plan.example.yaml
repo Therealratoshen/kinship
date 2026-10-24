@@ -87,6 +87,11 @@ members:
 event:
   id: kopdar-2026-11-07
   starts_at: "2026-11-07T19:00:00+07:00"
+  # Your community's IANA time zone. "T-1d" means one CALENDAR day earlier at the same LOCAL wall
+  # clock — and across a daylight saving change that is not 24 hours earlier. Name your zone and the
+  # arithmetic is exact; leave it out and the offset you wrote is carried across unchanged, which is
+  # right for a zone without daylight saving and an hour out for a zone with it, twice a year.
+  timezone: "Asia/Jakarta"
   venue: "Studio Satu, Sudirman"
   registration: "bit.ly/kopdar-november"
   date_long: "7 November 2026"

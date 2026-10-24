@@ -1,7 +1,7 @@
 # Trademarks
 
 The **Kinship** name, the **`kinshipai/…` pack-key namespace**, and the **`kinship` / `kinship-runtime`**
-package names are the marks of the Kinship project. They are **not** covered by the [MIT licence](LICENSE)
+package names are the marks of the Kinship project. They are **not** covered by the [Apache-2.0 licence](LICENSE)
 — a licence covers the *code*, never the *name* — and this file is how that boundary is stated.
 
 ## What is protected
@@ -34,7 +34,7 @@ package names are the marks of the Kinship project. They are **not** covered by 
 
 Two reasons, and the second is the one that matters.
 
-1. **The licence cannot do this job.** MIT and Apache-2.0 grant rights in the code and say nothing
+1. **The licence cannot do this job.** A licence grants rights in the code and says nothing
    about the name. A trademark is the only instrument that covers the mark, and a mark nobody has
    claimed cannot be defended later.
 2. **A fork that is clearly a fork is good for the project, and a fork that pretends to be the project

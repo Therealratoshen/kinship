@@ -1,0 +1,11 @@
+{
+  // The pack format's JSON Schema, so a contributor's editor underlines a mistyped key BEFORE they
+  // run anything. The schema is advice; the gate is `scripts/validate-pack.mjs`, and it refuses.
+  // See `packs/kopdar-ops/.kinship.schema.json` and `scripts/pack-schema.test.mjs`.
+  "yaml.schemas": {
+    "packs/*/.kinship.yaml": ["./packs/*/.kinship.schema.json"]
+  },
+  "files.associations": {
+    ".kinship.yaml": "yaml"
+  }
+}

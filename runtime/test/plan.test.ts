@@ -35,7 +35,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCommunityPlan, renderCopy, planWakes } from '../src/plan.ts';
+import { parseCommunityPlan, renderCopy, planWakes, shiftLocalDays } from '../src/plan.ts';
 import { disclosureLine } from '../src/disclosure.ts';
 import { makePack } from './helpers.ts';
 import type { Packed } from '../src/types.ts';
@@ -255,4 +255,43 @@ test('renderCopy reports an empty value as unfilled and a malformed slot separat
   const r = renderCopy('di {venue} pada {date!}', { venue: '', date: '7 Nov' });
   assert.deepEqual(r.unfilled, ['venue']);
   assert.deepEqual(r.malformed, ['date!']);
+});
+
+test('the timer is LOCAL wall clock — the same hour on the earlier date, across a daylight saving change', () => {
+  // "T-1d" means one calendar day earlier at the same LOCAL wall clock. Across a daylight saving
+  // change that is not 24 hours earlier: the day itself is 23 or 25 hours long, and a timer that
+  // keeps the same INSTANT lands an hour off the local clock the community wrote.
+  //
+  // The dates are measured, not remembered: Europe/Berlin moves to +02:00 on 2026-03-29 and back to
+  // +01:00 on 2026-10-25.
+  const berlin = (iso: number): string => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(iso));
+    const get = (t: string): string => parts.find((p) => p.type === t)!.value;
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+  };
+
+  // The spring change: the 29th is 23 hours long.
+  const spring = '2026-03-29T19:00:00+02:00';
+  assert.equal(berlin(shiftLocalDays(spring, -1, 'Europe/Berlin')), '2026-03-28 19:00',
+    'with a named zone, the wall clock the community wrote is preserved across the change');
+  assert.equal(berlin(shiftLocalDays(spring, -1)), '2026-03-28 18:00',
+    'without one, the written offset is carried across unchanged, which is an hour out');
+  assert.equal(Math.round((Date.parse(spring) - shiftLocalDays(spring, -1, 'Europe/Berlin')) / 3_600_000), 23,
+    'and the same wall clock is 23 hours earlier in the instant, because the day is 23 hours long');
+
+  // The autumn change: the 25th is 25 hours long, and the error goes the other way.
+  const autumn = '2026-10-25T19:00:00+01:00';
+  assert.equal(berlin(shiftLocalDays(autumn, -1, 'Europe/Berlin')), '2026-10-24 19:00');
+  assert.equal(berlin(shiftLocalDays(autumn, -1)), '2026-10-24 20:00');
+  assert.equal(Math.round((Date.parse(autumn) - shiftLocalDays(autumn, -1, 'Europe/Berlin')) / 3_600_000), 25);
+});
+
+test('a zone the runtime does not know is refused with a message that names the field', () => {
+  assert.throws(() => shiftLocalDays('2026-11-07T19:00:00+07:00', -1, 'Not/AZone'), /time zone/);
+});
+
+test('a fixed-offset zone with no daylight saving is unchanged by naming it', () => {
+  const iso = '2026-11-07T19:00:00+07:00';
+  assert.equal(shiftLocalDays(iso, -1, 'Asia/Jakarta'), shiftLocalDays(iso, -1),
+    'for a zone without daylight saving the two agree — which is why the example pack needs no timezone to be correct');
 });

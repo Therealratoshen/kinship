@@ -1,0 +1,20 @@
+# Kinship
+
+Kinship is an open-source governance control plane for community AI agents: it decides what a
+fleet of agents may do to reach a person, keeps an append-only record of the decision, and ships
+no channel transport — so nothing member-facing can send. This file is an index of the documents
+worth reading, for a person or a tool. The paths are relative to the repository root.
+
+## Documents
+
+- [README](README.md): what the project is, how to run the four gates, and what ships versus what is gated behind shadow-mode measurement.
+- [Governance spec outline](spec/GOVERNANCE-SPEC-OUTLINE.md): the semantics an implementer builds to; Part 6 maps every rule to the runtime file and the test that holds it.
+- [Host contract](spec/HOST-CONTRACT.md): the four seams — credential, clock, store, transport — what the host owns, and what Kinship checks afterwards.
+- [AGENTS.md](AGENTS.md): the invariants, the durable rules and the definition of done, written for an agent that is about to change something.
+- [CONTRIBUTING.md](CONTRIBUTING.md): how changes flow, the four gates to run, the compatibility matrix, and how a release is made.
+- [DECISIONS.md](DECISIONS.md): the dated, append-only decision log — who decided what, when, and how reversible it is.
+- [ROADMAP.md](ROADMAP.md): what is not complete, and for each gap whether a contributor may close it or it is the owner's call.
+- [SECURITY.md](SECURITY.md): how to report a vulnerability, and what is not a vulnerability.
+- [SUPPORT.md](SUPPORT.md): what this project can and cannot promise, stated plainly.
+- [kopdar-ops — the example pack](packs/kopdar-ops/README.md): the forkable seed pack, and the invariants a fork may not change.
+- [kopdar-ops — README (Indonesia)](packs/kopdar-ops/README.id.md): the same on-ramp in Indonesian, for the community this pack was written for.
