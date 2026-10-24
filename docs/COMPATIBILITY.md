@@ -13,8 +13,11 @@ disagree. A version in a table is a claim; the code settles it.
 
 ## The node row is three numbers, because it answers three questions
 
-- **The support promise** is `>=23`. `runtime/package.json` declares it, and CI gates every major
-  in it — a claim CI does not test is a claim that rots.
+- **The support promise** is `>=23`. `runtime/package.json` declares it. **CI gates Node 23 and 24** —
+  the majors in the promise that this release tests. The promise is open-ended, so a newer major is
+  ungated until the matrix reaches it, and the matrix is re-read at each release. *An earlier version
+  of this file said CI gates "every major in it", which was a claim CI does not test — and a claim CI
+  does not test is a claim that rots.*
 - **The technical floor** is **22.18**, and it is lower. The runtime is TypeScript that node runs
   by *stripping the types*, and node turned that on by default in 22.18; below it the repository
   genuinely cannot run. `scripts/gates.mjs` checks this before any gate runs, and prints a plain

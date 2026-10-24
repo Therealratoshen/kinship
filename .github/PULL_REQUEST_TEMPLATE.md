@@ -24,11 +24,15 @@
 
 ## Invariant check
 
-Run all four gates and paste the output. `node` only, no install step. One command does the list:
+Run all four gates. `node` only, no install step. One command does the list:
 
 ```
 node scripts/gates.mjs
 ```
+
+**CI runs the same four gates on the same commit, so link the run rather than pasting its output** —
+a paste is a copy nobody re-reads, and a copy of a gate result is a claim. If a gate fails, the run
+says so and the failing line is the first thing to fix.
 
 Or gate by gate — the list is defined in `scripts/gates.mjs`, and a test in gate 2 fails if this file
 stops matching it:

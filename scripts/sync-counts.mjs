@@ -108,6 +108,13 @@ const CLAIMS = [
     ),
   },
   {
+    file: 'adapters/mcp/README.md',
+    apply: (s, c) => s.replace(
+      /\*\*\d+ conformance tests\*\*/,
+      `**${c.mcpCases} conformance tests**`,
+    ),
+  },
+  {
     file: 'spec/GOVERNANCE-SPEC-OUTLINE.md',
     apply: (s, c) => s
       .replace(/prints [\d,]+ as of/, `prints ${c.runtimeLines.toLocaleString('en-US')} as of`)

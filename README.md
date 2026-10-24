@@ -45,8 +45,8 @@ cd kinship
 node scripts/gates.mjs
 ```
 
-**And this is what that actually prints** — the tour, which drives the real pack and checks every
-guarantee the README claims. It is the same output CI gates on:
+**And this is the last of the four gates** — the tour, which drives the real pack and checks every
+guarantee the README claims. The command prints all four suites, and the tour is the last one:
 
 ```
 Kinship tour — the fleet proposes, the organiser approves, nothing sends.
@@ -363,7 +363,7 @@ your community's address book.
 **Kinship reduces risk. It does not guarantee compliance, safe behaviour, or a good outcome.** It is
 a governance layer with a reference host, not a service, and it ships **no transport** — nothing
 member-facing can send. Where a claim in this README would outrun its evidence, the claim is not
-made: see [the evidence rule](#the-three-invariants) and the closed set of refusals in
+made: see [the evidence rule](AGENTS.md#the-three-invariants) and the closed set of refusals in
 [the spec](spec/GOVERNANCE-SPEC-OUTLINE.md). What you get is a runtime that **refuses** the things
 it should refuse, and a log you can check afterwards.
 

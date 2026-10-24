@@ -19,6 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -42,6 +43,13 @@ export function actionUses(text) {
 
 /** A reference pinned to a commit: `owner/repo@<40 hex characters>`. */
 const PINNED = /^([^\s@]+)@([0-9a-f]{40})$/;
+
+/** The newest release tag, by version order. */
+function newestTag() {
+  const out = execFileSync('git', ['tag', '--list', 'v*', '--sort=v:refname'], { cwd: ROOT, encoding: 'utf8' });
+  const list = out.split('\n').filter((t) => t.trim() !== '');
+  return list.length ? list[list.length - 1] : null;
+}
 
 /** A version in a comment: `v7.0.1`, `v7`, `7.0.1` … */
 const VERSION = /\bv?\d+(\.\d+)+\b/;
@@ -142,6 +150,27 @@ test('the release note says what a reader can check, and does not claim the tags
     null,
     'the note must not claim the tags are signed: they are not, and a false claim about provenance is the one nobody checks',
   );
+});
+
+test('the manifests carry the version of the release they shipped in', () => {
+  // A vendored adopter reads `runtime/package.json` — not the tag, not the changelog. If the
+  // manifests say 0.1.0 while the release is v0.2.0, the one number a copy of the library carries
+  // is wrong, and the reader has no way to know: nothing compared them.
+  const newest = newestTag();
+  assert.ok(newest, 'the repository has at least one release tag');
+  const version = newest.replace(/^v/, '');
+  for (const manifest of ['runtime/package.json', 'adapters/reference/package.json', 'adapters/mcp/package.json']) {
+    const declared = JSON.parse(read(manifest)).version;
+    assert.equal(
+      declared,
+      version,
+      `${manifest} says ${declared}, but the newest release is ${newest} — the version a copy of the library carries must be the release it came from`,
+    );
+  }
+  // And the citation agrees with the manifests, because a citation is read by machines too.
+  const cited = /^version:\s*(\S+)/m.exec(read('CITATION.cff'));
+  assert.ok(cited, 'CITATION.cff states a version');
+  assert.equal(cited[1], version, `CITATION.cff says ${cited[1]} while the newest release is ${newest}`);
 });
 
 test('POSITIVE CONTROL: the false-claim check fires on a note that says they are signed', () => {

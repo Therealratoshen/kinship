@@ -71,7 +71,7 @@ them.
 
 ## The tests
 
-`npm test` — **six conformance tests that speak the protocol over a real pipe**, because a protocol
+`npm test` — **8 conformance tests that speak the protocol over a real pipe**, because a protocol
 implementation you can only test through a function is one you have not tested: the framing, the line
 endings, the stdout discipline and the handshake are all part of the contract.
 

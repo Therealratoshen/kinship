@@ -245,6 +245,75 @@ test('every relative link in the live documents resolves — the folder structur
   assert.deepEqual(broken, [], `these links point at files that are not there:\n  ${broken.join('\n  ')}`);
 });
 
+/**
+ * GitHub's heading anchor, from a heading's text.
+ *
+ * Lowercase, punctuation dropped, spaces become hyphens. This is the rule GitHub's renderer uses,
+ * so a link written the way a reader would copy it from the rendered page resolves.
+ */
+export function anchorSlug(heading) {
+  return heading
+    .trim()
+    .toLowerCase()
+    .replace(/`/g, '')
+    .replace(/[^\p{L}\p{N}\s-]/gu, '')
+    .replace(/\s+/g, '-');
+}
+
+/** Every anchor a document defines — its headings, minus anything inside a fenced code block. */
+export function anchorsIn(text) {
+  const out = new Set();
+  let inFence = false;
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const m = /^#{1,6}\s+(.*)$/.exec(line);
+    if (m) out.add(anchorSlug(m[1]));
+  }
+  return out;
+}
+
+test('every anchor in the live documents points at a heading that exists', () => {
+  // The file-link check above skips `#anchor` links, so a link to a heading that does not exist
+  // passed the build: `README.md` linked to `#the-three-invariants`, and that heading is in
+  // `AGENTS.md`, not in the README. A link that points nowhere is a broken promise in the one
+  // place a reader clicks, and a file path that resolves does not make the anchor resolve.
+  const DOCS = [
+    'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'DECISIONS.md', 'PLAN.md', 'ROADMAP.md',
+    'SECURITY.md', 'CODE_OF_CONDUCT.md', 'SUPPORT.md', 'CHANGELOG.md',
+    'packs/kopdar-ops/README.md', 'packs/kopdar-ops/PACK.md',
+    'spec/GOVERNANCE-SPEC-OUTLINE.md', 'spec/HOST-CONTRACT.md',
+    'docs/COMPATIBILITY.md', 'docs/PRD-KINSHIP-COMMUNITY-OPS-V0-2026-10-17.md',
+  ];
+  const broken = [];
+  for (const doc of DOCS) {
+    const body = read(doc);
+    const own = anchorsIn(body);
+    for (const m of body.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+      const target = m[1];
+      if (/^(https?:|mailto:)/.test(target)) continue;
+      const [path, anchor] = target.split('#');
+      if (!anchor) continue;                                  // a file link, checked above
+      const file = path ? join(dirname(join(ROOT, doc)), path) : join(ROOT, doc);
+      if (!existsSync(file)) continue;                        // a missing file is the other test's job
+      if (!anchorsIn(readFileSync(file, 'utf8')).has(anchor)) {
+        broken.push(`${doc} -> ${target}`);
+      }
+    }
+  }
+  assert.deepEqual(broken, [], `these links point at an anchor that does not exist:\n  ${broken.join('\n  ')}`);
+});
+
+test('POSITIVE CONTROL: the anchor check fires on an anchor that does not exist', () => {
+  // The scanner must be able to fail. An anchor that is in no heading, and a heading whose slug
+  // is computed the way GitHub computes it, are the two things this has to get right.
+  assert.equal(anchorSlug('The three invariants'), 'the-three-invariants');
+  assert.equal(anchorSlug('The node row is three numbers, because it answers three questions'),
+    'the-node-row-is-three-numbers-because-it-answers-three-questions');
+  assert.ok(anchorsIn('# A\n## B c\n```\n# not a heading\n```\n').has('b-c'));
+  assert.ok(!anchorsIn('# A\n```\n# not a heading\n```\n').has('not-a-heading'), 'a fenced heading is not a heading');
+});
+
 test('the gate list is the four the repo claims, in the order CI runs them', () => {
   assert.deepEqual(GATES.map((g) => g.id), ['shape', 'contract', 'semantics', 'tour']);
 });

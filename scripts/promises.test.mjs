@@ -155,3 +155,22 @@ test('POSITIVE CONTROL: a different number is caught, and a deleted row is caugh
 
   assert.deepEqual(promiseDrift(security, roadmap), [], 'and the real files pass');
 });
+
+test('the decision log\'s ratification range ends at the highest row in the log', () => {
+  // The "Not yet decided" table's ratification cell has been amended **ten times** by hand, each
+  // amendment ending with the admission "nothing recomputes it, so M1 still stands" — and it was
+  // forty rows stale. The amendments stay, because a dated row says what it said on the day it said
+  // it; but the **last** one is now read by a gate, so the next decision row cannot land until the
+  // cell is amended. A hand-typed number that drifts now fails the build instead of waiting for a
+  // human to notice it.
+  const decisions = read('DECISIONS.md');
+  const highest = Math.max(...[...decisions.matchAll(/^\| \*\*D(\d+)\*\* \|/gm)].map((m) => Number(m[1])));
+  const claimed = [...decisions.matchAll(/the range now reads D10–D(\d+)/g)].map((m) => Number(m[1]));
+  assert.ok(claimed.length > 0, 'the ratification cell states a range');
+  const last = claimed[claimed.length - 1];
+  assert.equal(
+    last,
+    highest,
+    `the ratification cell says the open range ends at D${last}, but the log's highest row is D${highest} — amend the cell`,
+  );
+});

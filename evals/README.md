@@ -40,10 +40,12 @@ refuses `no_transport`. Every assertion reads **cards, refusals, or audit lines*
 There is no assertion anywhere in this file of the form "a message was sent", because
 that would be false.
 
-**It is not a fifth gate.** It is not wired into `scripts/gates.mjs`, and it is not in
-CI. If you want it in CI, that is a decision with a number attached to it — the gate
-list, the README, `CONTRIBUTING.md`, the PR template and `runtime/tour.ts` all print
-the same four commands verbatim, and a fifth one has to be added to all of them.
+**It is not a fifth gate.** It is not wired into `scripts/gates.mjs`, and it is not a gate of its
+own. **It is in CI** — as a step inside the gates job, not beside it — because the harness had been
+**broken since D58** and nothing noticed for a day: a test suite nobody runs is a file, not a test
+suite. The gate list stays four, and the gate list is the same four commands the README,
+`CONTRIBUTING.md`, the PR template and `runtime/tour.ts` all print verbatim; a fifth gate would have
+to be added to all of them. Running it in CI is not a fifth gate, and the two are not the same thing.
 
 ## The half that was built
 
