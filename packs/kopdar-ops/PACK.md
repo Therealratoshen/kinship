@@ -156,9 +156,11 @@ events / we send your reminders" is banned copy for the same reason: an incumben
    it, `venue_source` degrades to gcal or manual; the pack must stay installable either way.
 5. **Nothing here licenses the sentence "runs itself."** The load-bearing sentence is: the fleet proposes, the
    organiser approves, every action is logged and replayable.
-6. **License.** `license: MIT` is a *proposal* recorded as the recommendation with evidence (the category's
-   proven shape; Paperclip is MIT with an EE policy-editing layer while core keeps enforcement). PRD section 12-Q4
-   is still the owner's call, and this field must not be copied into a repo README until he takes it.
+6. **License.** `license: Apache-2.0` is the **ratified** licence (D72): the MIT default plus the explicit patent
+   grant and its patent-termination clause. PRD section 12-Q4 is closed. The `LICENSE` file carries the verbatim
+   Apache-2.0 text, and `NOTICE` records the Paperclip teams-catalog donation so the provenance ships in the
+   package. The reasoning, and why the category's own MIT shape was not followed, is in
+   `docs/LICENSE-MEMO-2026-10-18.md`.
 
 ## Open, and honest about being open
 
