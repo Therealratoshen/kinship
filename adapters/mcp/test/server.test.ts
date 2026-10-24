@@ -114,6 +114,13 @@ test('tools/list exposes the six tools, each with a name, a description and a sc
       assert.equal(t.inputSchema.type, 'object');
       assert.ok(t.inputSchema.properties !== undefined);
     }
+    // The seat is NOT an input. A schema that offers a `by` argument again would let a model
+    // name the deciding actor, and nothing else in the tree would notice — so it is pinned here.
+    const approve = tools.find((t) => t.name === 'kinship_approve');
+    const props = approve?.inputSchema.properties as Record<string, unknown> | undefined;
+    assert.ok(props, 'kinship_approve has a schema');
+    assert.ok(!('by' in props), 'the deciding actor is not a tool argument');
+    assert.deepEqual(Object.keys(props).sort(), ['cardId', 'text', 'verdict', 'why']);
   } finally { rmSync(c.dir, { recursive: true, force: true }); }
 });
 
