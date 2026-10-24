@@ -21,13 +21,17 @@
  *
  * Zero dependencies. No install step. Node >= 23 (native type-stripping). It sends nothing, by design.
  */
-import { loadPack } from './src/pack.ts';
-import { Fleet } from './src/engine.ts';
-import { runActions } from './src/runner.ts';
-import { createRun } from './src/budget.ts';
-import { UNIMPLEMENTED_REFUSAL_CODES } from './src/errors.ts';
-import { HEALTH_WITHHELD_MEMBER_REF } from './src/health.ts';
-import type { CommitArgs } from './src/engine.ts';
+// The tour goes through the PUBLIC surface, on purpose: somebody who copies this file copies the
+// API, not four internal module paths that may move under them (see `src/index.ts`).
+import {
+  Fleet,
+  loadPack,
+  runActions,
+  createRun,
+  UNIMPLEMENTED_REFUSAL_CODES,
+  HEALTH_WITHHELD_MEMBER_REF,
+  type CommitArgs,
+} from './src/index.ts';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';

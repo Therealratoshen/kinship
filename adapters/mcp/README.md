@@ -29,6 +29,74 @@ a `file:` path — `npm` creates symlinks and the registry is never contacted.
 It speaks **MCP `2025-06-18`** over stdio — JSON-RPC 2.0, one message per line. Point an assistant's
 MCP client at that command and it can call the six tools.
 
+## Point an assistant at it
+
+The server speaks MCP over stdio, so any MCP client can drive it. The configuration is one command
+and four paths:
+
+```json
+{
+  "mcpServers": {
+    "kinship": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/kinship/adapters/mcp/src/server.ts",
+        "--pack", "/absolute/path/to/kinship/packs/kopdar-ops",
+        "--config", "/absolute/path/to/kinship/packs/kopdar-ops/pack.local.yaml",
+        "--plan", "/absolute/path/to/kinship/packs/kopdar-ops/pack.local.plan.yaml",
+        "--log", "/absolute/path/to/kinship/logs"
+      ]
+    }
+  }
+}
+```
+
+### One exchange, captured from a real server
+
+**This is what the server actually answered**, not a transcript written by hand — the same JSON-RPC
+lines a client sends, over the same pipe.
+
+**1. The handshake.** The client says who it is; the server answers with the protocol version, the
+tool capability, and what this server is for.
+
+```json
+{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{"listChanged":false}},"serverInfo":{"name":"kinship","version":"0.1.0"},"instructions":"Kinship decides what an AI agent fleet may do to reach a person, and proves that it was decided. Propose member-facing actions with kinship_propose — the runtime decides, and a refusal is an answer. Nothing here sends anything."}}
+```
+
+**2. The tools.** Six of them, each with a name, a description and a JSON Schema:
+`kinship_plan`, `kinship_digest`, `kinship_drafts`, `kinship_propose`, `kinship_approve`,
+`kinship_health`.
+
+**3. The assistant proposes.** This is the interesting one, and the answer is **a card, not a send**:
+
+```json
+{"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"DRAFTED — card card-1 is waiting on a human.\nIt has NOT been sent, and it will not be sent until a named human approves it with a reason.\ncopy: Halo! Besok jam 19:00."}]}}
+```
+
+**What the assistant should do with that.** Show the card to the human, with its copy, and stop.
+**It is not allowed to approve it** — the tool that does that is the open question below, and until
+it is settled, the assistant's job ends at *propose*.
+
+**4. The human decides.** A verdict with a reason, recorded in the log:
+
+```json
+{"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"card card-1 is now approved, decided by organiser. The reason is in the log."}]}}
+```
+
+**Where the log is.** `--log <dir>`, and inside it the pack's own directory —
+`<log>/kinshipai/bundled/event-ops/kopdar/events.jsonl` and `manifest.json`. The same files the
+reference host writes, in the same format, because this adapter **reuses** the reference host's store
+rather than inventing a second one. `kinship_digest` and `kinship_drafts` read them back.
+
+### And the one step that is not settled
+
+**`kinship_approve` takes the deciding actor from the tool call.** The runtime checks that the actor
+*names a declared seat* — it cannot yet tell that a *human* used it. So today the approval step
+proves less than the rest of this adapter does, and `DECISIONS.md`'s *Not yet decided* table carries
+the design for making it prove the rest. **Treat `kinship_approve` as a local convenience, not a
+boundary**, and read the log rather than the tool's answer when the question is "did a human decide
+this?".
+
 ## The six tools
 
 | Tool | Answers | Changes |

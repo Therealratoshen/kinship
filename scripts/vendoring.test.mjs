@@ -13,10 +13,19 @@
  * promise was written is not a promise, and the front page of a repository whose thesis is *a claim
  * may not outrun its evidence* was making one (D91).
  *
- * **WHAT THIS CHECKS.** That the **documented folders alone** are enough: copy `runtime/` and
- * `scripts/` out of this repository, put them beside a pack and the org manifest beside it — which
- * is what an adopter does — and the tour still passes **on the copy**, with no install step and
- * nothing else from this repository present.
+ * **WHAT THIS CHECKS, IN THREE PARTS.**
+ *
+ * 1. That the **documented folders alone** are enough: copy `runtime/` and `scripts/` out of this
+ *    repository, put them beside a pack and the org manifest beside it — which is what an adopter
+ *    does — and the tour still passes **on the copy**, with no install step and nothing else from
+ *    this repository present.
+ * 2. That the **released** tree works the same way: the same folders, taken from the newest
+ *    **release tag** rather than from the working tree, run their own tour standalone. The working
+ *    tree is what a contributor sees; the tag is what an adopter downloads, and only the second
+ *    one is a promise.
+ * 3. That the **public surface** is real: the worked example imports **only** `runtime/src/index.ts`,
+ *    and it runs **from outside this repository**. An API that is only visible by reading somebody
+ *    else's imports is not an API.
  *
  * **WHY IT IS A TEST AND NOT A FIFTH GATE.** The gate list is four, and D24's reason for keeping it
  * four is that a list that grows is a list that drifts: every gate is printed in six places, and
@@ -25,7 +34,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync, readdirSync, statSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -109,4 +119,53 @@ test('the copy holds the documented folders and nothing else from this repositor
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('the RELEASED tree works standalone — the tag is what an adopter downloads', () => {
+  // The working tree is what a contributor sees. The **tag** is what somebody else downloads, and
+  // only that one is a promise about the published artefact. So the same check, run against the
+  // folders taken from the newest release tag.
+  const tags = execFileSync('git', ['tag', '--list', 'v*', '--sort=v:refname'], { cwd: ROOT, encoding: 'utf8' })
+    .split('\n')
+    .filter((t) => t.trim() !== '');
+  if (tags.length === 0) {
+    // Not a silent skip: the reason is printed, and the consequence is named.
+    return assert.fail('no release tag to check — the published artefact has not been released, so there is nothing to prove about it');
+  }
+  const tag = tags[tags.length - 1];
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-released-'));
+  try {
+    // Only the documented folders, and the pack and the org manifest beside them.
+    execFileSync('git', ['archive', tag, 'runtime', 'scripts', 'packs', 'orgs'], { cwd: ROOT, encoding: 'buffer' });
+    execFileSync('tar', ['-x', '-C', dir], { input: execFileSync('git', ['archive', tag, 'runtime', 'scripts', 'packs', 'orgs'], { cwd: ROOT, encoding: 'buffer' }) });
+    const r = runIn(dir, ['runtime/tour.ts']);
+    assert.equal(r.code, 0, `the released tree (${tag}) must run its own tour standalone:\n${r.out.slice(-2000)}`);
+    assert.match(r.out, /All governance guarantees hold/, 'and it must be the real tour');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the public example runs from OUTSIDE this repository, on the public surface only', () => {
+  // The example is what an adopter copies, so it has to work on a copy — and it has to import
+  // **only** the public surface, or it is teaching people to reach past it.
+  const dir = vendoredCopy();
+  try {
+    const r = runIn(dir, ['runtime/examples/one-complete-example.ts']);
+    assert.equal(r.code, 0, `the worked example must run on a vendored copy:\n${r.out.slice(-2000)}`);
+    assert.match(r.out, /verified: true/, 'and it must end in a verified log');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the worked example imports only the public surface', () => {
+  // A file that reaches past the barrel teaches adopters to reach past it. The barrel is the
+  // promise; the example is the proof that the promise is enough.
+  const source = readFileSync(join(ROOT, 'runtime', 'examples', 'one-complete-example.ts'), 'utf8');
+  const imports = [...source.matchAll(/^import[^;]*from\s+'([^']+)'/gm)].map((m) => m[1]);
+  assert.ok(imports.length > 0, 'the example imports something');
+  const internal = imports.filter((spec) => spec.startsWith('../src/') && spec !== '../src/index.ts');
+  assert.deepEqual(internal, [], `the example must import only the public surface, found: ${internal.join(', ')}`);
+  assert.ok(imports.includes('../src/index.ts'), 'the example must import the public surface');
 });

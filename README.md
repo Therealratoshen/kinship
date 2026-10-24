@@ -34,19 +34,21 @@ Kinship is a **control plane**, not a runtime. It owns:
 
 These rules are enforced by tested code, not by prose.
 
-## Try it now
+## Three ways in
 
-You need Node 23 or newer. There is nothing to install and nothing to build.
+**You need Node 23 or newer. There is nothing to install and nothing to build.**
+
+### A — evaluate: see the guarantee, in one command
 
 ```bash
 git clone https://github.com/Therealratoshen/kinship.git
 cd kinship
 
-node scripts/gates.mjs
+node runtime/tour.ts
 ```
 
-**And this is the last of the four gates** — the tour, which drives the real pack and checks every
-guarantee the README claims. The command prints all four suites, and the tour is the last one:
+**The tour drives the real pack and checks every guarantee the README claims.** This is what it
+prints:
 
 ```
 Kinship tour — the fleet proposes, the organiser approves, nothing sends.
@@ -73,6 +75,37 @@ pack kinshipai/bundled/event-ops/kopdar · zero dependencies
 ```
 
 The refusal in section 3 **is the product**: the fleet got permission, and the send still stopped.
+
+### B — try it: produce something you can inspect
+
+```bash
+node scripts/quickstart.mjs
+```
+
+**One command, and it ends in artefacts you can open**: a card waiting on a human, the human's
+decision, a publish attempt that is **refused** because phase 1 ships no transport, a log that
+verifies, and a **redacted copy** of that log you can hand to a maintainer without naming anybody.
+It works in a scratch workspace under `logs/`, so it never touches your own community's files.
+
+### C — integrate: use it in an agent you already use
+
+An assistant in Grok, Claude Desktop, Cursor, OpenClaw or Hermes can ask Kinship for permission, and
+**the runtime decides** — a card for a human, or a refusal naming the rule that fired. The client
+configuration and **a real captured exchange** are in
+[`adapters/mcp/README.md`](adapters/mcp/README.md).
+
+If you are writing code rather than pointing an assistant at it, the **public API** is
+[`runtime/src/index.ts`](runtime/src/index.ts) — one file, a small list of things you may depend on —
+and a **complete worked example** is
+[`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts): boot a pack,
+attempt an action, handle the card or the refusal, record a human decision, replay and verify. It
+imports **only** the public surface, and the vendoring check runs it from outside this repository.
+
+### The four gates — for contributors
+
+```bash
+node scripts/gates.mjs
+```
 
 That runs the four checks CI runs, in the order CI runs them:
 
@@ -216,10 +249,19 @@ no `npm install` in the library itself. That is a decision, not an omission:
 
 - copy **`runtime/` and `scripts/` together** into your project — the loader reads a pack's shape
   through the same validator the gates use, so the two travel as one folder;
-- import the `.ts` files directly (`import { Fleet } from './kinship/runtime/src/engine.ts'`) — node
-  runs them as they are, with no build step and no dependencies;
+- import the `.ts` files directly — node runs them as they are, with no build step and no
+  dependencies. **Import from the public surface**, which is one file:
+  `import { Fleet, loadPack, runActions, createRun, KinshipError } from './kinship/runtime/src/index.ts'`.
+  Everything not re-exported there is an implementation detail, and
+  [`runtime/examples/one-complete-example.ts`](runtime/examples/one-complete-example.ts) is a
+  complete worked example that uses **only** that surface;
 - copy `adapters/reference/` alongside if you want a host to start from — it is a sibling package,
   and its one dependency is the runtime beside it.
+
+**And the copy path is proved, not asserted:** `scripts/vendoring.test.mjs` copies `runtime/` and
+`scripts/` out of this repository — and out of the newest **release tag** — and runs the tour and
+the worked example on the copy, with nothing else present. A promise that only holds in the place
+the promise was written is not a promise.
 
 The reference host's `npm install` creates a **local symlink** and fetches nothing (`--offline`
 works). That is the only install step anywhere in this repository, and it belongs to the example,
