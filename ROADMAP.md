@@ -7,7 +7,7 @@ invites exactly the PRs it has already refused.
 **No dates.** This is one maintainer at four-to-five hours a week. A date nobody can keep is worse than
 none, and every promise here would be a claim the code cannot check.
 
-**What is already shipped is not listed** — see [README.md](README.md) section "What ships vs what is gated",
+**What is already shipped is not listed** — see [README.md](README.md) section "What ships",
 which is the single source for that, and `spec/GOVERNANCE-SPEC-OUTLINE.md` Part 6, which maps every spec
 rule to the file and test that hold it. **What this project has decided not to build** is
 `PLAN.md` section "Explicitly not doing this quarter" — read that before proposing a hub UI, a marketplace, or
@@ -25,7 +25,7 @@ self-hostable product.** Everything below follows from that sentence.
 |---|---|---|
 | **The install path is stated: vendoring by copy.** | There is no root `package.json` and `runtime/package.json` is `private: true`, so there is no registry package and no `npm install` in the library. The README now says so — copy `runtime/` **and `scripts/` together** (the loader reads a pack's shape through the same validator the gates use, so they travel as one folder) and import the `.ts` files directly. The reference host's one `npm install` creates a local symlink and fetches nothing. **What is still open is publishing**, and that is a release decision: a tag to pin now exists, a registry package does not, and the repo has chosen not to need one. | **owner** (whether to also publish to a registry) |
 | **A release to pin exists; a registry package does not.** | There are now **two** tags and **two** published GitHub releases — `v0.1.0` and `v0.2.0` — so a fork can pin a version, and `CHANGELOG.md` carries both. What does **not** exist is a package on npm — deliberately, per the install path above: the runtime is vendored, and the repo states that rather than leaving it as a gap. | **owner** (publishing is a release decision) |
-| **No quickstart that ends in an artefact.** | **Landed 2026-10-22** (`DECISIONS.md` D49): the README's "Try it now" now ends in the two files the reference host writes, and ends in a `verify` that re-reads them. What is still missing is the **install path** below — the quickstart's one `npm install` is a wart on a repo whose gates need none. | contributor-able, but it wants the install path first |
+| **No quickstart that ends in an artefact.** | **Landed 2026-10-22** (`DECISIONS.md` D49): the README's "Get it" and "Use it" now end in the two files the reference host writes, and in a `verify` that re-reads them. What is still missing is the **install path** below. **`scripts/quickstart.mjs` now ends in an artefact with no `npm install` at all** (it links the runtime itself, because the adapter's one dependency is a local path), so the wart is gone from the quickstart and survives only in the reference host's own setup. | contributor-able, but it wants the install path first |
 
 ## Not complete for a contributor
 
