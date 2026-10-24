@@ -130,6 +130,20 @@ store rather than a governance bug.
 identifiers out before returning. A host that caches either must recompute it after every write —
 a stale snapshot with a `derivedAt` the reader cannot trust is worse than no snapshot.
 
+**And which runtime it was built from (D112).** The install path is **vendoring by copy**, so the copy
+a host runs can be **old** without anything looking wrong: it still boots, still passes its own tests,
+still behaves — just not the behaviour this repository currently claims. Nothing in the host's tree can
+see that, because the source is not in the tree. So the host also records **the digest of the runtime it
+was built from**, next to the log it writes: `scripts/runtime-digest.mjs` prints one **path-independent**
+`sha256` over the shippable runtime (`runtime/src/**` and `runtime/package.json`), so a copy at any
+absolute path digests to the same value — which is the whole point, because a vendored copy always lives
+somewhere else. Then *"is this copy current?"* is a comparison of two strings rather than a question
+about anyone's memory. **What a digest is not:** a signature, an attestation, or a supply-chain
+guarantee. It says *these two trees are byte-identical* and says nothing about who put them there,
+when, or why — a tree that was tampered with **and whose digest was recomputed** is still a tree with a
+digest. Provenance is a different problem. **A host that cannot recompute the digest still works**; it
+simply cannot answer the question.
+
 ## Seam 4 — transport: the only thing that may touch a person
 
 **What the host does.** Owns the channel socket, the session, the rate limits, and the moral

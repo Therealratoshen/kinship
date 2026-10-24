@@ -104,6 +104,13 @@ no call to action. **Self-hosted parity** — nothing here is held back; **no si
 to the licence or the boundary goes through a dated `DECISIONS.md` row *before* this repository
 changes; **no funnel** — the hosted surface links here, and this repository does not link there.
 
+**And the "same control plane" sentence is checkable rather than asserted.** The hosted product
+vendors a copy of this runtime, so `node scripts/runtime-digest.mjs` prints the digest of *this* tree
+and a host prints the digest of *its* copy — the same string or not. What is not decided yet is
+whether the hosted product records its digest, which is its own build's business; until it does, this
+repository can print its own and compare, and the hazard is written up in
+[`community/OSS-PARITY-2026-10-23.md`](community/OSS-PARITY-2026-10-23.md).
+
 ## What ships
 
 - **The governance spec** — [`spec/GOVERNANCE-SPEC-OUTLINE.md`](spec/GOVERNANCE-SPEC-OUTLINE.md)
@@ -121,6 +128,9 @@ changes; **no funnel** — the hosted surface links here, and this repository do
   `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`)
 - **A persisted log that verifies** — the rows must be dense in `seq`, they must fold, and the state
   they fold to must be the state the fleet holds
+- **A runtime digest** — [`scripts/runtime-digest.mjs`](scripts/runtime-digest.mjs): one deterministic
+  `sha256` over the shippable runtime. A host that vendors this runtime by copy can **prove** which
+  copy it runs: two digests are either the same string or they are not
 
 **Gated behind measurement:** any channel transport, and any claim that the fleet "reduces organiser
 load". Every member-facing commit refuses with `no_transport` and leaves its one-send authorisation
