@@ -25,10 +25,23 @@
  *    number the tree no longer produces.
  *  - **A failing gate.** The four gates are the contract.
  *
- * **WHAT IT PUBLISHES.** The package is the **vendoring promise made mechanical**: exactly the
- * two folders the README tells an adopter to copy — `runtime/` and `scripts/` — with a manifest
- * that says so, and nothing else. The vendoring check already proves that a copy of those two
- * folders works on its own, so the published artefact is the thing that was proved.
+ * **WHAT IT PUBLISHES.** The package is the **vendoring promise made mechanical**: the same code
+ * an adopter copies, **compiled to ESM plus `.d.ts`** (`DECISIONS.md` D73), with a manifest that
+ * says so, and nothing the runtime cannot reach. Two changes to what this used to do, both made
+ * because the artefact did not match the decision it claimed to implement:
+ *
+ *   - **It ships the SOURCE, not the build.** It copied `runtime/` wholesale, so the published
+ *     entry point was `./runtime/src/index.ts` — a TypeScript file. D73 decided *"the published
+ *     package is compiled ESM plus `.d.ts`, with a `tsc` build used ONLY for publishing"*, so the
+ *     package now compiles `runtime/src/**` to `runtime/dist/**` with declarations, and the
+ *     entry point is JavaScript with types beside it.
+ *   - **It shipped 36 TEST FILES.** `cpSync` of the `runtime/` folder took `runtime/test/**` with
+ *     it, while this file's own header said *"not its tests, not its CI"*. The package now carries
+ *     the compiled runtime and **only the two files the runtime actually imports** from `scripts/`.
+ *
+ * **The compiler is needed only here.** Contributors keep running the `.ts` directly, with no
+ * build step and no install (D21); the compiler is a publishing-time dependency, so the pre-flight
+ * refuses to proceed without it rather than downloading one.
  */
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -38,8 +51,22 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..');
 
-/** The folders an adopter copies. The package is these and nothing else. */
+/** The folders an adopter copies by hand. The vendoring path is unchanged by the publish build. */
 export const VENDORED = ['runtime', 'scripts'];
+
+/**
+ * The two files the runtime reaches OUTSIDE itself, and the only ones the package carries from
+ * `scripts/`.
+ *
+ * `runtime/src/pack.ts` imports `../../scripts/validate-pack.mjs`, which imports
+ * `./claim-scan.mjs`. Everything else in `scripts/` is this repository's own gates, its release
+ * tooling, and their tests — twenty-three files the runtime never loads. The package is the
+ * vendoring promise made mechanical: **the same code, compiled, with nothing it cannot reach.**
+ */
+export const PACKAGE_EXTRA_FILES = ['scripts/validate-pack.mjs', 'scripts/claim-scan.mjs'];
+
+/** The tsconfig the publish build uses — emit, declarations, and `.ts` extensions rewritten to `.js`. */
+export const PUBLISH_TSCONFIG = 'runtime/tsconfig.publish.json';
 
 /** Run a command in the repository and return its stdout. Throws with the stderr on failure. */
 export function run(cmd, args, opts = {}) {
@@ -98,6 +125,12 @@ export function preflight(repo = REPO, version = null) {
   const problems = [];
 
   if (treeIsDirty(repo)) problems.push('the working tree is dirty — the artefact must be the tagged commit');
+  // The publish build needs the compiler, and the compiler is deliberately not a dependency of
+  // the runtime (D21: a fork installs nothing). So the release refuses without it — with the
+  // exact command — rather than the script fetching one behind the reader's back.
+  if (!existsSync(join(repo, 'node_modules', 'typescript', 'bin', 'tsc'))) {
+    problems.push('the TypeScript compiler is not installed — publishing needs it (D73: the build is used ONLY for publishing): npm install --no-save --no-package-lock typescript@5 @types/node@22');
+  }
   if (version === null) problems.push('no version given — pass --version <x.y.z>');
   else {
     const changelog = readFileSync(join(repo, 'CHANGELOG.md'), 'utf8');
@@ -148,6 +181,36 @@ export function preflight(repo = REPO, version = null) {
 }
 
 /**
+ * The published manifest — the runtime's own `package.json`, read and re-pointed at the build.
+ *
+ * **Pure, and separately testable on purpose:** the shape of the package (what it is called, where
+ * its entry point is, what a consumer gets for types) is a *claim*, and a claim nobody can check
+ * without a compiler installed is a claim that rots in exactly the way this file exists to stop.
+ * So the manifest is a function of the repository alone, and the test that holds it needs nothing
+ * but the tree.
+ */
+export function packageManifest(repo = REPO, version = null) {
+  const manifest = JSON.parse(readFileSync(join(repo, 'runtime', 'package.json'), 'utf8'));
+  return {
+    name: manifest.name,
+    version: version ?? manifest.version,
+    description: manifest.description,
+    license: manifest.license,
+    type: manifest.type,
+    engines: manifest.engines,
+    repository: { type: 'git', url: 'https://github.com/Therealratoshen/kinship' },
+    homepage: 'https://github.com/Therealratoshen/kinship#readme',
+    keywords: manifest.keywords,
+    files: ['runtime/dist', 'scripts', 'README.md', 'LICENSE'],
+    types: './runtime/dist/index.d.ts',
+    exports: {
+      '.': { types: './runtime/dist/index.d.ts', import: './runtime/dist/index.js' },
+      './package.json': './package.json',
+    },
+  };
+}
+
+/**
  * The package, built from the two folders an adopter copies.
  *
  * Nothing else goes in: not the repository's own docs, not its tests, not its CI. The published
@@ -160,28 +223,35 @@ export function buildPackage(repo = REPO, version = null) {
   const staging = join(repo, 'logs');
   if (!existsSync(staging)) mkdirSync(staging, { recursive: true });
   const dir = mkdtempSync(join(staging, 'release-pkg-'));
-  // The two folders go in **side by side**, not one inside the other, because the runtime
-  // imports the validator by relative path: `runtime/src/pack.ts` reaches `../../scripts/
-  // validate-pack.mjs`. A package that shipped `runtime/` alone would fail to import — and the
-  // two folders travelling together is exactly what the README tells an adopter to copy.
-  for (const folder of VENDORED) cpSync(join(repo, folder), join(dir, folder), { recursive: true });
-  const manifest = JSON.parse(readFileSync(join(dir, 'runtime', 'package.json'), 'utf8'));
-  const published = {
-    name: manifest.name,
-    version: version ?? manifest.version,
-    description: manifest.description,
-    license: manifest.license,
-    type: manifest.type,
-    engines: manifest.engines,
-    repository: { type: 'git', url: 'https://github.com/Therealratoshen/kinship' },
-    homepage: 'https://github.com/Therealratoshen/kinship#readme',
-    keywords: manifest.keywords,
-    files: [...VENDORED, 'README.md', 'LICENSE'],
-    exports: {
-      '.': './runtime/src/index.ts',
-      './package.json': './package.json',
-    },
-  };
+
+  // **The compile.** D73: "the published package is compiled ESM plus `.d.ts`, with a `tsc` build
+  // used ONLY for publishing — contributors keep running the `.ts` directly, with no build step and
+  // no install." So the compiler is a PUBLISHING dependency: if it is not here, the release is
+  // refused with the exact command, rather than the script downloading one behind the reader's
+  // back.
+  const tsc = join(repo, 'node_modules', 'typescript', 'bin', 'tsc');
+  if (!existsSync(tsc)) {
+    throw new Error(
+      'publishing needs the TypeScript compiler, and it is deliberately not a dependency of the ' +
+      'runtime (D21: a fork installs nothing). Install it for the publish only:\n' +
+      '    npm install --no-save --no-package-lock typescript@5 @types/node@22\n' +
+      'then re-run this script.',
+    );
+  }
+  // The output goes straight into the staging directory, so nothing compiled is ever left in the
+  // working tree — and `logs/` is gitignored, so the tree stays clean for the pre-flight.
+  const dist = join(dir, 'runtime', 'dist');
+  run(process.execPath, [tsc, '-p', PUBLISH_TSCONFIG, '--outDir', dist], { cwd: repo });
+
+  // The two files the runtime reaches, in the layout it reaches them by. `runtime/dist/pack.js`
+  // imports `../../scripts/validate-pack.mjs`, so `scripts/` sits beside `runtime/` — the same
+  // relative depth the source tree has, and the same promise the README makes to a copier.
+  mkdirSync(join(dir, 'scripts'), { recursive: true });
+  for (const file of PACKAGE_EXTRA_FILES) {
+    cpSync(join(repo, file), join(dir, file));
+  }
+
+  const published = packageManifest(repo, version);
   writeFileSync(join(dir, 'package.json'), JSON.stringify(published, null, 2) + '\n');
   // The licence and the readme travel with the package. If either is missing the release is
   // refused rather than crashing: a package without its licence is not a package.
@@ -212,7 +282,7 @@ function main(argv) {
 
   const { dir, manifest } = buildPackage(REPO, version);
   console.log(`\npackage: ${manifest.name}@${manifest.version}`);
-  console.log(`  files: ${VENDORED.join(' and ')} — the two folders an adopter copies, and nothing else`);
+  console.log(`  files: runtime/dist (compiled ESM + .d.ts) and scripts/validate-pack.mjs + scripts/claim-scan.mjs — the code the runtime reaches, and nothing else`);
   console.log(`  staged in: ${dir}`);
 
   const args = ['publish', '--access', 'public', '--dry-run'];

@@ -144,6 +144,12 @@ jobs:
       - name: Typecheck
         run: npx tsc -p runtime/tsconfig.json --noEmit
 
+      # The publishable artefact, proved where the compiler exists. The gates job runs the same
+      # test file WITHOUT a compiler (the runtime installs nothing, D21), so this case skips there
+      # and runs here — where the package can actually be built, imported, and held to its shape.
+      - name: The publishable package (build it, import it, hold its shape)
+        run: node --test scripts/release.test.mjs
+
   # The contribution-provenance check. NOT a fifth gate: the gate list stays four (D24). This is a
   # *contribution* rule, like a licence header — it asks whether somebody else's commit carries a DCO
   # sign-off, and it is the one thing a stranger's pull request can get wrong without knowing.
