@@ -26,6 +26,28 @@ This programme instead measures a **property of a configuration under a fixed sc
 classes it refuses, which guards narrow it, whether those refusals reproduce across runs, and whether the
 whole record can be replayed and audited afterwards.
 
+## What this is, positively
+
+**A duel here is a probe, not a competition.** The benchmark asks *how does this agent score?* The
+probe asks **what does this configuration refuse to do when a hostile counterpart pushes it?** That is
+a different measurement, not a different leaderboard:
+
+- **The counterpart is a stimulus, not an opponent.** It applies pressure — proposes, escalates, makes
+  an attractive offer of the wrong action. It is not scored and it does not compete. The subject is the
+  only thing under measurement.
+- **The artefact is the trajectory, not the score.** A benchmark number cannot report "it lost for the
+  wrong reason". A duel can, because the log is the record. The subject is graded against what actually
+  happened, not against a checklist of what should have.
+- **Defence is measurable this way and structurally is not otherwise.** One match yields an offensive
+  and a defensive measurement. A static benchmark has no defender to grade.
+
+The output is a **vector of refusals and their reasons**, read against the trajectory that produced
+them. Not a placement, not a percentile, not a league table.
+
+The evidence for why the score cannot be the artefact — and why the trajectory has to be — is in
+[`AGENT-VS-AGENT-EVALUATION-2026-10-21.md`](./AGENT-VS-AGENT-EVALUATION-2026-10-21.md) §"Head-to-Head
+Measurement Properties" and §"The Design, Revised".
+
 ## What the programme refuses
 
 Each refusal below is a contract, not a preference.

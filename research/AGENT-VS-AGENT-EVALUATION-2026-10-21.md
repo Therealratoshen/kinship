@@ -16,6 +16,13 @@ would anyone measure it without publishing a leaderboard?*
 >    property of agent, opponent, scenario and seed. The method this file specifies therefore reports a
 >    **vector**, never a blended score and never a ranking.
 > 4. **No claim about members.** The scenario is fictional and no member is simulated as a respondent.
+>
+> **Revised 2026-10-24 — the design, not the evidence.** The founder's direction was *"rather than
+> competing in benchmark, I plan to do it different."* The evidence below is unchanged and stays dated:
+> it was read on 2026-10-21 and it says what it says. What changed is the **design** the Challenge
+> specification below expresses — it now describes a **probe, not a comparison**, and it says why in
+> **§"The Design, Revised"**. The section is dated for the same reason the rest of the file is: a
+> reader needs to know which words describe what was *found* and which describe what was *decided*.
 
 ## Core Judgments
 
@@ -95,11 +102,85 @@ Social Arena supplies the design lesson that survives into the specification bel
 
 The shape that clears all four mechanisms is therefore constrained, and the constraint is a gift. A community-operations challenge runs on a seeded, fictional scenario; makes no model calls in the current v0, so there is no output to train on and no provider terms surface beyond the operator's own key; never touches transport, so it cannot deliver anything to a member however it ends; keeps state in the workspace store; and hands its verdict to a human rather than to a trainer. The one place care is required is the moment a challenge would touch a live member-facing surface, where the provider's prohibition on autonomous interaction with systems in violation of their terms of service becomes live along with the operator's own channel terms [20]. Keep the challenge off live surfaces and that clause never applies.
 
+## The Design, Revised — A Probe, Not a Competition
+
+**Revised 2026-10-24.** The direction: *rather than competing in a benchmark, do it different.* The
+evidence in §"Head-to-Head Measurement Properties" already says what different means, and it says
+something a benchmark cannot do. The earlier draft of the specification below missed it: it specified
+**two candidates being compared**, which is a comparison with a different name, not a different
+measurement. This section states the design the evidence actually supports.
+
+### The question changes
+
+A benchmark asks **how does this agent score?** The probe asks **what does this configuration refuse to
+do when a hostile counterpart pushes it?**
+
+Those are different measurements. The first is a position on a curve; the second is a behaviour. Only
+the second has a decision attached to it, and only the second can be replayed and audited.
+
+### The counterpart is a stimulus, not an opponent
+
+The hostile counterpart exists to **apply pressure** — to propose, to escalate, to make an attractive
+offer of the wrong action, to push at the boundary where a configuration is most likely to drift. It is
+**not scored**, it is **not a competitor**, and it is **not a model being benchmarked**. There is no
+field in which the subject and the counterpart are on the same axis, because there is no field in which
+they compete. The subject is the only thing under measurement.
+
+This is what the evidence already distinguishes. A2A-NT found agent-to-agent negotiation is
+**inherently imbalanced** — a strong-versus-weak pairing measures the distance between them, not the
+weak one's quality [15]. Removing the contest removes that failure mode by construction rather than by
+discipline.
+
+### The artefact is the trajectory, not the score
+
+CodeClash's 1,680 tournaments found models frequently **misinterpret why they lost** [5]. A benchmark
+number cannot report "it lost for the wrong reason". A duel can, because **the trajectory is the
+artefact** — the log, not the outcome. Dreadnode's Ares makes the same move in a different domain: a
+red team and a blue team operate the same environment, and the blue team is scored **against the
+attacker's recorded execution** — what actually happened, not what a checklist said should happen [8][9].
+That is the standard this design takes: grade the subject on the record, not on the rubric.
+
+### Defence is measurable here and structurally is not otherwise
+
+CyberArena's symmetric design has both agents acting concurrently as attacker and defender over
+continuously changing services, so **a single match produces an offensive and a defensive measurement**
+rather than one [6]. A static benchmark has no defender to grade. Defence is the thing this product
+is actually for, and it is the thing a scalar hides.
+
+### What this rules out, and why it is not a leaderboard in disguise
+
+- **No ranking.** A duel score does not travel: Elo and Bradley-Terry ratings are population statistics
+  over a comparison matrix, so they depend on who else is in the population and on the date, and adjacent
+  ranks are not reliably separated [27]. A private probe is a statement about that pairing and must
+  never be rendered as a ranking.
+- **No blended score.** Arena's own methodology uses Wilson intervals for proportions, exact McNemar
+  tests on paired outcomes, seeded paired-bootstrap intervals on cost and latency deltas, and **no
+  blended score**, with a confidence gate that can fail a comparison on significance rather than let it
+  drift [32][33]. A single number hides the trade-off and destroys the ability to tell a difference from
+  noise — and it cancels away the one number that matters here, that a configuration which refuses more
+  may be the better one.
+- **No cross-operator comparison.** Nothing here compares one operator's fleet to another's, and no
+  result generated on a third-party provider's API is publishable [21].
+- **No single run.** Non-determinism means one run is an anecdote. `pass^k` — the fraction of tasks
+  solved on all *k* independent runs — equals `p^k` and decays geometrically: Claude 3.5 Sonnet scored
+  46.0% at `pass^1` and 22.5% at `pass^4` in tau-bench airline [31].
+
+### The output
+
+A **vector of refusals and their reasons**, read against the trajectory that produced them. Not a
+placement, not a percentile, not a league table. The question a reader can answer from it is *"what
+did this configuration refuse, and what did it do instead"* — and that question survives the fact that
+the probe is non-deterministic, because the record of what happened does not.
+
 ## Challenge Specification for Kinship Host
 
 ### Challenge Scope and Non-Goals
 
-A Challenge runs two candidate configurations of the organiser's own fleet over one seeded scenario, scores both with the runtime's own guard layer and a deterministic state check, and hands the comparison to the human seat. The candidates are configurations, not arbitrary public models: two pack versions, two autonomy ceilings, two model and harness settings. Comparing the organiser's own configurations keeps the comparison inside the domain the product owns, keeps the licence surface trivial, and answers a question with a real decision attached.
+**Revised 2026-10-24 to the probe design in §"The Design, Revised".** A Challenge puts **one
+configuration under a hostile counterpart** over one seeded scenario, scores it with the runtime's own
+guard layer and a deterministic state check, and hands the record to the human seat. The counterpart is
+a stimulus, not an opponent: it is not scored and it does not compete. What is measured is the
+subject's refusal behaviour under pressure.
 
 Four things are out of scope, and each is excluded because of a contract rather than a preference. It is not a leaderboard: no cross-operator ranking, no public standings, and no publishing of results that were generated on a third-party provider's API [21]. It is not a claim about members: a challenge describes configurations on a fictional scenario, and no output may suggest it predicts how members feel, engage, or respond. It is not delivery: a challenge produces a verdict and at most a hand-off, and the transport seam keeps refusing exactly as it does elsewhere, so `Handoff.sent` stays false throughout. It is not new control-plane engineering: the vendored runtime is not modified, adapter and host code stays in `lib/kinship/host/`, and the challenge is built by running the unmodified fleet twice and diffing the results.
 
