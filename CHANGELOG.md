@@ -35,6 +35,13 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The vendoring claim is either backed or gone** (`DECISIONS.md` D92) — the README called the vendoring
   check a CI gate and there was none. `scripts/vendoring.test.mjs` now copies `runtime/` and `scripts/`
   out of the repository and runs the tour on the copy, and the phrase no check here could back is gone.
+- **The community walkthrough lives with the host that runs it, and the host's README is now checked
+  against the CLI it ships** (`DECISIONS.md` D97) — the README rewrite moved the walkthrough to
+  `adapters/reference/README.md` and the move did not happen, and nothing caught it. The check reads the
+  commands out of the CLI and requires every one of them to be shown in a code block; it found three
+  (`tick`, `draft`, `digest`) that had never been shown. The same pass found that **a redacted log
+  carries every drafted message** — for a live session, the join link and its passcode — so the
+  sharing promise now says so.
 - **The README is a front door again** (`DECISIONS.md` D96) — 444 lines and 3,959 words became 160
   and 1,131: what it is, one command to run it, a table of routes, what it enforces, what it does
   not do, and a table of pointers to everything else. The long walkthrough moved to the reference
