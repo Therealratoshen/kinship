@@ -3,8 +3,10 @@ name: Governance Gates
 on:
   push:
     branches: [main]
+  # Every pull request, whatever it targets. A PR whose base is another branch used to get **no CI
+  # run at all**, and a stacked PR is exactly how a second concern gets reviewed while the first is
+  # open — so the one arrangement that most needs a green tick was the one that could not have one.
   pull_request:
-    branches: [main]
 
 # The actions below are pinned to a COMMIT, not to a tag. A tag is a name the upstream owner can
 # move, so "the action my CI runs" would be a fact about their release habits on the day the job

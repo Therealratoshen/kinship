@@ -35,6 +35,13 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The vendoring claim is either backed or gone** (`DECISIONS.md` D92) — the README called the vendoring
   check a CI gate and there was none. `scripts/vendoring.test.mjs` now copies `runtime/` and `scripts/`
   out of the repository and runs the tour on the copy, and the phrase no check here could back is gone.
+- **A developer-experience milestone** (`DECISIONS.md` D94) — **`runtime/src/index.ts` is the public
+  surface** (one file, and the tour goes through it), **`runtime/examples/one-complete-example.ts` is
+  the example an adopter copies** (it imports only that surface, and the vendoring check runs it from
+  outside this repository), **`scripts/quickstart.mjs` is one command** that ends in a card, a human's
+  decision, a refused publish, a verified log and a redacted copy, and **`adapters/mcp/README.md` now
+  carries the client configuration and a captured exchange** from a real server. The vendoring check
+  also grew a second half: the same folders, taken from the newest **release tag**, run standalone.
 - **A decision's reason is now checked by the shape guard** (`DECISIONS.md` D93) — the fold reads the
   `why`, so a row that had it removed folded to a different state and still verified clean. The reason a
   human gave is the record; a log that can lose it and still verify is not a log of decisions.

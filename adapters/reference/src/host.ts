@@ -572,7 +572,9 @@ export function runCommand(opts: HostOptions): string[] {
       // The mechanism behind "never attach a raw log to a public issue": the identifiers come out, the
       // structure stays, and the original is never touched.
       const dir = opts.logRoot;
-      const src = join(dir, 'kinshipai', 'bundled', 'event-ops', 'kopdar');
+      // The log's directory comes from the pack's own key, not from the example pack's path: a
+      // command that only works for one pack is a command that only works in this repository.
+      const src = logDirFor(dir, host.pack.key);
       const r = redactLog({
         eventsPath: join(src, 'events.jsonl'),
         manifestPath: join(src, 'manifest.json'),
