@@ -1,0 +1,19 @@
+{
+  "name": "kinship-adapter-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Kinship host that speaks MCP, so any assistant in any platform can ask Kinship for permission before it touches a member.",
+  "scripts": {
+    "start": "node src/server.ts",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "kinship-runtime": "file:../../runtime",
+    "kinship-adapter-reference": "file:../reference"
+  },
+  "engines": {
+    "node": ">=23"
+  },
+  "license": "MIT"
+}

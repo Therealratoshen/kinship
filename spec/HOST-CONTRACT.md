@@ -145,7 +145,21 @@ builtin (`net`, `http`, `https`, `http2`, `dgram`, `dns`, `tls`), calls `fetch`,
 
 **What an adapter looks like, and where it lives.** Adapters go outside `runtime/` — a sibling
 package, e.g. `adapters/<host>/`, with its own manifest and its own dependencies. Never inside
-`runtime/src`, and never as a dependency of `kinship-runtime`. The reason is mechanical: the boundary
+`runtime/src`, and never as a dependency of `kinship-runtime`.
+
+**There are two of them now, and the second is the interesting one.** `adapters/reference/` is a
+**console**: a human runs commands and reads printed lines. `adapters/mcp/` is a **protocol server**:
+it speaks MCP `2025-06-18` over stdio, so an assistant in a platform the community manager already
+uses — Grok, Claude Desktop, Cursor, OpenClaw, Hermes — can **ask** the runtime for permission.
+**The assistant is the hand, Kinship is the judgement, the human is the signature**: the assistant
+proposes an action, the runtime decides whether it becomes a card for a human or is refused with the
+rule that fired, and **no tool in that server delivers anything to a member** (D21). Because MCP is
+the common denominator, "support all AI agents" is **one server**, not N adapters.
+
+**The two adapters share their plumbing rather than duplicating it.** The answers reader, the log
+store and the clock live in the reference host, and the MCP server reuses them — because two
+implementations of "how a host persists a log" is two rules in two places, which is the failure class
+this repository keeps recording. The reason is mechanical: the boundary
 gate's scope is `runtime/src/**`, so an adapter placed there fails CI on purpose, and an adapter placed
 outside it is a package a reviewer can see has network access.
 
