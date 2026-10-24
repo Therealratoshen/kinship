@@ -33,6 +33,11 @@ import { makePack } from './helpers.ts';
 import { HEALTH_WITHHELD_MEMBER_REF } from '../src/health.ts';
 import { INBOX_PREVIEW_MAX } from '../src/inbox.ts';
 import { disclosureLineId, disclosureLineEn } from '../src/disclosure.ts';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const ANSWERS = {
   community_name: 'AI Builders ID',
@@ -80,7 +85,7 @@ test('an empty inbox is an empty list, not a null — "nothing waits" must be re
   f.beginEvent('kopdar-1');
   const r = f.inbox();
   assert.deepEqual(r.items, []);
-  assert.deepEqual(r.counts, { verdict: 0, handoff: 0, release: 0, overdue: 0 });
+  assert.deepEqual(r.counts, { verdict: 0, handoff: 0, release: 0, overdue: 0, thread: 0 });
   assert.equal(r.derivedFromSeq, f.state.seq, 'and it still dates and positions itself, because an undated all-clear is a claim');
 });
 
@@ -107,7 +112,7 @@ test('an approved card nobody has actually sent is a handoff item — shadow mod
   f.advance(86_400_000); // a day later: approved, authorised, and still not sent by anyone
 
   const r = f.inbox();
-  assert.deepEqual(r.counts, { verdict: 0, handoff: 1, release: 0, overdue: 0 },
+  assert.deepEqual(r.counts, { verdict: 0, handoff: 1, release: 0, overdue: 0, thread: 0 },
     'the card left the verdict queue the moment it was approved, so a queue that only lists pending cards reports an all-clear while a reminder sits unsent');
   const handoff = r.items.find((i) => i.kind === 'handoff')!;
   assert.equal(handoff.ref, card.id);
@@ -208,5 +213,18 @@ test('the inbox says what the ordering does not mean, and never claims to know w
   const text = r.limits.join(' ').toLowerCase();
   assert.match(text, /rank/, 'it states that age is not importance (PRD §5 keeps judgement out)');
   assert.match(text, /who|hand/, 'and that it cannot see whether the organiser actually sent the handoff by hand — no transport, no receipt (D21)');
-  assert.deepEqual(Object.keys(r.counts).sort(), ['handoff', 'overdue', 'release', 'verdict'], 'four kinds, closed — a fifth would need a spec rule first');
+  assert.deepEqual(Object.keys(r.counts).sort(), ['handoff', 'overdue', 'release', 'thread', 'verdict'],
+    'five kinds, closed — the fifth is a thread (spec §2.14 / FR-5.13), and a sixth would need a spec rule first');
+});
+
+test('the fifth kind has the spec rule it was required to have — and the rule is where the doc says it is', () => {
+  // This test used to say "a fifth would need a spec rule first", and it was right: the fifth kind
+  // (a `thread` — a question the community owes an answer to) arrived in D55, and the rule it needed is
+  // spec §2.14. The check that the rule EXISTS is the point: without it, the kinds could grow with
+  // nothing written down, and "the kinds are closed" would be a claim about a number rather than
+  // about a document.
+  const spec = readFileSync(join(ROOT, 'spec', 'GOVERNANCE-SPEC-OUTLINE.md'), 'utf8');
+  assert.match(spec, /### 2\.14 /, 'spec §2.14 — the community\'s open threads — is where the rule lives');
+  assert.match(spec, /FR-5\.13/, 'and it names the requirement it implements');
+  assert.match(spec, /thread/, 'and it is about threads, not about something else that happens to be numbered 2.14');
 });

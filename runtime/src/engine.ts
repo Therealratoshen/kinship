@@ -19,6 +19,8 @@ import { freshState, hashText } from './store.ts';
 import { KinshipError, refuse } from './errors.ts';
 import { resolveAutonomy } from './ladder.ts';
 import { narrowForMemberTrigger, wrapMemberInput } from './containment.ts';
+import { answerThread, openThread } from './threads.ts';
+import { assertPostureContact, isOneToOneClass } from './posture.ts';
 import { answerableBy, assertAnswerability, assertDisclosed } from './disclosure.ts';
 import { assertContactable, assertSendHour, assertWithinCap, registerMember, suppressMember } from './members.ts';
 import { assertNoMemberDataInPartnerCopy } from './partner.ts';
@@ -35,7 +37,7 @@ import { deriveHealth, type HealthReport } from './health.ts';
 import { deriveInbox, type InboxReport } from './inbox.ts';
 import { deriveSettings, resolveSettings, type SettingsReport } from './settings.ts';
 import type {
-  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, WakeRow,
+  Card, Ctx, FleetEvent, FleetState, LoggedEvent, NeedAnswers, Packed, Phase, QuarantinedInput, ResolvedSettings, Thread, WakeRow,
 } from './types.ts';
 
 export interface AttemptArgs {
@@ -278,6 +280,19 @@ export class Fleet {
         const m = this.st.members.get(ref);
         if (m) assertSendHour(m.tz, this.t);
         assertWithinCap(this.ctx(), ref, this.t, this.st.commitsByMember.get(ref) ?? []);
+        // The community's own posture (spec §2.15) — a member protection the COMMUNITY declared,
+        // sitting with the other per-member protections because it is one: a community that does not
+        // tolerate being approached says so, and the fleet does not approach.
+        assertPostureContact(this.ctx(), ref, isOneToOneClass(args.actionClass));
+      }
+
+      // --- the community's openness (spec §2.15) -----------------------------------------------------
+      // Where it sits is a decision: with the per-member protections, because a closed community's
+      // public post is a refusal of the same kind — a thing the community said no to — and before the
+      // transport gate, because this rule is permanent and `no_transport` is phase 1's temporary lock.
+      if (args.actionClass === 'commit.channel-post' && this.resolved.posture.openness === 'closed') {
+        refuse('posture_refused', 'spec §2.15 / FR-5.14',
+          `this community is closed — \`posture.openness: closed\` — so the fleet may not post publicly. A community that wants to be discoverable declares \`openness: open\``);
       }
 
       // --- the partner-reach bound (§2.11 / FR-6.5) ---------------------------------------------------
@@ -364,6 +379,25 @@ export class Fleet {
   /** Wrap a member message (§2.7). Returns the quarantined value; the log keeps metadata only. */
   registerInput(memberRef: string, text: string): QuarantinedInput {
     return wrapMemberInput(this.ctx(), { memberRef, text });
+  }
+
+  /**
+   * Open a thread: a question the community now owes an answer to (§2.14 / FR-5.13).
+   *
+   * The host calls this when it judges an input to be a question. The runtime does not judge — it
+   * tracks. The thread holds no text (the log never holds member text either, §2.7) and no read
+   * prints the asker.
+   */
+  openThread(args: { memberRef?: string | null; pointer?: string | null } = {}): Thread {
+    return openThread(this.ctx(), args);
+  }
+
+  /**
+   * Close a thread: the question has been answered. A note of how is required — a record with no
+   * substance is not a record, the same rule as a verdict without a why (§1.5).
+   */
+  answerThread(threadId: string, by: string, note: string): void {
+    answerThread(this.ctx(), threadId, by, note);
   }
 
   beginEvent(eventId: string): void {
@@ -457,6 +491,11 @@ function timelineLine(e: LoggedEvent): string {
   switch (e.type) {
     case 'MemberRegistered': return `member ${e.member.ref} registered (${e.member.tz})`;
     case 'MemberInputReceived': return `input from ${e.memberRef} received (sha ${e.textHash.slice(0, 8)})`;
+    // A thread names its asker the way the input line does — the timeline is the actor-facing
+    // surface, and it says who did what. What it never carries is the member's WORDS: the question
+    // itself is not in the log (§2.7), only a pointer and a hash.
+    case 'ThreadOpened': return `question ${e.thread.id} raised by ${e.thread.memberRef ?? 'someone'}${e.thread.pointer !== null ? ` (${e.thread.pointer})` : ''}`;
+    case 'ThreadAnswered': return `question ${e.threadId} answered by ${e.by}: "${e.note}"`;
     case 'SuppressionRecorded': return `member ${e.row.memberRef} stopped — source: ${e.row.source}`;
     // The actor is read from the stored event, never restated here: a timeline that prints a
     // literal "organiser" is asserting a fact the log does not carry.

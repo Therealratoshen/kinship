@@ -672,6 +672,109 @@ engagement lane honours it in its own instructions, not in a gate. What this sec
 checkable — that a community can record its own staffing promise, that the runtime can read it without
 guessing, and that a promise it did not make reads as unknown rather than as zero.
 
+### 2.14 The community's open threads: a question the community owes an answer to
+
+*(Requirement: PRD **FR-5.13**. Decision: `DECISIONS.md` **D55**.)*
+
+§2.13 gave the community a clock. It did not give it a **debt**. The clock measures whether the *fleet* left
+something waiting — a card, an authorization, a frozen lane, a wake — and all four of those are the fleet's own
+housekeeping. None of them is a person.
+
+And the runtime could not say the one thing a community would actually want to know. `inbox.ts` said so in its
+own words: *"inputs and cards cannot be joined … this list can say how many arrived and how many produced an
+undecided card, but not which message is unanswered. That link is a spec rule (§1.2/§1.7), not a query."* So a
+member could ask a question, go unanswered for a week, and leave behind a counter and nothing else — and
+`standing-engagement`'s promise to *"hold the thread"* had no runtime behind it at all.
+
+**A thread is that missing primitive, and it is deliberately not a join.** The severed input→card link stays
+severed; what is added is a row of its own:
+
+- **A thread is opened by the host, not judged by the runtime.** The host calls `openThread` when it judges an
+  input to be a question. The runtime never decides that something is a question — that is the agent's
+  judgement, and a human can check it. The runtime tracks.
+- **A thread holds no text.** The log stores a hash of every member input and never the words (§2.7), and a
+  thread holds no text either. What it holds instead is a **pointer** — an opaque handle the host can resolve —
+  because an inbox item is *"a pointer, not the payload"*.
+- **A thread holds the member reference, and no read prints it.** The reference is in the log and the state, so
+  the agent can look up that member's own quiet hours before answering them (FR-5.5). Every read sweeps it, with
+  the same mechanism and the same rule the rest of the inbox uses — not a second implementation of it.
+- **An answer needs a note.** A thread closed with no record of *how* is the same non-record a verdict without a
+  why is (§1.5). A refused answer closes nothing.
+- **An open thread is a fifth way a promise waits on a human**, and it is the one that is about a *member* rather
+  than about the fleet's own queue.
+
+**And this is what makes §2.13's clock community-facing rather than fleet-facing.** An open thread is an
+obligation, so the coverage window measures it: **a question still open when a staffed shift ended is the
+community failing to keep its word to a member.** That is a different fact from "the fleet left a card
+undecided", and a more important one — it is the fact a community-lead agent exists to be able to answer, and
+the fact the health read's `unmeasured` list has to keep separate from sentiment (PRD §5 keeps member
+intelligence and churn scoring out of v0; this is neither, because it measures the community's responsiveness
+and not anybody's state of mind).
+
+Three rules carry it, each with a test that can fail:
+
+1. **A thread is a row, and it replays.** Not a derived view — an event, so the audit trail can answer *"when was
+   this asked, and when was it answered?"* exactly as it answers that for every other action.
+2. **An open thread is something a human owes.** It appears in the inbox with an age, and it leaves when it is
+   answered. The count is a count: a list of them would be a list of people.
+3. **A question still inside its shift is not a missed shift.** The same clock rule as §2.13, applied to a
+   question: the community has not had the staffed hours yet.
+
+`[UNVERIFIED]` Whether a community actually answers faster with threads is untestable here: phase 1 sends
+nothing (D21), no dated event exists (D9), and the host that would open threads is not wired to a channel yet.
+What this section claims is narrower and checkable — that a question can be tracked from raised to answered, that
+the runtime can age it and measure it against the community's own hours, and that no read of it carries the
+member's words or names the member who asked.
+
+### 2.15 The community's operating posture: how this community is run
+
+Every rule in this spec is about what the **fleet** may do to a **member** (suppression, quiet hours,
+the per-24h cap) or what the **organiser** may do (the autonomy ladder). None of them is about the
+community as a *body* — how it conducts itself, whether it is discoverable, whether it tolerates being
+approached. Those are real differences between communities, and a fleet that cannot be told about them
+will behave identically in every one of them.
+
+**And the one thing this section deliberately does not do: there is no country table.** The runtime does
+not know that one place tolerates more nudging than another, and this section does not teach it. A
+`country → posture` lookup would be a stereotype baked into code, and worse, it would be a rule **nobody
+in that community chose**. The only authority on a community's manners is the community. So the
+**community declares its posture**, and the runtime **holds the fleet to it**. Two packs in two places
+may declare different postures, because that is the community's call and not the runtime's business.
+
+Two axes, because an axis that gates nothing is a decoration:
+
+- **`contact`** — may the fleet approach a member who did not ask? `never` (no 1:1 member message at
+  all), `asked_only` (1:1 only to a member who has spoken to the community, or who has a question still
+  open — §2.14), `open` (anyone, still subject to the per-24h cap, the member's quiet hours, and a
+  member's "Stop."). This is the "people here tolerate being nudged" / "people here do not" axis, and
+  it is about **people**, not about channels.
+- **`openness`** — is the community discoverable, and may the fleet post publicly? `closed` refuses
+  `commit.channel-post` outright; `open` allows it, still at the class's own autonomy level and still
+  `allow once only` in v0. This is the "some accounts should be private" axis.
+
+**The direction of resolution is the same as everywhere else in this spec: a pack may only be STRICTER
+than its org.** The org's value is its most-*permissive* posture — an operator running a closed
+professional community sets the floor to `never`/`closed` and every pack under it inherits that. A pack
+that tries to be looser is **refused, not clamped** (§1.10), because a value silently rounded toward the
+org is a file that lies about the system it configures.
+
+**Absence is not permission.** A pack that declares no posture gets the conservative default —
+`contact: asked_only`, `openness: closed` — and a fork that deleted the block did not decide to be open.
+**This is a behaviour change for any pack that has never declared a posture**, and it is a *tightening*:
+the classes concerned (`commit.individual-message`, `commit.channel-post`) already required an explicit
+grant and already sit at `draft` in v0, so the reach removed is small and in the safe direction.
+
+**And a posture can only ever be an ADDITIONAL limit.** The contact gate sits *after* `assertContactable`,
+the quiet-hours check and the per-24h cap, so a member who said stop, or who is in their quiet hours, is
+refused by their own rule first and never reaches the posture. A community's manner is a floor under the
+fleet, not a licence to override a member.
+
+`[UNVERIFIED]` Whether any posture actually changes a community's behaviour is untestable here: phase 1
+sends nothing (D21), no dated event exists (D9), and the pack that would exercise a `never` posture is a
+pack nobody has written yet. What this section claims is narrower and checkable — that a community can
+declare how it is run, that the runtime resolves it against its org, that the fleet is held to it, and
+that the effective posture is reported with the provenance that says which file decided.
+
 ---
 
 ## Part 3 — What this spec must NOT contain
@@ -769,7 +872,7 @@ grant (§1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 8,959 as of 2026-10-22, split 3,998 domain code / 4,382 tests / 579 tour. The count is re-run whenever a
+prints 9,960 as of 2026-10-22, split 4,511 domain code / 4,850 tests / 599 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
@@ -803,6 +906,7 @@ integration — where end-to-end proof would begin — stays behind the shadow-m
 | §1.2 read side, **second artefact** (PRD **FR-1.16**): the same log read as a *list* instead of counts — what a human currently owes, by kind (`verdict` / `handoff` / `release` / `overdue`), ordered by how long it has waited, with ranking explicitly refused, the identifier sweep run **before** the 160-char preview cut, and `memberInputs.linkable: false` because the log carries no input→card join | `src/inbox.ts` (`deriveInbox`, exposed as `Fleet.inbox()`), borrowing `health.ts`'s now-exported `pendingCards` + `withholdMemberIdentifiers` rather than re-implementing them, `src/engine.ts` (the method appends nothing) | `test/inbox.test.ts` (11 cases: purity across two calls and replay deep-equality *of the read*, the `handoff` kind that lived only in the log until D31, cross-kind age ordering, the leak-at-the-cutline control, `limits` naming age ≠ importance), `runtime/tour.ts` (4 of the 15 guarantees that existed at D31; the tour now prints 22 — this row and the health row above each said 19 when they were written, and the count is recomputed per pass, never carried; D38 moved it again 21 → 22) |
 | §1.2 read side, **third artefact** (D35): the *tier stack* itself as a dated, positioned read — what each effective guardrail value is, which file put it there (`pack` / `org` / `default`), which org floor a pack-level value is holding above, what the resolved autonomy ceiling allows per action class, the seat set, the recognised agent roles, and the limits it refuses to exceed. A settings *write* would be a fifth governing actor, so `Fleet.settings()` appends nothing and replays identical | `src/settings.ts` (`deriveSettings`, exposed as `Fleet.settings()` through `src/engine.ts`, which appends nothing), `src/pack.ts` (`Packed.declared` — the set of keys the pack itself wrote, which is what makes provenance a fact rather than a guess) | `test/settings.test.ts` (27 cases as of D37 — was 20 when this row was written: incl. purity across two calls and replay deep-equality *of the read*, provenance sourced from the keys the pack actually wrote rather than the ones it merely did not override, and the seat-collision refusal that stops a pack from handing itself a human act by naming an agent `organiser`) |
 | §2.13 the community's coverage window (PRD **FR-5.12**, `DECISIONS.md` **D54**): a pack may declare the hours a human is **on duty** for it, and the health read reports the window, the duty state at the moment of the read, and how many obligations outlived a staffed shift. Evaluated as a **local wall clock** in the community's own zone (never a stored UTC offset, so 09:00 stays 09:00 across a DST change); **only a shift whose end has passed counts as missed**, so the clock pauses outside coverage; a gap spanning a closed window is not a miss. **Absence is legal and reads as `null`, never `0`** — an unstated staffing promise is an unknown duty state, and zero would claim the community was never on duty. Not the member's quiet hours: that clock is the member's (FR-5.5) and answers a different question. The two modes are a **discriminated union** — `always` is a 24/7 community with no window at all, and a file writing `days:` beside `mode: always` is refused as self-contradictory | `src/community.ts` (`isOnDuty`, `shiftCompletedBetween`, `deriveCoverageVerdict` — the arithmetic never converts an instant to UTC), `src/types.ts` (`CommunityCoverage`, the union), `src/pack.ts` (`parseCoverage` — the strict reader: unknown mode, no zone, unknown weekday, non-`HH:MM` hours, a backwards shift, an unknown key, a duplicate block, a self-contradicting `always`), `src/health.ts` (the `community` section of the snapshot, derived from the same four obligation kinds `inbox` lists), `scripts/validate-pack.mjs` **PKG-65** (the *shape*, in CI — the reading strictness stays in the parser, or the parser's own door becomes unreachable), `packs/kopdar-ops/.kinship.yaml` (the shipped window: `Asia/Jakarta`, Mon–Fri, 09:00–18:00) | `test/community.test.ts` (16 cases: the duty window by community timezone, `always` mode, the weekend gap that is not a miss, both ends of the shift-end boundary, the local-**day** half of the wall-clock rule, the DST-local-meaning case, the health read's shape, the null-not-zero case, the member-identifier sweep, and the pure-read/replay property), `test/pack.test.ts` (the boot-door refusals **and** the parser's own door called directly — nine refusals proved with the *parser's* message, because `loadPack` runs the validator first and a boot-level test can only ever see PKG-65's), `scripts/validate-pack.test.mjs` (14 new coverage cases of that file's 67, incl. the duplicate-block refusal, the POSITIVE CONTROL that a pack with no window passes, and the case that proves the validator does NOT shadow the parser's unknown-key door), `runtime/tour.ts` (`health_reports_the_communitys_coverage_window`, `health_reports_an_unknown_duty_state_as_null`) |
+| §2.15 the community's operating posture (PRD **FR-5.14**, `DECISIONS.md` **D56**): a community declares **how it is run** — `contact` (may the fleet approach a member who did not ask: `never` · `asked_only` · `open`) and `openness` (is it discoverable, may the fleet post publicly: `closed` · `open`) — and the runtime holds the fleet to it. **There is no country table and never will be**: a `country → posture` lookup would be a stereotype in code and a rule nobody in that community chose. Resolved org → pack, and the pack may only be **stricter** — a looser pack is refused, not clamped. **Absence is not permission**: no posture declared means the conservative default (`asked_only` / `closed`). The gates are the 1:1 member classes (`commit.individual-message`, `commit.template-send`) and `commit.channel-post`; the contact gate sits *after* the member's own protections, so a posture can only ever be an additional limit | `src/posture.ts` (`assertPostureContact`, `isOneToOneClass`), `src/types.ts` (`CommunityPosture`, `DEFAULT_POSTURE`), `src/pack.ts` (`parsePosture` — the strict reader), `src/org.ts` (`parseOrgPosture` — the org's most-permissive floor), `src/settings.ts` (`resolveSettings` — org → pack, refuse never clamp; the provenance rows), `src/engine.ts` (the two gates), `orgs/kinshipai.yaml` (`posture:`), `packs/kopdar-ops/.kinship.yaml` (`posture:`) | `test/posture.test.ts` (9 cases: the contact gate at all three levels, the openness gate, the conservative default, the org floor refused and honoured, and the provenance), `runtime/tour.ts` (`the_community_declares_its_own_posture`) |
 | Host boundary: what `runtime/` may not own (PRD **FR-1.17**, `DECISIONS.md` D32/D33) — no third-party package, no network builtin or network global, no dynamic `import()`, no `node:fs` outside `pack.ts`; and a credential-shaped prefix in any pack file fails the shape gate | `runtime/test/boundary.test.ts` (the scanner: scope `runtime/src/**`, comments stripped so prose about a transport is not a transport), `scripts/validate-pack.mjs` **PKG-57**, `runtime/package.json` (an empty dependency set is itself asserted), semantics in **`spec/HOST-CONTRACT.md`** | `test/boundary.test.ts` (6 cases — one positive control per rule, a legal-file control, and an anti-vacuity check that the scanned module list is non-empty), `scripts/validate-pack.test.mjs` (a key-shaped string fails the build; a 48-hex revision hash and a `$KINSHIP_HOST_TOKEN` placeholder pass; a PEM block fails) |
 
 Two things this map deliberately does not claim. First, that a deployed system honours any of it end

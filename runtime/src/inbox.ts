@@ -42,10 +42,19 @@
  * counted, never itemised; see `memberInputs.linkable`).
  */
 import { pendingCards, withholdMemberIdentifiers } from './health.ts';
+import { openThreads } from './threads.ts';
 import type { FleetState } from './types.ts';
 
-/** The four ways a promise can sit waiting on a human. A fifth needs a spec rule before code. */
-export type InboxKind = 'verdict' | 'handoff' | 'release' | 'overdue';
+/**
+ * The ways a promise can sit waiting on a human.
+ *
+ * A fifth was added in **D55** — `thread`, a question the community owes an answer to (§2.14 /
+ * FR-5.13) — and it needed the spec rule this comment used to say was required. The rule: **a thread
+ * is a pointer, not a payload.** It carries an id, an age, and a handle the host can resolve. It never
+ * carries the member's words (the log holds a hash of every member input and never the text, §2.7) and
+ * it never carries the asker's name in a read.
+ */
+export type InboxKind = 'verdict' | 'handoff' | 'release' | 'overdue' | 'thread';
 
 /** How much of a draft this list shows. The full bilingual copy is on the card, not here. */
 export const INBOX_PREVIEW_MAX = 160;
@@ -74,6 +83,14 @@ export interface InboxMemberInputs {
    * claim invariant #3 exists to stop.
    */
   linkable: false;
+  /**
+   * Questions the community owes an answer to, right now (spec §2.14 / FR-5.13).
+   *
+   * A **count**, because a list of them would be a list of people. This is the one member-side
+   * number this list can carry, and it is possible because an open question is a **tracked thread of
+   * its own** — a row with an age, a pointer, and no words — rather than a join back to the input.
+   */
+  openQuestions: number;
   note: string;
 }
 
@@ -92,6 +109,7 @@ const ACTIONS: Record<InboxKind, string> = {
   handoff: 'deliver it by hand — phase 1 ships no transport (D21), and the one-send authorization is still live',
   release: 'release the lane once the member issue is settled — only the organiser can (§2.6)',
   overdue: 're-arm the wake or answer the promise — the runtime does not tick (D10)',
+  thread: 'answer the open question — the words are in the channel, not in this list (§2.7)',
 };
 
 /** One line, so a host can print the list without knowing which fields are free text. */
@@ -156,16 +174,35 @@ export function deriveInbox(state: FleetState, now: number): InboxReport {
     });
   }
 
+  // An open thread: a question the community owes an answer to. The `ref` is the thread id and the
+  // detail is a POINTER — the handle the host can resolve, and the age. The words are deliberately
+  // absent: a question's text is member content, and this list is meant to be forwardable to
+  // co-organisers. The asker's name is absent too, and the sweep runs on what is here anyway.
+  for (const thread of openThreads(state)) {
+    items.push({
+      kind: 'thread',
+      ref: thread.id,
+      ageMs: now - thread.raisedAt,
+      action: ACTIONS.thread,
+      detail: [
+        thread.pointer !== null ? sweep(thread.pointer) : 'no handle recorded',
+        `raised ${thread.raisedAt}`,
+        'the words are in the channel — the log holds a hash, never the text (§2.7)',
+      ].join(' · '),
+    });
+  }
+
   items.sort((a, b) => b.ageMs - a.ageMs || (a.ref < b.ref ? -1 : 1));
 
-  const counts: Record<InboxKind, number> = { verdict: 0, handoff: 0, release: 0, overdue: 0 };
+  const counts: Record<InboxKind, number> = { verdict: 0, handoff: 0, release: 0, overdue: 0, thread: 0 };
   for (const item of items) counts[item.kind] += 1;
 
   const memberInputs: InboxMemberInputs = {
     received: state.inputs.size,
     awaitingVerdict: pendingCards(state).filter((c) => c.forcedBy === 'member_input').length,
+    openQuestions: openThreads(state).length,
     linkable: false,
-    note: 'inputs and cards cannot be joined: a card forced by member input records the forcing, not the input id, so this list can say how many arrived and how many produced an undecided card, but not which message is unanswered. That link is a spec rule (§1.2/§1.7), not a query.',
+    note: 'inputs and cards cannot be joined: a card forced by member input records the forcing, not the input id, so this list cannot say which CARD answers which message. That link is a spec rule (§1.2/§1.7), not a query. What it CAN say is how many questions are open, because an open question is a tracked thread of its own — a row with an age, a pointer and no words (spec §2.14). The words are read from the channel, never from here: the log holds a hash of every member input, never the text (§2.7), and no read names the asker.',
   };
 
   const limits = [

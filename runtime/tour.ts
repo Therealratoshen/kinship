@@ -196,6 +196,12 @@ function runStory() {
   //    person — so the privacy property below has something true to catch, not an empty state.
   const healthFleet = Fleet.boot(pack, ANSWERS, DAY);
   healthFleet.registerMember('wa:62811', 'Asia/Jakarta');
+  // A question the community owes an answer to (spec §2.14 / FR-5.13), raised before the clock
+  // moves so the hour that follows is the thread's age. It is the community-facing half of the
+  // health read: a thread is a debt to a member, and a thread still open when a staffed shift ended
+  // is the community failing to keep its word.
+  healthFleet.registerInput('wa:62811', 'Apakah jadwal Kopdar #7 sudah pasti? Saya perlu untuk booking kantor.');
+  healthFleet.openThread({ memberRef: 'wa:62811', pointer: 'telegram#4821' });
   healthFleet.beginEvent('kopdar-12');
   healthFleet.attempt({
     actionClass: 'draft.reminder', agent: 'event-ops', origin: { kind: 'event', id: 'kopdar-12' },
@@ -341,15 +347,29 @@ function guarantees(s: ReturnType<typeof runStory>) {
     health_reports_an_unknown_duty_state_as_null: s.noCoverageHealth.community.coverage === null
       && s.noCoverageHealth.community.onDutyNow === null
       && s.noCoverageHealth.community.missedShift === null,
+    // The community-facing half: an open question is a debt to a member, it is counted rather than
+    // itemised, and no read of it carries the asker's name or the words they used.
+    // The community's operating posture (spec §2.15) — the rules the COMMUNITY declared, resolved
+    // org → pack, and reported with the provenance that says which file decided.
+    the_community_declares_its_own_posture: s.settings.posture.contact === 'open'
+      && s.settings.posture.openness === 'open'
+      && s.settings.provenance.some((p) => p.key === 'posture:contact' && p.tier === 'posture'),
+    health_counts_the_questions_the_community_owes: s.health.community.openThreads === 1
+      && typeof s.health.community.oldestThreadAgeMs === 'number'
+      && s.health.community.missedShift?.count === 0
+      && !JSON.stringify(s.health).includes('wa:62811')
+      && !JSON.stringify(s.health).includes('booking kantor'),
     // The inbox is the same log read as a list instead of counts: a card, a frozen lane, and an
     // overdue wake all show, oldest-waiting first, and nothing about a person rides in it.
     inbox_lists_everything_awaiting_a_human: s.inbox.counts.verdict === 1 && s.inbox.counts.release === 1
-      && s.inbox.counts.overdue === 1 && s.inbox.counts.handoff === 0 && s.inbox.items.length === 3
+      && s.inbox.counts.overdue === 1 && s.inbox.counts.handoff === 0 && s.inbox.counts.thread === 1
+      && s.inbox.items.length === 4
       && s.inbox.items.every((i, n) => n === 0 || s.inbox.items[n - 1]!.ageMs >= i.ageMs),
     inbox_names_the_send_a_human_still_owes: s.mainFleetInbox.items.some((i) => i.kind === 'handoff' && i.ref === s.approvedCardId),
     inbox_carries_no_member_identifier: !JSON.stringify([s.inbox, s.mainFleetInbox]).includes('wa:62811')
       && JSON.stringify(s.inbox).includes(HEALTH_WITHHELD_MEMBER_REF),
-    inbox_counts_inputs_without_naming_a_person: s.inbox.memberInputs.received === 0
+    inbox_counts_inputs_without_naming_a_person: s.inbox.memberInputs.received === 1
+      && s.inbox.memberInputs.openQuestions === 1
       && s.inbox.memberInputs.linkable === false && /cannot be joined/.test(s.inbox.memberInputs.note),
   };
 }

@@ -30,8 +30,9 @@
  */
 import { refuse } from './errors.ts';
 import { DEFAULT_HUMAN_SEATS } from './roles.ts';
+import { DEFAULT_POSTURE } from './types.ts';
 import type {
-  Autonomy, Ctx, FleetState, Packed, PackedGuardrails, PackedOrg, ProvenanceRow, ResolvedSettings, SettingSource,
+  Autonomy, CommunityPosture, Ctx, FleetState, Packed, PackedGuardrails, PackedOrg, ProvenanceRow, ResolvedSettings, SettingSource,
 } from './types.ts';
 
 /** The three tiers this function knows about. `event` is named in `limits`, never resolved. */
@@ -192,6 +193,60 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
     });
   }
 
+  // The community's operating posture — resolved org → pack, and the pack may only be STRICTER.
+  //
+  // The org's value is its most-PERMISSIVE posture: an operator running a closed professional
+  // community sets the floor to `never`/`closed` and every pack under it inherits that. A pack that
+  // tries to be looser is REFUSED, not clamped — the same rule the guardrails follow (spec §1.10,
+  // "refuse, never clamp"), because a value silently rounded toward the org is a file that lies about
+  // the system it configures.
+  const CONTACT_ORDER: Record<CommunityPosture['contact'], number> = { never: 0, asked_only: 1, open: 2 };
+  const OPENNESS_ORDER: Record<CommunityPosture['openness'], number> = { closed: 0, open: 1 };
+  const packPosture = pack.posture;
+  const orgPosture = org?.posture;
+
+  /** Resolve one axis: the pack's value, the org's floor, and the conservative default. */
+  const resolveAxis = <K extends 'contact' | 'openness'>(
+    axis: K,
+    packValue: CommunityPosture[K] | undefined,
+    orgValue: CommunityPosture[K] | undefined,
+    order: Record<CommunityPosture[K], number>,
+  ): { effective: CommunityPosture[K]; source: SettingSource; note: string } => {
+    if (orgValue !== undefined && org) {
+      if (packValue !== undefined) {
+        if (order[packValue] > order[orgValue]) {
+          refuse('pack_invalid', 'org floor (spec §1.10 / PRD FR-1.18)',
+            `pack \`${pack.key}\` sets \`posture.${axis}\` to \`${packValue}\`, looser than org \`${org.key}\`'s floor of \`${orgValue}\` — the pack is refused, not clamped, because a posture silently rounded toward the org is a file that lies about the system it configures`);
+        }
+        return {
+          effective: packValue,
+          source: 'pack',
+          note: `declared by pack \`${pack.key}\` — stricter than or equal to org \`${org.key}\`'s floor of \`${orgValue}\``,
+        };
+      }
+      const effective = order[orgValue] < order[DEFAULT_POSTURE[axis]] ? orgValue : DEFAULT_POSTURE[axis];
+      return {
+        effective,
+        source: effective !== DEFAULT_POSTURE[axis] ? 'org' : 'default',
+        note: `the pack file never set \`posture.${axis}\`; org \`${org.key}\`'s floor of \`${orgValue}\` applies${effective !== DEFAULT_POSTURE[axis] ? '' : ' (the default is already stricter)'}`,
+      };
+    }
+    if (packValue !== undefined) {
+      return { effective: packValue, source: 'pack', note: `declared by pack \`${pack.key}\` — no org tier names a floor for this axis` };
+    }
+    return {
+      effective: DEFAULT_POSTURE[axis],
+      source: 'default',
+      note: 'neither file set it — absence is not permission, so the conservative default applies',
+    };
+  };
+
+  const contact = resolveAxis('contact', packPosture?.contact, orgPosture?.contact, CONTACT_ORDER);
+  const openness = resolveAxis('openness', packPosture?.openness, orgPosture?.openness, OPENNESS_ORDER);
+  const posture: CommunityPosture = { contact: contact.effective, openness: openness.effective };
+  provenance.push({ key: 'posture:contact', tier: 'posture', effective: contact.effective, source: contact.source, note: contact.note });
+  provenance.push({ key: 'posture:openness', tier: 'posture', effective: openness.effective, source: openness.source, note: openness.note });
+
   return {
     orgKey: org?.key ?? null,
     packKey: pack.key,
@@ -199,6 +254,7 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
     humanSeats,
     agentRoles: org ? [...org.agentRoles] : Object.keys(pack.agents),
     autonomyCeiling,
+    posture,
     provenance,
     limits: [...LIMITS],
   };
@@ -234,6 +290,8 @@ export interface SettingsReport {
   agentRoles: string[];
   guardrails: PackedGuardrails;
   autonomyCeiling: Record<string, Autonomy>;
+  /** The operating posture in force — how this community is run (see CommunityPosture). */
+  posture: CommunityPosture;
   provenance: ProvenanceRow[];
   limits: string[];
 }
@@ -249,6 +307,7 @@ export function deriveSettings(state: FleetState, settings: ResolvedSettings, no
     agentRoles: [...settings.agentRoles],
     guardrails: { ...settings.guardrails },
     autonomyCeiling: { ...settings.autonomyCeiling },
+    posture: { ...settings.posture },
     provenance: settings.provenance.map((p) => ({ ...p })),
     limits: [...settings.limits],
   };

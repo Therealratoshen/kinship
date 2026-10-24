@@ -29,7 +29,8 @@ and then refuses the commit with `no_transport` — because no channel transport
 PACK.md              frontmatter (key, bundled, agents[], requiredSkills) + the prose a forker needs
 .kinship.yaml        schema kinship/v1 — autonomy_by_class, tools, guardrails, budgets, needs,
                      `sanction_ladder:` (optional; see "Your consequences, as data" below),
-                     `coverage:` (optional; see "Your staffed hours, as data" below)
+                     `coverage:` (optional; see "Your staffed hours, as data" below),
+                     `posture:` (optional; see "How your community runs, as data" below)
 agents/<role>/AGENTS.md   per-agent instructions — event-ops · engagement · moderator
 skills/<name>/SKILL.md    19 procedures, each with an assertion that fails the pack
 pack.example.yaml    superseded single-file shape; kept as a pointer (D17), read by nothing
@@ -156,6 +157,39 @@ the parser's refusals are proved by calling it **directly** in the runtime tests
 **What it does not do yet.** It does not *stop* the standing-engagement lane from answering outside those hours:
 that refusal needs a transport to refuse against, and phase 1 sends nothing (**D21**). Today the window is a
 record and a measurement, and the lane honours it in its own instructions.
+
+## How your community runs, as data: `posture:`
+
+This pack declares two things about **itself**, and the runtime holds the fleet to them:
+
+- `contact: open` — this community **does** reach out to people who have not asked it anything. The
+  no-show nudge and the RSVP chase are the point of an event community, and a member who has not heard
+  from us in three weeks is one we have lost. It is still bounded by the per-24h cap, by the member's own
+  quiet hours, and by a member's "Stop." — which beats any of it.
+- `openness: open` — a kopdar is a **public** event community: the point is that people can find it and
+  join. `commit.channel-post` is still `draft` under the org's ceiling, so nothing posts on its own.
+
+**There is no country table, and there never will be.** The runtime does not know that one place
+tolerates being approached more than another. A `country → posture` lookup would be a stereotype baked
+into code, and worse, it would be a rule **nobody in that community chose**. So *you* say how your
+community runs, and the runtime makes the fleet obey it. A fork can say the opposite of this pack, and
+that is not a bug — it is a different community with different manners.
+
+The two axes, and what each one refuses:
+
+| Axis | Values | What it gates |
+|---|---|---|
+| `contact` | `never` · `asked_only` · `open` | A 1:1 message to a member who did not ask. `never` refuses it outright; `asked_only` allows it to a member who has spoken to the community or has a question still open. |
+| `openness` | `closed` · `open` | `commit.channel-post`. `closed` refuses a public post. |
+
+**The direction is the same as everything else here: a pack may only be STRICTER than its org.** The org
+names the most permissive posture its communities may run, and a pack that tries to be looser is
+**refused, not clamped** — a value silently rounded toward the org is a file that lies about the system
+it configures. **Absence is not permission**: a pack that declares no posture gets the conservative
+default (`contact: asked_only`, `openness: closed`), and deleting this block does not make your
+community open — it makes it careful.
+
+Semantics: spec **§2.15**; requirement: PRD **FR-5.14**; decision: `DECISIONS.md` **D56**.
 
 ## What this pack does *not* prove
 

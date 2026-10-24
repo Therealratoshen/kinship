@@ -122,6 +122,22 @@ guardrails:
 # A shift that ENDS while an obligation is still open is what the health read counts; a shift that has
 # not ended yet is not a miss, and a weekend gap is not a miss either. That is what keeps this a
 # staffing fact rather than a blame metric.
+# --- The community's operating posture: how THIS community is run. ------------------------------------
+#
+# There is no country table in the runtime and never will be: it does not know that one place
+# tolerates being approached more than another, and a rule nobody in this community chose would be a
+# stereotype in code. So this community says, and the runtime holds the fleet to it (spec §2.15).
+#
+# `contact: open` — this community DOES reach out to people who have not asked it anything: the
+#   no-show nudge and the RSVP chase are the point of an event community, and a member who has not
+#   heard from us in three weeks is one we have lost. It is still bounded by the per-24h cap, by the
+#   member's own quiet hours, and by a member's "Stop." — which beats any of it.
+# `openness: open` — a kopdar is a PUBLIC event community: the point is that people can find it and
+#   join. `commit.channel-post` is still `draft` under the org's ceiling, so nothing posts on its own.
+posture:
+  contact: open
+  openness: open
+
 coverage:
   mode: staffed
   timezone: Asia/Jakarta

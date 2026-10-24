@@ -111,7 +111,15 @@ test('A COMPLAINANT IS NOT AN ACTOR: tripShatter takes a member and does not sea
 });
 
 test('ANSWERABILITY IS NOT AUTHORITY: on_behalf_of may be unattributable and is not seat-checked (FR-5.1)', () => {
-  const f = new Fleet({ ...makePack({ engagement: { 'commit.channel-post': 'opt-in-auto' } }), org: ORG }, ANSWERS, DAY);
+  // The pack declares itself OPEN, because a community that never said it is discoverable gets the
+  // conservative default (`openness: closed`, spec §2.15) and the public-post gate would refuse
+  // before the answerability gate this test is about. Declaring it keeps the path under test
+  // unchanged and the new gate explicit.
+  const f = new Fleet({
+    ...makePack({ engagement: { 'commit.channel-post': 'opt-in-auto' } }),
+    posture: { contact: 'asked_only', openness: 'open' },
+    org: ORG,
+  }, ANSWERS, DAY);
   f.registerMember('wa:62811', 'Asia/Jakarta');
   // The grant names its lane, the way every lane-bound grant in this suite does — a grant with no
   // channel cannot authorise a send to a channel (§1.8: an always-grant binds its lane). Without it
