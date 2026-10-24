@@ -35,6 +35,11 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The vendoring claim is either backed or gone** (`DECISIONS.md` D92) — the README called the vendoring
   check a CI gate and there was none. `scripts/vendoring.test.mjs` now copies `runtime/` and `scripts/`
   out of the repository and runs the tour on the copy, and the phrase no check here could back is gone.
+- **The release is a pre-flight that refuses** (`DECISIONS.md` D95) — `scripts/release.mjs` stands
+  between a working tree and a published package, and refuses on a dirty tree, an **unsigned tag**, a
+  changelog without the version, a manifest that disagrees with the release, a stale count, or a
+  failing gate. The package it builds is the **vendoring promise made mechanical**: the two folders
+  an adopter copies, side by side, because the runtime reaches the validator by a relative path.
 - **A developer-experience milestone** (`DECISIONS.md` D94) — **`runtime/src/index.ts` is the public
   surface** (one file, and the tour goes through it), **`runtime/examples/one-complete-example.ts` is
   the example an adopter copies** (it imports only that surface, and the vendoring check runs it from
