@@ -1,0 +1,10 @@
+# The language bar, made honest.
+#
+# This repository is mostly prose: at 76c7b4b the markdown was 1,387,104 B across 82 files
+# against 1,126,238 B of TypeScript and JavaScript. GitHub's bar showed only the code, so a
+# reader saw a small TypeScript project and not the specification that the code answers to.
+#
+# Marking the prose as prose is what makes the bar say what the tree actually is. The code is
+# already detectable and stays that way; nothing here hides anything.
+*.md   linguist-documentation
+*.mdx  linguist-documentation
