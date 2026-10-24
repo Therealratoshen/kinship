@@ -149,6 +149,15 @@ test('the compatibility matrix states what the code states, and a gate keeps it 
   for (const major of matrix) {
     assert.ok(nodeText.includes(String(major)), `the Node row must state that CI gates node ${major}`);
   }
+  // And it must not claim more than the matrix does. The promise is open-ended (`>=23`), so "CI
+  // gates every major in it" was a claim about an unbounded range that CI does not test — and a
+  // claim CI does not test is a claim that rots. The row says which majors CI gates, and the
+  // matrix is the source of that sentence.
+  assert.doesNotMatch(
+    nodeText,
+    /every major/i,
+    'the Node row must not claim CI gates every major in an open-ended promise — name the majors it gates',
+  );
 
   // --- the pack schema: one value, in three places, and anything else is refused.
   const packSchema = read('packs/kopdar-ops/.kinship.yaml').match(/^schema:\s*(\S+)/m)[1];

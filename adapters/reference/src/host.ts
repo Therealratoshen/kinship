@@ -30,7 +30,8 @@ import { readAnswers, assertAnswersMatchNeeds, readPlan, type CommunityPlan } fr
 import { planWakes, slotNames, type PlannedWake, type PlanProblem } from 'kinship-runtime/src/plan.ts';
 import { createRun, type RunState } from 'kinship-runtime/src/budget.ts';
 import { redactLog } from './redact.ts';
-import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest } from './store.ts';
+import { appendEvents, buildManifest, logDirFor, packDigest, readEvents, readManifest, writeManifest, type Manifest } from './store.ts';
+import { answersDigest } from 'kinship-runtime/src/log.ts';
 
 export interface HostOptions {
   packDir: string;
@@ -73,6 +74,9 @@ export interface HostOptions {
 /** Everything the host knows about the community it is running for. */
 export interface Host {
   pack: Packed;
+  /** Where the pack was read from — the cover's `packDigest` is a digest of that directory, and a
+   *  digest nobody can recompute is a claim. */
+  packDir: string;
   answers: NeedAnswers;
   fleet: Fleet;
   eventsPath: string;
@@ -109,7 +113,7 @@ export function bootHost(opts: HostOptions): Host {
   // plain addition, so the clock lands exactly there whether it moved forward or back.
   if (opts.now !== null && opts.now !== undefined) fleet.advance(opts.now - fleet.now());
 
-  return { pack, answers, fleet, eventsPath, manifestPath, onDisk, plan };
+  return { pack, packDir: opts.packDir, answers, fleet, eventsPath, manifestPath, onDisk, plan };
 }
 
 /** The rows the fleet has produced since the last write. */
@@ -139,14 +143,50 @@ export function persist(host: Host, opts: HostOptions): number {
 /**
  * Read the file back and verify it — the whole point of a log file.
  *
- * The comparison is the restore-and-compare a host does after a restore: the rows are re-read from
- * disk and folded, and the state they fold to must be the state the fleet holds. Density, fold, and
- * the answers digest are checked at the same time.
+ * **Two halves, and the second half used to be missing.** The rows are re-read from disk and
+ * folded, and the state they fold to must be the state the fleet holds: that is the restore-and-
+ * compare a host does after a restore, and it is what the density and the fold check. **The cover
+ * is the other half** — the manifest's own statement about how many rows it holds, which pack it
+ * came from, and which answers it was written under — and it was **never opened**. The comment above
+ * this function claimed the answers digest was checked at the same time; it was not.
+ *
+ * **Why the cover has to be compared, and not just read.** A fold proves the rows are internally
+ * consistent. It cannot prove the rows are *the rows this log claims to be*: five fields in the
+ * cover could be corrupted and the fold would still succeed, because the fold never looked. So the
+ * cover's `rowCount`, `firstSeq`, `lastSeq`, `packDigest` and `answersDigest` are each compared with
+ * what the rows and the host actually hold, and a mismatch is a refusal that names the field.
+ *
+ * **A missing cover is a refusal, not a pass.** A log with no manifest is not a log this host wrote,
+ * and saying "verified" about it would be the one claim nothing could check.
  */
 export function verifyHost(host: Host): { ok: boolean; problems: string[]; rows: number } {
   const rows = readEvents(host.eventsPath);
   const v = Fleet.verifyLog(rows, host.answers, host.pack, { state: host.fleet.state });
-  return { ok: v.ok, problems: v.problems.map((p) => `[${p.kind}] ${p.detail}`), rows: rows.length };
+  const problems = v.problems.map((p) => `[${p.kind}] ${p.detail}`);
+
+  // --- the cover ---
+  let manifest: Manifest;
+  try {
+    manifest = readManifest(host.manifestPath);
+  } catch (e) {
+    problems.push(`[manifest] ${(e as Error).message}`);
+    return { ok: false, problems, rows: rows.length };
+  }
+
+  const firstSeq = rows.length > 0 ? rows[0]!.seq : null;
+  const lastSeq = rows.length > 0 ? rows[rows.length - 1]!.seq : null;
+  const compare = (field: string, claimed: unknown, actual: unknown): void => {
+    if (claimed !== actual) {
+      problems.push(`[manifest] ${field} is ${JSON.stringify(claimed)}, the log holds ${JSON.stringify(actual)}`);
+    }
+  };
+  compare('rowCount', manifest.rowCount, rows.length);
+  compare('firstSeq', manifest.firstSeq, firstSeq);
+  compare('lastSeq', manifest.lastSeq, lastSeq);
+  compare('packDigest', manifest.packDigest, packDigest(host.packDir));
+  compare('answersDigest', manifest.answersDigest, answersDigest(host.answers));
+
+  return { ok: problems.length === 0, problems, rows: rows.length };
 }
 
 /**

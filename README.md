@@ -45,8 +45,8 @@ cd kinship
 node scripts/gates.mjs
 ```
 
-**And this is what that actually prints** — the tour, which drives the real pack and checks every
-guarantee the README claims. It is the same output CI gates on:
+**And this is the last of the four gates** — the tour, which drives the real pack and checks every
+guarantee the README claims. The command prints all four suites, and the tour is the last one:
 
 ```
 Kinship tour — the fleet proposes, the organiser approves, nothing sends.
@@ -108,8 +108,10 @@ The checks above print results. The reference host runs the fleet and writes a f
 cd adapters/reference && npm install --no-audit --no-fund && cd ../..
 ```
 
-That is the only `npm install` in the repository. The host's one dependency is a path to
-`runtime/`, so npm creates a symlink and downloads nothing. `--offline` works too.
+That is the only `npm install` a **user** needs. The typecheck above installs its compiler with
+`--no-save` so it never enters a manifest, and the MCP adapter's one has a `preinstall` hook that links
+the same local path. The host's own dependency is a path to `runtime/`, so npm creates a symlink and
+downloads nothing. `--offline` works too.
 
 **Two files, both gitignored, because both hold your community's own data.** The first is who you are;
 the second is what you are doing next. You do not have to copy them by hand:
@@ -228,7 +230,7 @@ not to the library.
 **Ships now** (tested, in this repo):
 - The governance spec (`spec/GOVERNANCE-SPEC-OUTLINE.md`)
 - The seed pack (`packs/kopdar-ops/`) — start at [its README](packs/kopdar-ops/README.md), fork it and adapt it
-- The validator and its 67-case tamper-resistant contract test (61 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
+- The validator and its 67-case tamper-resistant contract test (62 distinct `PKG-*` rules; recount: `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`), plus `scripts/gates.mjs` — one
   command for the four CI gates, and a test that fails if the documented list drifts from what CI runs,
   or if any markdown table in the repository loses the header that gives its rows meaning
 - The runtime library (`runtime/`) — refusing, logging, replaying, metering a run, no sending
@@ -295,8 +297,12 @@ with one line each, for an assistant that reads the repository instead of a pers
 
 This repository is the control plane: an open-source, self-hostable layer under Apache-2.0. **No capability
 of it is held back** — the governance layer, the runtime, the pack, the spec and the tests are all here, and
-the hosted surface that runs them runs this code **byte for byte** (the vendoring check is a CI gate, not a
-promise).
+the hosted surface that runs them runs **a vendored copy of this control plane**: `runtime/` and `scripts/`,
+as they are here. **That copy path is proved, not promised** — `scripts/vendoring.test.mjs` copies those two
+folders out of this repository, with nothing else, and the tour still passes on the copy. *(This sentence
+used to say "byte for byte" and call the vendoring check a CI gate. There was no vendoring check, and
+nothing in this repository can read the hosted repository's copy — so the phrase is gone, and
+`DECISIONS.md` D92 says why.)*
 
 **As of 2026-10-24 there IS a hosted surface**, and this section used to be wrong about it. **ShortcutSistem**
 at [shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product, now hosts **Kinship Host**:
@@ -363,7 +369,7 @@ your community's address book.
 **Kinship reduces risk. It does not guarantee compliance, safe behaviour, or a good outcome.** It is
 a governance layer with a reference host, not a service, and it ships **no transport** — nothing
 member-facing can send. Where a claim in this README would outrun its evidence, the claim is not
-made: see [the evidence rule](#the-three-invariants) and the closed set of refusals in
+made: see [the evidence rule](AGENTS.md#the-three-invariants) and the closed set of refusals in
 [the spec](spec/GOVERNANCE-SPEC-OUTLINE.md). What you get is a runtime that **refuses** the things
 it should refuse, and a log you can check afterwards.
 

@@ -226,12 +226,31 @@ const machPairs = (text, key) => {
   return out;
 };
 
+/**
+ * The licence this repository ships, read from the manifest rather than typed in here (D83).
+ *
+ * `null` when the manifest is not beside this script — a fork that vendored only a pack folder
+ * cannot be compared against a licence it does not carry, and the rule then stays silent rather
+ * than guessing. The check that keeps these two in step is `scripts/license.test.mjs`.
+ */
+export function repoLicense() {
+  const manifest = join(dirname(fileURLToPath(import.meta.url)), '..', 'runtime', 'package.json');
+  if (!existsSync(manifest)) return null;
+  try {
+    const parsed = JSON.parse(readFileSync(manifest, 'utf8'));
+    return typeof parsed.license === 'string' ? parsed.license : null;
+  } catch {
+    return null;
+  }
+}
+
 export function validatePack(dir, opts = {}) {
   const errors = [];
   const notices = [];
   const add = (rule, msg) => errors.push(`${rule}  ${msg}`);
   const read = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
   const ORGS_ROOT = opts.orgsRoot ?? join(process.cwd(), 'orgs');
+  const REPO_LICENSE = opts.repoLicense ?? repoLicense();
 
   const packText = read(join(dir, 'PACK.md'));
   const machText = read(join(dir, '.kinship.yaml'));
@@ -249,7 +268,9 @@ export function validatePack(dir, opts = {}) {
   if (fm.key?.startsWith('kinshipai/bundled/') && !isBundled) add('PKG-05', 'key says bundled but `bundled:` is not true — the safety boundary must be stated in one voice');
   if (fm.key?.startsWith('kinshipai/community/') && isBundled) add('PKG-05', 'key says community but `bundled: true` — only core packs may claim invariants are held');
   if (fm.key && basename(dirname(dir)) !== fm.slug && basename(dir) !== fm.slug) add('PKG-06', `slug \`${fm.slug}\` does not match the directory name — path and key must agree`);
-  if (isBundled && fm.license && fm.license.toLowerCase() !== 'mit') notices.push(`PKG-N1  bundled license is \`${fm.license}\`; PRD section 12-Q4 is still the owner's call — do not copy this field into a public README yet`);
+  if (isBundled && fm.license && REPO_LICENSE && fm.license.trim() !== REPO_LICENSE) {
+    add('PKG-N1', `bundled pack declares license \`${fm.license}\` but this repository ships \`${REPO_LICENSE}\` — a bundled pack is the project's own pack, so it must carry the project's licence (D72); a community pack (\`bundled: false\`) may declare any licence`);
+  }
 
   // --- 2. agents ------------------------------------------------------------------------
   const agentPaths = fmList(packText, 'agents') || [];

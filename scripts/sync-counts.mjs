@@ -71,10 +71,16 @@ export function computeCounts() {
   const domain = dirLines(join(ROOT, 'runtime', 'src'));
   const tests = dirLines(join(ROOT, 'runtime', 'test'));
   const tour = lines(readFileSync(join(ROOT, 'runtime', 'tour.ts'), 'utf8'));
+  // The distinct validator rule ids — the pattern is the one the README's own "recount" command
+  // prints, so the instruction stays literally true.
+  const pkgRules = new Set(
+    [...readFileSync(join(ROOT, 'scripts', 'validate-pack.mjs'), 'utf8').matchAll(/'(PKG-[0-9N]*)'/g)].map((m) => m[1]),
+  ).size;
   return {
     runtimeTests,
     runtimeFiles,
     scriptsCases,
+    pkgRules,
     hostCases: casesIn(join(ROOT, 'adapters', 'reference', 'test', 'host.test.ts')),
     mcpCases: casesIn(join(ROOT, 'adapters', 'mcp', 'test', 'server.test.ts')),
     tourGuarantees: tourGuarantees(),
@@ -92,6 +98,20 @@ const CLAIMS = [
     apply: (s, c) => s.replace(
       /\(\d+ tests across \d+ files as of [\d-]+/,
       `(${c.runtimeTests} tests across ${c.runtimeFiles} files as of ${today()}`,
+    ),
+  },
+  {
+    file: 'README.md',
+    apply: (s, c) => s.replace(
+      /\(\d+ distinct `PKG-\*` rules/,
+      `(${c.pkgRules} distinct ` + '`PKG-*` rules',
+    ),
+  },
+  {
+    file: 'adapters/mcp/README.md',
+    apply: (s, c) => s.replace(
+      /\*\*\d+ conformance tests\*\*/,
+      `**${c.mcpCases} conformance tests**`,
     ),
   },
   {

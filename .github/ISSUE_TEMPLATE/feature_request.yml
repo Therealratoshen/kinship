@@ -33,7 +33,7 @@ body:
     attributes:
       label: Before you send this
       options:
-        - label: I have read `DECISIONS.md` and `ROADMAP.md`, and this request does not ask for a hosted Kinship, a funnel from the open-source project, or a change to the self-hosted parity of the governance layer.
+        - label: I have read `ROADMAP.md`, and the `DECISIONS.md` rows this request touches, and it does not ask for a hosted Kinship, a funnel from the open-source project, or a change to the self-hosted parity of the governance layer.
           required: true
         - label: I understand that several of the project's refusals are enforced by the validator, so the right PR fails a gate rather than a review.
           required: false

@@ -38,6 +38,23 @@ const REPO_ROOT = join(HERE, '..');
 const PACK_DIR = join(REPO_ROOT, 'packs', 'kopdar-ops');
 const DAY = 25_200_000; // 07:00 UTC = 14:00 WIB — inside the member's waking hours, clear of quiet hours
 
+/**
+ * The licence this repository ships — **read, not typed** (D83).
+ *
+ * This field used to say `MIT` in a hardcoded string while the repository shipped Apache-2.0 (D72),
+ * so the machine-readable map contradicted the legal artefact and nothing caught it. A typed licence
+ * in a map other people read is a claim; a claim that cannot be checked rots. `scripts/license.test.mjs`
+ * now reads this value back and holds it against the `LICENSE` file.
+ */
+const REPO_LICENSE: string = (() => {
+  try {
+    const manifest = JSON.parse(readFileSync(join(HERE, 'package.json'), 'utf8')) as { license?: string };
+    return manifest.license ?? 'unknown';
+  } catch {
+    return 'unknown';
+  }
+})();
+
 // Every `needs:` key the pack refuses to boot without. Same answers the contract test uses.
 const ANSWERS: Record<string, string> = {
   community_name: 'AI Builders ID',
@@ -561,7 +578,7 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
       zeroDependencies: true,
       installStep: false,
       sendsNothingByConstruction: g.commit_refuses_no_transport && g.member_action_starts_as_draft,
-      license: 'MIT',
+      license: REPO_LICENSE,
     },
     pack: {
       key: s.pack.key,

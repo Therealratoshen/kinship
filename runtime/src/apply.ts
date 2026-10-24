@@ -43,7 +43,7 @@ const REQUIRED_SHAPE: Record<string, [string, 'string' | 'number' | 'boolean'][]
   GrantIssued: [['grant.actionClass', 'string'], ['grant.kind', 'string']],
   GrantRevoked: [['grantId', 'string']],
   CardCreated: [['card.id', 'string'], ['card.actionClass', 'string'], ['card.origin.id', 'string']],
-  CardDecided: [['cardId', 'string'], ['verdict', 'string'], ['by', 'string']],
+  CardDecided: [['cardId', 'string'], ['verdict', 'string'], ['by', 'string'], ['why', 'string']],
   AuthorizationIssued: [['auth.token', 'string'], ['auth.revisionHash', 'string'], ['auth.actionClass', 'string']],
   AuthorizationConsumed: [['token', 'string']],
   CommitRefused: [['code', 'string'], ['actionClass', 'string'], ['agent', 'string']],

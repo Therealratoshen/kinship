@@ -50,6 +50,44 @@ test('the pseudonyms carry no meaning — they are not derived from the original
   assert.match(p, /^member-\d+$/);
 });
 
+test('an identifier under a key the redactor has never heard of does not survive', () => {
+  // **The redaction failed open.** It matched four key names — `memberRef`, `ref`, `recipient`,
+  // `pointer` — and passed everything else through untouched. So a new event field, an
+  // adapter-added field, a future shape, and the identifier walked out of the door wearing a
+  // different key. The rule is now the runtime's: the members the log knows, scanned for in every
+  // string, whatever the key is called.
+  //
+  // The repro that was found: a `CommitRefused` row whose note carries the identifier in free text.
+  const rows = [
+    { type: 'MemberRegistered', member: { ref: 'wa:62811', tz: 'Asia/Jakarta' }, at: 1 },
+    {
+      type: 'CommitRefused',
+      code: 'no_transport',
+      recipientNote: 'message wa:62811',
+      copy: 'Halo Budi, acara dimulai jam 7',
+      at: 2,
+    },
+  ];
+  const { rows: out } = redactEvents(rows);
+  const text = JSON.stringify(out);
+  assert.equal(text.includes('wa:62811'), false, 'the identifier must not survive under an unlisted key');
+  assert.equal(text.includes('62811'), false, 'nor in its bare form — one person, one spelling');
+  assert.ok(
+    text.includes('Halo Budi'),
+    'the draft copy is not rewritten — it is the thing under review, and a name in it is not an identifier',
+  );
+});
+
+test('the redacted log still folds — a redaction that breaks the replay is not a redaction', () => {
+  // The structure must survive a value-scan too: the same event types, the same order, the same
+  // codes, and the same `seq`. A redaction that made the log un-foldable would be a worse artefact
+  // than no redaction, because it would be shared and then unreadable.
+  const { rows } = redactEvents(ROWS);
+  assert.equal(rows.length, ROWS.length);
+  assert.deepEqual(rows.map((r) => (r as { type: string }).type), ROWS.map((r) => r.type));
+  assert.equal((rows[3] as { code: string }).code, 'no_transport');
+});
+
 test('redaction never touches the original file', () => {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-redact-'));
   const src = join(dir, 'events.jsonl');

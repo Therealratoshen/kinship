@@ -1,6 +1,6 @@
 {
   "name": "kinship-adapter-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "A Kinship host that speaks MCP, so any assistant in any platform can ask Kinship for permission before it touches a member.",

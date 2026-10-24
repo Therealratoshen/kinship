@@ -348,6 +348,24 @@ test('a member with NO timezone is refused — a member whose quiet hours cannot
   assert.ok(v.problems.some((p) => p.kind === 'replay_failed'));
 });
 
+test('a decision with NO reason is refused — the fold reads the why, so the guard must check it', () => {
+  // The shape guard checks the fields a decision depends on, and the `why` is one of them: the fold
+  // writes it into the card, and the timeline prints it. A row that had its reason removed folds to
+  // a **different state** — and it verified clean, because the guard's list did not name the field.
+  // "A verdict without a why is not a record" is enforced when the verdict is written, and nothing
+  // checked that the reason *survived*. The reason a human gave is the record.
+  const f = aFleet();
+  approved(f);
+  const rows = f.events.map((r) => ({ ...r }));
+  const target = rows.find((r) => r.type === 'CardDecided');
+  assert.ok(target, 'the fleet decided a card');
+  const { why: _why, ...withoutWhy } = target as unknown as Record<string, unknown>;
+  const tampered = rows.map((r) => (r.seq === target.seq ? withoutWhy : r)) as unknown as LoggedEvent[];
+  const v = Fleet.verifyLog(tampered, ANSWERS, PACK);
+  assert.equal(v.ok, false, 'a decision with no reason must not verify');
+  assert.ok(v.problems.some((p) => p.kind === 'replay_failed'), `expected the fold to refuse, got ${JSON.stringify(v.problems)}`);
+});
+
 test('the content hash is 128 bits — 64 has a birthday bound of 2^32, which a GPU finds in minutes', () => {
   // The revision hash is what binds an approval to specific copy. A collision there is not
   // cosmetic: it is a way to get UNAPPROVED copy past an approval.

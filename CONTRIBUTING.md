@@ -107,10 +107,27 @@ specifier gate — node's type stripping never *checks* types, so this is the st
 duplicated key). If you add a refusal code or a `types.ts` name, one of those three will make you say
 what it is. Each carries a positive control — a scanner that cannot fail is decoration.
 
-4. Open a PR. The PR template asks for:
+4. **Sign off your commits.** A contribution is code somebody else wrote, and the DCO
+   (Developer Certificate of Origin) is the lightest way to record that you had the right to send it:
+   one `Signed-off-by:` line per commit. `git commit -s` adds it. CI checks it on every pull request
+   and **names the commit, its author and the line to add** when it is missing:
+
+   ```
+   git commit --amend -s --no-edit
+   ```
+
+   The maintainer's own commits are exempt — the maintainer is the copyright holder, and signing off
+   their own work proves nothing. A sign-off is a *statement*, not a proof; it is worth exactly what
+   the jurisdiction in which a dispute is heard makes it worth, and it is the cheapest of the
+   available instruments. The check is `scripts/dco-check.mjs`, and it has its own test.
+
+5. Open a PR. The PR template asks for:
    - What rule this changes and why
    - The `DECISIONS.md` row if this is a decision change
    - The failing test first
+
+   **You do not need to paste the gate output.** CI runs the same four gates on the same commit;
+   link the run. A paste is a copy nobody re-reads.
 
 ## Reporting issues
 

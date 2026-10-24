@@ -39,6 +39,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history and tags: scripts/changelog.test.mjs reads the release tags to know which
+          # decision rows shipped in which release, and a decision row is dated when it was
+          # *recorded* — so a date cannot answer that question, and a shallow clone cannot answer it
+          # at all. A check that silently skips when the history is missing is a check that never runs.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
