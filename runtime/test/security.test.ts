@@ -359,3 +359,75 @@ test('the content hash is 128 bits — 64 has a birthday bound of 2^32, which a 
   assert.ok(draft.card);
   assert.match(draft.card.revision.hash, /^[0-9a-f]{32}$/, 'the revision binding is 128 bits of SHA-256');
 });
+
+// --- the ladder's two rules, pinned (D71) ---------------------------------------------------------------
+
+test('a grant cannot resurrect a class an agent does not declare — the class map is checked FIRST', () => {
+  // The group chat asked whether a grant issued for one agent's class could be honoured by another.
+  // The answer is in the ORDER: `resolveAutonomy` runs before the grant lookup, so a class an agent
+  // does not declare is `never` and the refusal says so — "a grant cannot resurrect it". The grant
+  // authorises a CLASS; the class map decides which agents hold that class. Together they decide
+  // who may act, and neither can widen the other.
+  const pack = makePack({ engagement: { 'draft.promote': 'draft' } });
+  const f = Fleet.boot(pack, ANSWERS, DAY);
+  f.issueGrant({ actionClass: 'draft.promote', kind: 'allow_always', scope: 'the test', by: 'organiser' });
+  assert.throws(
+    () => f.commit({
+      actionClass: 'draft.promote', agent: 'event-ops', origin: { kind: 'event', id: 'ev-1' },
+      recipients: [], onBehalfOf: 'organiser', text: COPY,
+    }),
+    /class_unavailable/,
+    'a live grant for the class does not give an agent that lacks the class the right to use it',
+  );
+  assert.throws(
+    () => f.commit({
+      actionClass: 'draft.promote', agent: 'event-ops', origin: { kind: 'event', id: 'ev-1' },
+      recipients: [], onBehalfOf: 'organiser', text: COPY,
+    }),
+    /grant cannot resurrect it/,
+    'and the refusal says exactly why, so a reader does not have to guess',
+  );
+});
+
+test('a grant DOES authorise a class an agent holds — escalation is per class, never per agent', () => {
+  // The spec says it outright (spec section 1.1, and AGENTS.md invariant 1): *escalation is per
+  // action class, never per agent*. A grant says "this class, on this lane, until this window"; WHICH
+  // agent runs it is routing, not permission. The class map already bounds who may hold the class.
+  const pack = makePack({ engagement: { 'draft.promote': 'draft' } });
+  const f = Fleet.boot(pack, ANSWERS, DAY);
+  f.issueGrant({ actionClass: 'draft.promote', kind: 'allow_always', scope: 'the test', by: 'organiser' });
+  f.commit({
+    actionClass: 'draft.promote', agent: 'engagement', origin: { kind: 'event', id: 'ev-1' },
+    recipients: [], onBehalfOf: 'organiser', text: COPY,
+  });
+  const executed = f.state.events.filter((e) => e.type === 'CommitExecuted');
+  assert.equal(executed.length, 1, 'the agent that HOLDS the class may use the grant');
+});
+
+test('a grant and a timer are different authorities — a human may commit a granted class, a clock may not fire it', () => {
+  // The rule, now written into the spec (section 1.1) because two code paths used to LOOK like they
+  // contradicted: the commit path allows a `draft` class under a grant (the organiser granted it), and
+  // the timed lane refuses anything that is not `draft` (a timer is the fleet acting on its own).
+  const pack = makePack({ 'event-ops': { 'draft.reminder': 'draft', 'observe.read': 'opt-in-auto' } });
+  const f = Fleet.boot(pack, ANSWERS, DAY);
+  f.issueGrant({ actionClass: 'observe.read', kind: 'allow_always', scope: 'the test', by: 'organiser' });
+
+  // A human-initiated commit of the granted class is legitimate.
+  f.commit({
+    actionClass: 'observe.read', agent: 'event-ops', origin: { kind: 'event', id: 'ev-1' },
+    recipients: [], onBehalfOf: 'organiser', text: COPY,
+  });
+  assert.equal(f.state.events.filter((e) => e.type === 'CommitExecuted').length, 1);
+
+  // A clock firing the same class is not.
+  const g = Fleet.boot(pack, ANSWERS, DAY);
+  g.issueGrant({ actionClass: 'observe.read', kind: 'allow_always', scope: 'the test', by: 'organiser' });
+  const wake = g.scheduleWake({
+    purpose: 'observe.read@t-minus-1:ev-2', nextCheckAt: DAY + 1_000, eventId: 'ev-2',
+    action: { actionClass: 'observe.read', agent: 'event-ops', phase: 't-minus-1', text: COPY },
+  });
+  const out = g.fireWake(wake.id);
+  assert.equal(out.result, 'refused');
+  assert.equal(out.code, 'timed_lane_not_draft',
+    'a timer may only fire a human-gated draft lane — an unattended lane is what phase 1 refuses');
+});

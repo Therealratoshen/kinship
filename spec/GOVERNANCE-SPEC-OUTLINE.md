@@ -49,6 +49,20 @@ Rules that make the ladder real:
   posture, not a caution.)
 - **`never` is not a permission check.** A reviewer should be able to grep the tool list and
   see the capability absent.
+- **A grant and a timer are different authorities, and the difference is the SCHEDULER.** This is the
+  rule that two code paths used to look like they contradicted, so it is written down here rather than
+  left to be inferred from an order of checks:
+  - **A grant authorises a CLASS.** It says "this class, on this lane, in this window" — and the spec
+    says it outright: *escalation is per action class, never per agent*. **Which** agent runs it is
+    routing, not permission, and the class map already bounds who holds the class. So a commit of a
+    `draft` class **with a grant** is legitimate: the organiser granted it.
+  - **A timer may only fire a human-gated draft lane** (`timed_lane_not_draft`). A timer is the fleet
+    acting **on its own**, and an unattended lane is exactly what phase 1 refuses — the runner that
+    would commit it is not in the path. So the same class that a human may commit under a grant, a
+    clock may not fire.
+  - **And the class map is checked FIRST, before the grant is looked up** — so a grant can never
+    resurrect a class an agent does not declare. The refusal says so in words: *a grant cannot
+    resurrect it.* A grant can widen a lane's authorisation; it can never widen an agent's toolset.
 
 Two of these rules already have a machine checking them, and the spec should say which ones rather than
 implying the whole ladder is enforced. `scripts/validate-pack.mjs` proves the structural halves today — that
@@ -1020,7 +1034,7 @@ grant (section 1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 12,634 as of 2026-10-23, split 5,844 domain code / 6,112 tests / 678 tour. The count is re-run whenever a
+prints 12,810 as of 2026-10-23, split 5,909 domain code / 6,223 tests / 678 tour. The count is re-run whenever a
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap

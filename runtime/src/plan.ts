@@ -78,6 +78,15 @@ export interface CommunityEvent {
   id: string;
   /** ISO 8601 with an offset, e.g. `2026-11-07T19:00:00+07:00`. */
   startsAt: string;
+  /**
+   * The community's own IANA time zone, e.g. `Asia/Jakarta`.
+   *
+   * **Why it is asked for.** "T-1d" means *one calendar day earlier, at the same local wall clock*.
+   * With a named zone that is exact even across a daylight saving change; without one, the written
+   * offset is carried across unchanged, which is exact for a zone that has no daylight saving and
+   * **an hour out for a zone that does, twice a year.**
+   */
+  timezone?: string;
   /** The facts the copy may use. Free-form: a community may add `date_long` or anything else. */
   facts: Record<string, string>;
 }
@@ -349,9 +358,10 @@ function readEvent(lines: readonly LogicalLine[], from: number): CommunityEvent 
   const id = fields.get('id');
   const startsAt = fields.get('starts_at');
   if (id === undefined || startsAt === undefined) return null;
+  const timezone = fields.get('timezone');
   const facts: Record<string, string> = {};
-  for (const [k, v] of fields) if (k !== 'id' && k !== 'starts_at') facts[k] = v;
-  return { id, startsAt, facts };
+  for (const [k, v] of fields) if (k !== 'id' && k !== 'starts_at' && k !== 'timezone') facts[k] = v;
+  return { id, startsAt, ...(timezone !== undefined ? { timezone } : {}), facts };
 }
 
 // --- slots -----------------------------------------------------------------------------------------------
@@ -512,7 +522,7 @@ export function planWakes(args: {
 
     wakes.push({
       purpose: `${t.actionClass}@${t.phase}:${event.id}`,
-      nextCheckAt: shiftLocalDays(event.startsAt, days),
+      nextCheckAt: shiftLocalDays(event.startsAt, days, event.timezone),
       eventId: event.id,
       action: { actionClass: t.actionClass, agent: t.agent, phase: t.phase as Phase, text },
     });
@@ -544,16 +554,71 @@ function localDateFacts(startsAt: string): { date: string; time: string } {
  * date — on both sides of a daylight-saving change. Subtracting 24 hours from the instant instead would
  * land the reminder on the wrong local hour twice a year.
  */
-export function shiftLocalDays(iso: string, days: number): number {
+export function shiftLocalDays(iso: string, days: number, timezone?: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:\d{2})$/.exec(iso);
   if (m === null) {
     refuse('pack_invalid', 'community plan parse gate',
       `\`starts_at: ${iso}\` is not an ISO 8601 local time with an offset`);
   }
   const [, y, mo, d, hh, mm, ss, off] = m as unknown as string[];
+
+  // The calendar shift is the same either way: one day earlier, the same local wall clock.
   const shifted = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)) + days * 86_400_000);
   const y2 = String(shifted.getUTCFullYear()).padStart(4, '0');
   const mo2 = String(shifted.getUTCMonth() + 1).padStart(2, '0');
   const d2 = String(shifted.getUTCDate()).padStart(2, '0');
+
+  // **With a named zone, the local wall clock is what the shift preserves.** A community that says
+  // "19:00 in Europe/Berlin" means 19:00 on the earlier date *in Berlin* — and across a daylight
+  // saving change that is NOT the same instant as 24 hours earlier, because the zone's offset moved.
+  // Carrying the written offset across unchanged would put the reminder on the wrong local hour
+  // twice a year. So: name the zone, and the arithmetic is exact.
+  if (timezone !== undefined) {
+    return zonedLocalToInstant(y2, mo2, d2, hh, mm, ss ?? '00', timezone);
+  }
+
+  // **Without a named zone, the written offset is carried across unchanged.** That is exact for a
+  // zone without daylight saving, and one hour out for a zone with it — which is why the community
+  // can name its zone, and why the plan says so when it does not.
   return Date.parse(`${y2}-${mo2}-${d2}T${hh}:${mm}:${ss ?? '00'}${off}`);
+}
+
+/**
+ * The offset a zone is at, in milliseconds, at a given instant.
+ *
+ * `Intl` knows the zone's rules; this asks it what the wall clock reads there, and the difference
+ * between that and UTC is the offset. It is a pure computation — no I/O, no clock, no network —
+ * so it satisfies the runtime's boundary (D32) and its determinism rule.
+ */
+function zoneOffsetMs(instant: number, timezone: string): number {
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone, hour12: false,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date(instant));
+  } catch {
+    refuse('pack_invalid', 'community plan parse gate',
+      `\`timezone: ${timezone}\` is not a time zone this runtime knows — use an IANA name like \`Asia/Jakarta\``);
+  }
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'));
+  return asUtc - instant;
+}
+
+/**
+ * The instant at which a local wall clock reads a given time in a named zone.
+ *
+ * Two passes, because the offset depends on the instant you are asking about and the instant is
+ * what you are computing: the first guess may land on the wrong side of a daylight saving change,
+ * so the second pass re-reads the offset where the first one landed. A zone that has no change
+ * gives the same offset twice and finishes in one step.
+ */
+function zonedLocalToInstant(y: string, mo: string, d: string, hh: string, mm: string, ss: string, timezone: string): number {
+  const guess = Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(hh), Number(mm), Number(ss));
+  const first = zoneOffsetMs(guess, timezone);
+  const candidate = guess - first;
+  const second = zoneOffsetMs(candidate, timezone);
+  return first === second ? candidate : guess - second;
 }
