@@ -65,7 +65,8 @@ refuses more may be the better one.
 
 ## Naming
 
-**Public name: _Paired Evaluation for Agent Governance_.** Repository: `kinship-lab`.
+**Public name: _Paired Evaluation for Agent Governance_.** It lives in this repository's `research/`
+folder — a repository of its own was created and then removed, before it had a remote.
 
 The programme name is deliberately **not** "duel", "fight", or "arena":
 
