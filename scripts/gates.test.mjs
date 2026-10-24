@@ -56,6 +56,8 @@ function liveCounts() {
     })(),
     // The reference host's own cases, counted the way the rest are counted.
     hostCases: countOf(read('adapters/reference/test/host.test.ts'), /^test\(/gm),
+    // The MCP adapter's conformance cases — a count quoted in the spec, so it is checked too.
+    mcpCases: countOf(read('adapters/mcp/test/server.test.ts'), /^test\(/gm),
   };
 }
 
@@ -78,6 +80,7 @@ const COUNT_CLAIMS = [
   // a claim, and a claim nobody checks is a claim that rots (the sweep found both of these stale).
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /the tour now prints \d+/, (c) => `the tour now prints ${c.tourGuarantees}`],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /adapters\/reference\/test\/host\.test\.ts` \(\d+ cases/, (c) => 'adapters/reference/test/host.test.ts` (' + c.hostCases + ' cases'],
+  ['spec/GOVERNANCE-SPEC-OUTLINE.md', /adapters\/mcp\/test\/server\.test\.ts` \(\d+ cases/, (c) => 'adapters/mcp/test/server.test.ts` (' + c.mcpCases + ' cases'],
   ['spec/GOVERNANCE-SPEC-OUTLINE.md', /split [\d,]+ domain code \/ [\d,]+ tests \/ [\d,]+ tour/, (c) => `split ${c.domainLines.toLocaleString('en-US')} domain code / ${c.testLines.toLocaleString('en-US')} tests / ${c.tourLines.toLocaleString('en-US')} tour`],
 ];
 
