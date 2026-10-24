@@ -6,11 +6,11 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 19:31 UTC.
-**Re-verified every 30 minutes since 17:02 UTC (17:02 · 17:30 · 18:01 · 18:31 · 19:02 · 19:31): no
-change every time** — same session, same load, same `main`, same three PR heads, same ten open
-issues, same three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the
-same conclusion, and pushed nothing.
+**Measured at:** 2026-10-24 20:04 UTC.
+**Re-verified every 30 minutes since 17:02 UTC — 8 consecutive runs through 20:03, no change in any
+of them** — same session, same load, same `main`, same three PR heads, same ten open issues, same
+three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the same
+conclusion, and pushed nothing.
 
 ---
 
@@ -48,15 +48,14 @@ was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). 
 live chat** (the new one is more recently updated), but it is where the reasoning that predates the
 pack still lives.
 
-**It has not moved since 16:24:09 UTC** — **187 minutes of silence, no retry** (measured 19:31 UTC).
+**It has not moved since 16:24:09 UTC** — **220 minutes of silence, no retry** (measured 20:04 UTC).
 
-**THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 10 most recently
-updated sessions: **every session updated after 16:39 UTC is error-free** (the latest are 19:31
+**THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 12 most recently
+updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 20:03
 this guard, 18:55, 18:04, 17:19, 16:47, 16:44, 16:39 — none carrying an error). **The last quota
 or rate error of any kind was at 16:24:09 UTC.** So `42212` is gone, the PR watch ran at 17:17, and
-this guard has run five times since (17:30 · 18:01 · 18:31 · 19:02 · 19:31). **Nothing about the
-context is blocking a new chat** — the only thing that stopped the last one was the plan, and the
-plan is serving again.
+this guard has run six times since, the last at 20:03. **Nothing about the context is blocking a new
+chat** — the only thing that stopped the last one was the plan, and the plan is serving again.
 
 **The D113 work is recovered and waiting** (see §3). A new chat does not have to re-derive it —
 it applies two patches and finishes the slice.
