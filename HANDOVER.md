@@ -6,7 +6,7 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 16:05 UTC.
+**Measured at:** 2026-10-24 16:12 UTC.
 **The live Kinship chat this pack describes:** session `455824203276588` — *"Check chat ID and
 continue"*, project 13256, `status: 0` (live, not failed or aborted).
 **Its context load:** **729,949 / 1,000,000 = 72.99%** — the `usage.total_tokens` of the newest
@@ -14,6 +14,8 @@ completed assistant turn against its `usage.context_window`. (The `session messa
 **turn-grouped, not newest-first**: its *first* element is an older turn from 15:54:27 UTC reading
 678,871 / 67.89%. The load is the **newest** completed assistant turn, whose timestamp equals the
 session's `updated_at`.)
+**Re-verified 16:12 UTC against the 16:05 reading: no change** — same session, same load, same
+`main`, same three PR heads, same ten open issues, same three branches with no PR.
 
 ---
 
