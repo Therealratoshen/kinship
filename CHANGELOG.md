@@ -124,8 +124,17 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The ladder is composed, the README shows the tour's real output, and the derived counts are
   generated** (`DECISIONS.md` D79) — the numbers in the documents are written by a generator and proved
   by a gate, so the second layer cannot drift because it *is* the first layer.
-- **The runtime ships to npm as `kinship-runtime`** (`DECISIONS.md` D73) — the name is checked and
-  free, and vendoring by copy stays a documented path.
+- **The runtime has a publishable package, and the artefact is now what D73 said it should be**
+  (`DECISIONS.md` D73) — the published entry point is **compiled ESM plus `.d.ts`**, and the package
+  carries the code the runtime actually reaches and nothing else: no test files, no TypeScript
+  sources, no gates. **THE EARLIER ENTRY IN THIS SECTION SAID THE RUNTIME "SHIPS TO NPM", AND IT
+  DOES NOT: `npm view kinship-runtime` answers 404.** The package was never published, and it was
+  never built — the artefact was the raw `runtime/` folder, whose entry point was a `.ts` file and
+  which carried 36 test files with it. **Publishing needs two credentials this repository does not
+  have: a signed tag and an npm publish token** — the pre-flight now refuses without the compiler
+  and names the exact command, and the publish itself is one command once those two exist.
+  Vendoring by copy stays a documented path, and D73's *"the name is checked and free"* is still true
+  today — **until it is published, at which point the name is taken**.
 - **The licence became a fact the build checks** (`DECISIONS.md` D83) — D72 changed the licence and
   named the files that would follow it; four did not, and one of them was the validator itself,
   printing *"Q4 is still the owner's call"* on every run. Every licence claim is now held against
