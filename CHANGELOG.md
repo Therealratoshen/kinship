@@ -12,6 +12,31 @@ All notable changes to this project are recorded here. The format follows
 The next increment. See `DECISIONS.md` for what is decided and what is not.
 
 ### Added
+- **The community can now say what the fleet may do** (`DECISIONS.md` D104) — an operator's manifest gains
+  a `capabilities:` block: each capability says **why** it is on, and the human check's **existence** is a
+  floor with no off switch — writing one is refused with that reason. The seat that answers is **resolved**
+  from the community's declared seat set, never written into the manifest: a seat written twice is a seat
+  that drifts, and the MCP adapter's own test caught exactly that. Its *shape* is configurable, and it is not decoration: under `push` a card that needs a human
+  also writes a `ReviewRequested` row for a host to notify, and under `pull` it does not. The vocabulary
+  grows only with enforcement, so a capability the runtime could merely read back is not a capability.
+- **The phase field leaves the runtime** (`DECISIONS.md` D101) — the lane is the action class and the
+  schedule is a `when:` on the plan, so a card that is drafted and waiting is no longer filed under a
+  phase called `live`. The refusal that mattered — a human-gated action may not be scheduled on a clock —
+  moves to the action class, where it belongs.
+- **One public surface, and one approval surface** (`DECISIONS.md` D102, D103) — MCP is what a user and a
+  contributor depend on, the reference CLI is the operator's plumbing, and a human approves in the
+  dashboard (or the host's CLI for a headless operator) and never through a model-reachable tool. The
+  attestation mechanism that proves a human was there is still the owner's open question, and this does
+  not pretend otherwise.
+- **The transports are decided, and the WhatsApp lane is split** (`DECISIONS.md` D105, D106, D107) —
+  WhatsApp, Telegram and Discord ship as opt-in adapter packages on the community's own credentials,
+  with a generic webhook beside them as the escape hatch, and the agent's role is the community
+  manager's on every one of them: read, draft, escalate, send only after a human approves. WhatsApp
+  sends to **individuals** — free-form inside the 24-hour window, an approved template outside it — and
+  **group posting stays a human's paste**, so D11's public claim is narrowed rather than reversed.
+- **Shadow mode is retired** (`DECISIONS.md` D111) — the first event runs in production, with a named
+  human approving every send. The approval floor did not move; what ended is the posture in which the
+  fleet only drafted and a human pasted. D9 — the dated event — is still the only thing that starts it.
 - **The fork-claims scenario, answered, and the discipline layer that answers it** (`DECISIONS.md` D67) — a
   self-checking `AGENTS.md`, a DCO sign-off check, `CODEOWNERS`, and a redaction command, so a log can
   be shared without naming anybody.
@@ -121,6 +146,15 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
   part of the format.
 
 ### Decided
+- **What "production-ready" promises, and what it does not** (`DECISIONS.md` D109) — the project promises
+  the software (releases, migrations, the log format, the gate); the operator staffs their own community.
+  `SECURITY.md` promised a little of both at once, which is the worst of the two.
+- **The event template's required fields are the runtime's refusals** (`DECISIONS.md` D110) — a template is
+  the plan file in a form a human fills in, and every field it asks for is a refusal the runtime would
+  otherwise raise, so filling it in makes the refusals impossible to hit by accident.
+- **The log's format is the community's; the log's vocabulary is not** (`DECISIONS.md` D108) — a community
+  chooses the fields and the store; the event vocabulary stays the project's, because the log is the
+  audit trail and two communities with different vocabularies would have logs no tool could read together.
 
 - **The pilot's acceptance criteria are written down BEFORE the run** (`DECISIONS.md` D74) — so the
   protocol can still say *return to Define*. No behaviour changes here; the point is that a

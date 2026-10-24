@@ -629,6 +629,9 @@ function timelineLine(e: LoggedEvent): string {
       return `card ${e.cardId} approved by ${e.by}`;
     case 'AuthorizationIssued': return `authorization ${e.auth.token} issued for ${e.auth.actionClass} (revision ${e.auth.revisionHash})`;
     case 'AuthorizationConsumed': return `authorization ${e.token} consumed`;
+    // The push shape (D104): the runtime asked somebody to look. The line says who is being asked
+    // and for what — the same voice as a card decision, and no more than it carries.
+    case 'ReviewRequested': return `review requested for card ${e.cardId} (${e.actionClass}) — waiting on ${e.seat}`;
     case 'CommitExecuted': return `commit ${e.actionClass} by ${e.agent} (transport: ${e.transport}, on behalf of ${e.onBehalfOf})`;
     case 'CommitRefused': return `commit ${e.actionClass} by ${e.agent} refused: ${e.code}`;
     case 'PhaseEntered': return `event ${e.eventId} entered ${e.phase}`;

@@ -51,6 +51,30 @@ code. The diary and the spec are the parts that produce value even if the code n
 | 11 | Jan 4–10 | If phase 2 gate held: prepare the AIClub one-pager from real event data (P3 sketch becomes evidence-backed). | Pitch doc whose every number traces to a diary entry | 4 |
 | 12 | Jan 11–17 | **90-day review.** Re-read `06-final-gate.md`, update PRD ledger + changelog, decide the next 90 days or stop. | PRD changelog row; D-next in decision log | 3 |
 
+## What the product-surface session of 2026-10-24 changes in this plan
+
+The session of 2026-10-24 decided the product surface (`DECISIONS.md` **D101–D111**) and it changes
+the shape of phase 1 rather than adding to it. Five deltas, in the order they bite:
+
+| # | The plan said | It now says | Why |
+|---|---|---|---|
+| 1 | **Phase 1 is shadow mode**: the fleet drafts, a human pastes. | **Phase 1 is a live event**: the fleet drafts, a human approves, the fleet sends. | **D111** retires shadow mode — the owner chose *production-ready*, and the studies written that day record the premise (*"shadow mode is retired and the project becomes production-ready and self-hostable"*). |
+| 2 | Phase 1 needs no Kinship code — it runs inside the owner's Paperclip instance (**D10**). | Phase 1 **does** need Kinship code: the transports and the approval surface, because a live send needs both. | **D105–D107** (the adapters) and **D102–D103** (the surfaces) are not extras for later — they are what "production-ready" means, and they land **before** the first live event. **D10 still stands** for the *measurement* harness, which is plane-independent. |
+| 3 | The phase machine (`draft → scheduled → … → closed`) is the plan format's spine. | The **phase field is gone**: the lane is the action class, the schedule is a `when:` on the plan. | **D101.** The migration is a pack-format break — `packs/kopdar-ops/pack.local.plan.example.yaml` still says `phase:` — so it is a scheduled slice, not a rename. |
+| 4 | The community's configuration is the pack's toolset plus the org's floors. | The community's configuration is a **capability manifest** on top of that: what the fleet may do, named by seat and reason. | **D104.** One capability (`human_check`) ships today; the pack-level override and the log's community fields (D108) do not. |
+| 5 | The exit criterion for phase 1 is a feeling-shift diary from a rehearsal. | The same diary is kept, but it now measures a **live service** — and the failure mode is no longer *"nothing went out"* but *"the wrong thing went out"*. | **D111** changes what the measurement is for. This is the cost of retiring shadow mode, and it is why D102–D107 are a precondition rather than a follow-up. |
+
+**What has not changed: D9 is still unset, and it is still the only thing that starts phase 1.** The
+surface decisions say what the first event will run *on*; they do not say which event it is, and a
+decision about the shape of a product is not a decision about a date.
+
+**What this costs in the ledger.** The capacity ledger below is still honest for the *build* work
+(the 4–5 h/wk is a maintainer, and the build is delegated), but the plan's phase-1 weeks were written
+against a rehearsal that needed no runtime. A live first event needs the transports, the approval
+surface, and the capability manifest to exist first — so **the sequencing in the weekly table below
+is superseded for phase 1 by the order in the table above**, and the weeks are re-cut when D9 is
+written rather than before it.
+
 ## Explicitly not doing this quarter
 
 These are on HOLD by verdict, listed so they don't return as "obvious" work:

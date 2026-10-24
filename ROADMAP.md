@@ -26,6 +26,10 @@ self-hostable product.** Everything below follows from that sentence.
 | **The install path is stated: vendoring by copy.** | There is no root `package.json` and `runtime/package.json` is `private: true`, so there is no registry package and no `npm install` in the library. The README now says so — copy `runtime/` **and `scripts/` together** (the loader reads a pack's shape through the same validator the gates use, so they travel as one folder) and import the `.ts` files directly. The reference host's one `npm install` creates a local symlink and fetches nothing. **What is still open is publishing**, and that is a release decision: a tag to pin now exists, a registry package does not, and the repo has chosen not to need one. | **owner** (whether to also publish to a registry) |
 | **A release to pin exists; a registry package does not.** | There are now **two** tags and **two** published GitHub releases — `v0.1.0` and `v0.2.0` — so a fork can pin a version, and `CHANGELOG.md` carries both. What does **not** exist is a package on npm — deliberately, per the install path above: the runtime is vendored, and the repo states that rather than leaving it as a gap. | **owner** (publishing is a release decision) |
 | **No quickstart that ends in an artefact.** | **Landed 2026-10-22** (`DECISIONS.md` D49): the README's "Get it" and "Use it" now end in the two files the reference host writes, and in a `verify` that re-reads them. What is still missing is the **install path** below. **`scripts/quickstart.mjs` now ends in an artefact with no `npm install` at all** (it links the runtime itself, because the adapter's one dependency is a local path), so the wart is gone from the quickstart and survives only in the reference host's own setup. | contributor-able, but it wants the install path first |
+| **No transport ships, and the three that were decided have not been built.** | The runtime still refuses **every** member-facing commit at the transport gate (`no_transport`, D21) — that is still true and still structural. What changed on 2026-10-24 is that the transports are **decided**: WhatsApp, Telegram and Discord as opt-in adapter packages on the community's own credentials, with a generic webhook beside them as the escape hatch (D105, D107). The adapters do not exist. **The order the terms study implies:** Telegram first (a bot token, no terms to negotiate, and the group rate limit bites before any policy question does), then Discord (a bot, never the operator's account), then WhatsApp (a business number, approved templates, and an opt-in record per member). | **owner** (the build order is the owner's; the per-platform constraints are decided) |
+| **The card still carries a phase.** | The `phase` field is retired by D101 — the lane is the action class, the schedule is a `when:` on the plan — and the runtime, the plan format and `packs/kopdar-ops/pack.local.plan.example.yaml` all still carry it. The removal is a **pack-format break** (a pack that says `phase:` stops parsing), so it is a scheduled slice rather than a rename, and D99's live-session proposal (PR #24) is withdrawn rather than merged. | **owner** (when the format break lands) |
+| **The approval surface is decided and does not exist.** | D102 and D103 settle it: a human approves in the **dashboard**, or through the host's own CLI for a headless operator, and never through a model-reachable tool — `kinship_approve` leaves the MCP tool set *when the dashboard exists*, not before. **What is still missing is the artefact.** Until it exists, approval is a card in a terminal, which is the thing the owner's own product feedback called out as the reason approval does not get done. | **owner** (the surface is decided; the artefact is not) |
+| **The capability manifest has exactly one capability.** | D104 ships the manifest — an operator's `capabilities:` block, each capability saying why it is on, the seat that answers resolved from the community's declared seat set rather than written into the manifest, and the human check's existence a floor with no off switch — and `human_check` is the only entry, because **the vocabulary grows only with enforcement** (`push` writes a `ReviewRequested` row, `pull` does not). **Not built:** the pack-level override (the pack format is policed by 62 validator rules), and `log_fields`, the community's own log fields (D108), which is the manifest's next capability and lands when the shape guard can check it. | **owner** (each capability is a decision) |
 
 ## Not complete for a contributor
 
@@ -64,6 +68,21 @@ These are gaps the product's own claims run into, not packaging problems.
   answering outside those hours, because that refusal needs a transport to refuse against and phase 1
   sends nothing (D21). The window is a **record and a measurement** today; making it a gate is phase-2
   work, and until then the lane honours it in its own instructions only.
+
+- **WhatsApp reaches individuals, and groups stay human — and neither is built yet.** D106 splits the
+  owner's "work in WhatsApp like a community manager" in two, against the platform's own terms: a
+  send to an **individual** is permitted (free-form inside the 24-hour window, an approved template
+  outside it, opt-in recorded per member), while a **group** send is not — the Groups API is capped
+  at 8 participants and the operator's own account may not be automated. The group lane therefore
+  stays a human's paste (D11, D13, unchanged), and the community-manager *behaviour* lands where a
+  bot is permitted — Telegram, Discord — and member-directed on WhatsApp. **What is not built is the
+  adapter**, so today a WhatsApp message is still a human's paste for everybody, on every lane.
+- **The community's own log fields do not exist.** D108 splits the log in two: the **format** is the
+  community's (the host owns the file; the manifest names what it records), the **event vocabulary**
+  is the project's (the log is the audit trail, and two communities with different vocabularies would
+  have logs no tool could read together). The community's extra fields are the manifest's next
+  capability and land when the shape guard can enforce them — until then a community's manifest can
+  say nothing about what its log carries.
 
 ## How to pick something
 
