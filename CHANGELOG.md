@@ -35,6 +35,9 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
 - **The vendoring claim is either backed or gone** (`DECISIONS.md` D92) — the README called the vendoring
   check a CI gate and there was none. `scripts/vendoring.test.mjs` now copies `runtime/` and `scripts/`
   out of the repository and runs the tour on the copy, and the phrase no check here could back is gone.
+- **A decision's reason is now checked by the shape guard** (`DECISIONS.md` D93) — the fold reads the
+  `why`, so a row that had it removed folded to a different state and still verified clean. The reason a
+  human gave is the record; a log that can lose it and still verify is not a log of decisions.
 - **The DCO sign-off check has a test** (`DECISIONS.md` D88) — `scripts/dco-check.test.mjs` builds real
   git repositories in temp directories, makes real commits, and runs the real check: an unsigned
   outside contribution is refused, the same commit signed off passes, and the maintainer's own commit
