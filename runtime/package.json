@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Kinship control-plane core — the governance semantics as tested code. Produces approval cards and audit events; ships no channel transport, so nothing member-facing can send.",
+  "description": "Kinship control-plane core \u2014 the governance semantics as tested code. Produces approval cards and audit events; ships no channel transport, so nothing member-facing can send.",
   "scripts": {
     "test": "node --test test/*.test.ts",
     "tour": "node tour.ts",
@@ -12,5 +12,5 @@
   "engines": {
     "node": ">=23"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "A reference host for Kinship: it owns the clock, the store and the printing, and it sends nothing. There is no transport here on purpose — see README.md.",
+  "description": "A reference host for Kinship: it owns the clock, the store and the printing, and it sends nothing. There is no transport here on purpose \u2014 see README.md.",
   "scripts": {
     "start": "node src/host.ts run",
     "tick": "node src/host.ts tick",
@@ -16,5 +16,5 @@
   "engines": {
     "node": ">=23"
   },
-  "license": "MIT"
+  "license": "Apache-2.0"
 }

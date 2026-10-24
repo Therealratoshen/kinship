@@ -560,7 +560,7 @@ export function shiftLocalDays(iso: string, days: number, timezone?: string): nu
     refuse('pack_invalid', 'community plan parse gate',
       `\`starts_at: ${iso}\` is not an ISO 8601 local time with an offset`);
   }
-  const [, y, mo, d, hh, mm, ss, off] = m as unknown as string[];
+  const [, y, mo, d, hh, mm, ss, off] = m as unknown as [string, string, string, string, string, string, string | undefined, string]; // a tuple, because the regex guarantees every group but the seconds — `string[]` under `noUncheckedIndexedAccess` types them all as `string | undefined`, and then the type contract disagrees with the pattern that already guarantees them
 
   // The calendar shift is the same either way: one day earlier, the same local wall clock.
   const shifted = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)) + days * 86_400_000);

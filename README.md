@@ -2,7 +2,7 @@
 
 <img src="assets/kinship-mark.svg" width="72" height="72" align="right" alt="Kinship — two interlocking rings">
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Apache-2.0 License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Governance Gates](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/Therealratoshen/kinship/actions/workflows/test.yml?query=branch%3Amain)
 
@@ -259,9 +259,12 @@ gap says whether a contributor can close it or it is an owner decision. Contribu
 is the private security-advisory form, because this repo has one maintainer and no other private path yet —
 that limitation is written into the file rather than papered over.
 
+**An index for a tool rather than a reader** — [`llms.txt`](llms.txt) points at the documents worth reading,
+with one line each, for an assistant that reads the repository instead of a person who skims it.
+
 ## Product surface
 
-This repository is the whole product today: an open-source, self-hosted control plane under MIT, with no
+This repository is the whole product today: an open-source, self-hosted control plane under Apache-2.0, with no
 paid tier, no hosted instance and no feature held back.
 
 The plan is for the hosted surface to live under **ShortcutSistem** at
@@ -329,10 +332,17 @@ it should refuse, and a log you can check afterwards.
 
 ## License, marks, and citation
 
-**MIT** — see [LICENSE](LICENSE). One honest caveat while PRD section 12-**Q4** stays the owner's open
-decision: MIT is what these files and this README already state, and Q4 is where it becomes a ratified
-commitment rather than a working default. The reasoning is written up as a question with a
-recommendation in [LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md), not as a decision.
+**Apache-2.0** — see [LICENSE](LICENSE) and [NOTICE](NOTICE). PRD section 12-**Q4** is now a
+**ratified decision** (`DECISIONS.md` D72), not a working default.
+
+**Why Apache-2.0 and not MIT.** The difference is one clause, and it is the one this project
+cares about: **an explicit patent grant from every contributor**, plus the patent-termination clause
+that stops a patent claim from being used to shut the project down. A governance core whose whole
+thesis is *who may be reached, and who signs for it* should not ship a licence that leaves a
+contributor's patent outside the bargain. Everything else is the same: no copyleft, no
+source-disclosure, no field-of-use restriction, so a hosted service and a vendored copy are both
+allowed, and **nothing about the open-source/hosted boundary in D19 changes.** The reasoning is in
+[LICENSE-MEMO-2026-10-18.md](docs/LICENSE-MEMO-2026-10-18.md) and the decision in `DECISIONS.md`.
 
 **The name is not covered by the licence, and that is on purpose.** A licence grants rights in the
 *code*; it says nothing about the *name*. So the mark is stated separately, in

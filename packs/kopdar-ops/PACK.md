@@ -5,7 +5,7 @@ name: Kopdar event-ops squad
 version: 0.1.0
 category: event-ops
 bundled: true                      # core pack: the invariants below are held by us, not by the fork
-license: MIT                       # proposed, pending PRD section 12-Q4 — see "License" note at the bottom
+license: Apache-2.0                # ratified (D72): the MIT default plus the explicit patent grant — see "License" note at the bottom
 defaultInstall: false
 recommendedFor: [recurring-offline-meetup, ai-builder-community, indonesia-bilingual]
 manager: agents/event-ops/AGENTS.md

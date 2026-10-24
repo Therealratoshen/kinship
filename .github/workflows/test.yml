@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# The actions below are pinned to a COMMIT, not to a tag. A tag is a name the upstream owner can
+# move, so "the action my CI runs" would be a fact about their release habits on the day the job
+# starts, not a fact about this repository. Each SHA is the commit `refs/tags/v7` pointed at when
+# it was read from the GitHub API on 2026-10-24 — `actions/checkout` v7.0.1 and `actions/setup-node`
+# v7.1.0 — and the version stays in a comment so a human can still read which release it is.
+# `scripts/provenance.test.mjs` fails the build if a `uses:` goes back to a tag: a rule with no test
+# that can fail is decoration (D24).
+
 # Least-privilege token: these gates only read the checkout, never write.
 permissions:
   contents: read
@@ -30,10 +38,10 @@ jobs:
         node: ['23', '24']
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -74,10 +82,10 @@ jobs:
         working-directory: adapters/reference
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -113,10 +121,10 @@ jobs:
         node: ['23', '24']
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
 
@@ -140,7 +148,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -175,10 +183,10 @@ jobs:
         working-directory: adapters/mcp
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
 

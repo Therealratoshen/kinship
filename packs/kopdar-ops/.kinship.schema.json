@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Therealratoshen/kinship/schemas/kinship-v1.schema.json",
+  "title": "Kinship pack — .kinship.yaml",
+  "description": "The machine-readable half of a Kinship pack: the agents, their permissions, the budgets, and the community's own declarations. THIS SCHEMA IS ADVICE. The gate is `scripts/validate-pack.mjs`, which refuses a pack that breaks an invariant; an editor that reads this file underlines a mistake before you run anything. A pack that satisfies this schema can still be refused by the gate — the schema is a superset of what the gate accepts, never a substitute for it. See spec/GOVERNANCE-SPEC-OUTLINE.md section 1.8 and CONTRIBUTING.md.",
+  "type": "object",
+  "required": ["schema", "key", "version", "agents", "budgets", "guardrails", "needs"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "kinship/v1",
+      "description": "The pack format version. A pack whose schema this runtime does not know is refused, never clamped (D35)."
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^kinshipai/(bundled|community)/[a-z0-9-]+/[a-z0-9-]+$",
+      "description": "The namespaced pack key. `kinshipai/bundled/...` is held by the project; `kinshipai/community/...` is a fork's."
+    },
+    "version": { "type": "string", "description": "The pack's own version." },
+    "organisation": {
+      "type": ["string", "null"],
+      "description": "The tier above this pack. The org's manifest holds the floors; a pack may only be refused or have a blank filled — never widened (spec section 1.10)."
+    },
+    "bundled": {
+      "type": "boolean",
+      "description": "True only for the project's own packs. A community pack may not claim the invariants the bundled one holds."
+    },
+    "locale": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z]{2,3}$" },
+      "description": "The language pair the member-facing copy is carried in. This runtime implements id+en and en+ar; a pair it does not implement is refused at boot."
+    },
+    "agents": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "The pack's agents, and the action classes each may hold.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["autonomy_by_class"],
+        "additionalProperties": false,
+        "properties": {
+          "autonomy_by_class": {
+            "type": "object",
+            "description": "The action class -> level map. A class that is not here is ABSENT from this agent's toolset, not denied at runtime — a reviewer greps the tool list and finds nothing.",
+            "additionalProperties": {
+              "enum": ["draft", "opt-in-auto", "never"],
+              "description": "`draft` needs a human. `opt-in-auto` runs only for a class the organiser enabled. `never` means the capability does not exist here."
+            }
+          },
+          "tools": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9_]+ \\| [a-z-]+$" },
+            "description": "The tool list, as `channel | action`. A mutating moderation tool is refused (PKG-30)."
+          },
+          "outputs": { "type": "string", "description": "Where this agent's work lands." }
+        }
+      }
+    },
+    "guardrails": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "report_aggregation_floor": { "type": "integer", "minimum": 1, "description": "A report may not name a member until this many are in the cohort." },
+        "member_message_cap_per_24h": { "type": "integer", "minimum": 1, "description": "How many messages one member may receive in a day. A member protection, not a setting." },
+        "identity_disclosure": { "type": "boolean", "description": "Whether member-facing copy must disclose itself." },
+        "defaults_deny": { "type": "boolean", "const": true, "description": "Default deny is not configurable." }
+      }
+    },
+    "budgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "llm_per_event_idr": { "type": ["integer", "null"], "description": "The ceiling on the fleet's model spend for one event, in rupiah. Unset refuses spend (fail closed)." },
+        "warn_at_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "hard_stop": { "type": "boolean" },
+        "queue_max": { "type": "integer", "minimum": 1 },
+        "max_actions_per_run": { "type": "integer", "minimum": 1, "description": "How many actions one run may attempt. Per RUN, and a run is the handle the caller holds." },
+        "cross_promo_per_event_cap": { "type": ["integer", "null"] }
+      }
+    },
+    "needs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+      "description": "The answers the community supplies and the fleet will never invent. The pack names them; the community's own file answers them; the runtime refuses to boot without every one."
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["staffed", "always"], "description": "`staffed` names the hours a human is on duty; `always` names no window and no zone." },
+        "timezone": { "type": ["string", "null"], "description": "An IANA zone, e.g. `Asia/Jakarta`. 'Business hours without a time zone is not a commitment.'" },
+        "windows": {
+          "type": "array",
+          "description": "The staffed windows, as a LIST — because a community's week may be split.",
+          "items": {
+            "type": "object",
+            "required": ["days", "opens", "closes"],
+            "additionalProperties": false,
+            "properties": {
+              "days": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "enum": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] }
+              },
+              "opens": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" },
+              "closes": { "type": "string", "pattern": "^\\d{2}:\\d{2}$" }
+            }
+          }
+        }
+      }
+    },
+    "posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How this community is run. The org holds a floor; the pack may only be stricter.",
+      "properties": {
+        "contact": { "enum": ["never", "asked_only", "open"], "description": "May the fleet approach a member at all?" },
+        "discoverable": { "type": "boolean", "description": "May the fleet find members who have not asked?" }
+      }
+    },
+    "sanction_ladder": {
+      "type": "array",
+      "description": "What this community does when someone breaks a rule. Declared as DATA; the fleet may still not carry any rung out (PKG-63).",
+      "items": {
+        "type": "object",
+        "required": ["name", "by", "member_told"],
+        "properties": {
+          "name": { "type": "string" },
+          "by": { "type": "string", "description": "The human seat that acts. A rung whose `by` is not a seat is refused." },
+          "member_told": { "type": "string" },
+          "via": { "type": "string" },
+          "appeal": { "type": "string" }
+        }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "description": "Who wrote this pack, and what it was donated from. Part of the pack's hash.",
+      "properties": {
+        "author": { "type": "string" },
+        "powered": { "type": "string" },
+        "fork_chain": { "type": "array", "items": { "type": "string" } },
+        "provenance": { "type": "object" }
+      }
+    }
+  }
+}

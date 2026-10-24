@@ -35,6 +35,19 @@ node runtime/tour.ts --json
 The honest move: pick an item, **write the failing test first**, implement, open a PR. Do **not** open
 a PR for anything listed under `gatedByDesign` — those refusals are the product.
 
+## Compatibility
+
+[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) is the table: the Node range this repository
+supports, the pack schema version, the log format version, and the refusal-code vocabulary. It is
+read against the code by `scripts/onramp.test.mjs`, so it cannot drift from what the repository
+actually does.
+
+The one thing to read before you file a bug: **the support promise and the technical floor are two
+different numbers.** The promise is Node `>=23` — what CI gates, and what the maintainer answers
+questions about. The floor is **22.18** — the release where node turned type stripping on by
+default, and therefore where this repository stops running at all. A node between the two runs
+everything here fine, and `scripts/gates.mjs` says so in a note instead of refusing to start.
+
 ## Pull requests
 
 1. Fork the repo.
@@ -112,3 +125,29 @@ Before proposing a capability, check [ROADMAP.md](ROADMAP.md). It lists what is 
 - The `evals/promptfoo/` cases are written and unrun **by promptfoo** — no provider is wired to it. The
   harness that runs them now is `node evals/harness.mjs`: node-only, install-free, and deliberately
   not one of the four gates (a gate list that grows is a doc that drifts — D24).
+
+## Releases and provenance
+
+A release in this repository is made by hand, and it is three things: a dated changelog entry, a
+tag on the commit, and the version written into `CITATION.cff`.
+
+1. The entry goes into `CHANGELOG.md` first, under the version being released, with the
+   limitations stated **beside** the features rather than in a paragraph somewhere else.
+2. `CITATION.cff` gets the same `version` and a `date-released`.
+3. The tag is made on that commit — `git tag -a v<version> -m "<what shipped>"`.
+
+**What a reader can check.** The tag names the commit the release is (`git rev-list -n 1 v0.2.0`),
+the changelog entry says what shipped *and* what did not, and the CI run for that commit is the
+evidence the gates were green. The public commit history is the prior art: every commit carries a
+timestamp and an author, which answers "who wrote this" more durably than any clause in a
+licence.
+
+**What a reader cannot check today, stated rather than implied: the tags are not signed.**
+`git tag -v v0.2.0` prints `error: no signature found`, and `v0.1.0` is a *lightweight* tag — it
+points straight at a commit and has no tag object at all. So a reader can check *which commit* a
+tag names, and nothing beyond that. This repository does not claim signed releases, and
+`scripts/provenance.test.mjs` fails the build if this section ever starts claiming them.
+
+**The DOI.** A DOI is minted when a release is archived on Zenodo; `CITATION.cff` says to cite the
+commit and the release tag until one exists, and no `doi:` field is written yet. The DOI is the
+next layer, not this one.

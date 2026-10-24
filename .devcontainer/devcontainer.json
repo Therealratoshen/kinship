@@ -1,0 +1,10 @@
+{
+  "name": "Kinship",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "23"
+    }
+  },
+  "postCreateCommand": "npm install --no-audit --no-fund --prefix adapters/reference && npm install --no-audit --no-fund --prefix adapters/mcp && node scripts/gates.mjs"
+}
