@@ -124,11 +124,36 @@ export interface PlanProblem {
  * `t-minus-7` and `t-minus-1` are the pack's own reminder cadence (`reminder-schedule`: "T-7d and
  * T-1d"). Every other phase in `PHASES` moves on a human verdict or a regenerated deliverable, and
  * giving one of those a timer would put the phase exactly where the pack's rule forbids it.
+ *
+ * **`running` fires at zero — the event's own start.** A community whose event is a **live session**
+ * (a YouTube stream, a Meet) needs a message at the moment it begins, and `starts_at` is the one
+ * moment the community has already written down. The pack's own advance rule allows it: a phase
+ * moves on *a fired timer with a persisted wake row*, which is what this is, and the wake row is
+ * persisted in advance like any other.
+ *
+ * **What this does NOT do.** A timer may only fire a **human-gated draft lane** (D21), so a live
+ * nudge is *drafted* at the moment the stream starts and **still waits for a human** — which is the
+ * point, and also the limit: a live community's organiser is the person who is live. What this buys
+ * is that the nudge can be **approved in advance** and drafted at the right second, not that it
+ * sends itself. Sending it is a **scoped, pre-approved grant**, which the taxonomy already has
+ * (`allow_once`, `allow_always`) and which this repository's no-transport ceiling (D21) keeps out
+ * of reach here.
  */
 export const TIMER_BACKED_PHASES: Readonly<Record<string, number>> = {
   't-minus-7': -7,
   't-minus-1': -1,
+  running: 0,
 };
+
+/**
+ * The timer-backed phases, written the way a person reads a list.
+ *
+ * `['a', 'b'].join(' and ')` gives *"a and b"* — and then *"a and b and c"*, which is not a list
+ * anybody would write. The refusal is read by a human who has to act on it, so it gets a real list.
+ */
+export function timerBackedPhaseList(): string {
+  return new Intl.ListFormat('en', { style: 'long', type: 'conjunction' }).format(Object.keys(TIMER_BACKED_PHASES));
+}
 
 // --- the community's plan, read from their own file -----------------------------------------------------
 
@@ -452,7 +477,7 @@ export function planWakes(args: {
     const days = TIMER_BACKED_PHASES[t.phase];
     if (days === undefined) {
       problem('phase_not_timer_backed',
-        `phase \`${t.phase}\` moves on a human verdict, not on a clock — the phases a timer may back are ${Object.keys(TIMER_BACKED_PHASES).join(' and ')}`);
+        `phase \`${t.phase}\` moves on a human verdict, not on a clock — the phases a timer may back are ${timerBackedPhaseList()}`);
       continue;
     }
 

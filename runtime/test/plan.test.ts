@@ -295,3 +295,63 @@ test('a fixed-offset zone with no daylight saving is unchanged by naming it', ()
   assert.equal(shiftLocalDays(iso, -1, 'Asia/Jakarta'), shiftLocalDays(iso, -1),
     'for a zone without daylight saving the two agree — which is why the example pack needs no timezone to be correct');
 });
+
+// --- the live moment: a timer-backed `running` phase (D98) -----------------------------------------------
+
+/** A community whose next event is a live stream, and a lane for the moment it starts. */
+const LIVE_PLAN_YAML = `
+templates:
+  - action_class: draft.reminder
+    phase: running
+    agent: event-ops
+    copy:
+      id: |-
+        Kita live sekarang! {stream_url}
+        {disclosure}
+      en: |-
+        We are live now! {stream_url}
+        {disclosure}
+members:
+  - ref: wa:62811
+    tz: Asia/Jakarta
+event:
+  id: live-2026-11-07
+  starts_at: "2026-11-07T19:00:00+07:00"
+  timezone: "Asia/Jakarta"
+  stream_url: "https://youtu.be/live/abc123"
+`;
+
+test('a live session\'s "we are live now" lane is scheduled at the event\'s own start', () => {
+  // A community whose event is a stream needs a message at the moment it begins, and `starts_at`
+  // is the one moment it has already written down. The pack's own advance rule allows a phase to
+  // move on "a fired timer with a persisted wake row" — which is what this is.
+  const plan = parseCommunityPlan(LIVE_PLAN_YAML);
+  const out = planWakes({ templates: plan.templates, event: plan.event, pack: PACK, answers: ANSWERS });
+  assert.deepEqual(out.problems, [], 'a live lane is not a problem');
+  assert.equal(out.wakes.length, 1);
+  const w = out.wakes[0]!;
+  assert.equal(w.action.phase, 'running');
+  assert.equal(w.nextCheckAt, Date.parse('2026-11-07T19:00:00+07:00'), 'the live nudge fires at the start, not a day before');
+  assert.ok(w.action.text.en!.includes('https://youtu.be/live/abc123'), 'and it carries the stream link');
+});
+
+test('the lane is still human-gated: a timer drafts, it does not send', () => {
+  // **The limit, stated.** A timer may only fire a human-gated draft lane (D21), so the live nudge
+  // is *drafted* at the moment the stream starts and still waits for a human — which is the point,
+  // and also the reason this is not the whole answer for a live community.
+  const plan = parseCommunityPlan(LIVE_PLAN_YAML);
+  const out = planWakes({ templates: plan.templates, event: plan.event, pack: PACK, answers: ANSWERS });
+  const w = out.wakes[0]!;
+  assert.equal(PACK.agents['event-ops']!.autonomyByClass['draft.reminder'], 'draft', 'the lane is a draft lane, so a human still decides');
+});
+
+test('the phases that move on a human verdict are still refused a clock', () => {
+  // Widening the set must not widen it further: `recap` still moves on a human, and a replay link
+  // is not ready the moment a stream ends.
+  const plan = parseCommunityPlan(LIVE_PLAN_YAML.replace('phase: running', 'phase: recap'));
+  const out = planWakes({ templates: plan.templates, event: plan.event, pack: PACK, answers: ANSWERS });
+  assert.equal(out.wakes.length, 0);
+  assert.equal(out.problems.length, 1);
+  assert.equal(out.problems[0]!.code, 'phase_not_timer_backed');
+  assert.match(out.problems[0]!.detail, /t-minus-7, t-minus-1, and running/, 'and the refusal names every phase a timer may back');
+});

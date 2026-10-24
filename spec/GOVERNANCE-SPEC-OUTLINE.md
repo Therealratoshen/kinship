@@ -903,6 +903,16 @@ Four rules, each with a test that can fail:
    named condition: a human verdict, a fired timer with a persisted wake row, or a deliverable that
    regenerated successfully — **never on elapsed time alone**." So `t-minus-7` and `t-minus-1` get wakes,
    and every other phase is refused a clock it is not allowed to have. **The rule is kept, not bent.**
+   **`running` gets a wake too, at the event's own start (offset 0)** — a community whose event is a
+   **live session** (a stream, a Meet) needs a message at the moment it begins, and `starts_at` is the
+   one moment the community has already written down. The advance rule above already allows this shape
+   — *a fired timer with a persisted wake row* — so the list of phases a timer may back is widened
+   from two to three, and **the rule is what is kept**. **What this does not do:** a timer may only fire
+   a **human-gated draft lane** (D21), so a live nudge is *drafted* when the stream starts and **still
+   waits for a human**. A live community's organiser is the person who is live, and a card that waits
+   twenty minutes is a message with no value — so the lane can be **approved in advance**, and sending
+   it is a **scoped, pre-approved grant** (`allow_once` / `allow_always`), which this repository's
+   no-transport ceiling keeps out of reach here.
 4. **The disclosure is present before approval, and the community put it there.** The `{disclosure}` slot
    is filled with the runtime's canonical line for that language, in the place *the community* put it; a
    copy without the slot is refused at plan time — which is before the event, rather than at the commit
@@ -1034,7 +1044,9 @@ grant (section 1.8).
 The outline above is now implemented as tested code in `runtime/` — a dependency-free TypeScript
 library (node ≥ 23, erasable syntax, no install step; zero dependencies. The size is counted rather
 than remembered — `find runtime/src runtime/test runtime/tour.ts -name '*.ts' | xargs wc -l | tail -1`
-prints 12,980 as of 2026-10-23. The gate suite itself is **168 cases** across `scripts/`, split 5,976 domain code / 6,305 tests / 699 tour. The count is re-run whenever a
+
+prints 13,065 as of 2026-10-23. The gate suite itself is **168 cases** across `scripts/`, split 6,001 domain code / 6,365 tests / 699 tour. The count is re-run whenever a
+
 row is added here — the previous row in this sentence said 5,148 on 2026-10-18, then 7,035 the same day's
 D35–D36 pass, then 7,361 at D37 (the sanction ladder: 155 lines of runtime tests and 50 of tour against 121 of
 domain code, plus 88 more test lines under `scripts/`, which this counter does not scan), and the 74-line gap
