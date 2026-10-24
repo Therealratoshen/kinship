@@ -65,10 +65,13 @@ accurate:
    the thing D19 announces, and forbid the exact self-hosted parity D19 promises."** If the governance core is
    AGPL, every downstream modifier owes source disclosure — including communities that fork a pack to run it
    privately. At 4–5 h/week, that is a legal obligation imposed on the small user base to protect against a
-   competitor who has not appeared, against a hosted surface that does not yet exist and that D19 binds to
-   *parity* rather than exclusivity.
+   competitor who has not appeared, against a hosted surface that did not yet exist when this was written and
+   that D19 binds to *parity* rather than exclusivity. **That surface now exists** (`DECISIONS.md` **D81**), and it
+   runs this control plane byte for byte — which is the arrangement AGPL would forbid, so the clause this
+   memo identified is now the operative reason rather than a hypothetical one.
 
-Recommendation unchanged, argument sharpened: **MIT.** But it should be ratified knowing the premise shifted,
+Recommendation as it stood: **MIT.** (It was ratified as **Apache-2.0** instead, on the patent clause — see the
+status note at the top of this file. The reasoning below is kept as the record of how the argument was built.)
 not because the old sentence still reads well.
 
 ## 5 · What MIT explicitly does not protect, and what protects it instead

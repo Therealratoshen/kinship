@@ -11,6 +11,33 @@ All notable changes to this project are recorded here. The format follows
 
 The next increment. See `DECISIONS.md` for what is decided and what is not.
 
+### Changed
+
+- **The licence is Apache-2.0, and PRD section 12-Q4 is closed** (`DECISIONS.md` D72). The MIT default is
+  replaced by Apache-2.0 for one clause: an explicit patent grant from every contributor, plus the
+  patent-termination clause that stops a patent claim being used to shut the project down. It costs an
+  adopter nothing — no copyleft, no source-disclosure, no field-of-use restriction — so a hosted service
+  and a vendored copy are both allowed, and **nothing about the open-source/hosted boundary in D19
+  changes.** The `LICENSE`, `NOTICE`, `runtime/package.json` and the pack frontmatter already carried it;
+  the PRD and the licence memo did not, and now do.
+
+### Added
+
+- **The paired-evaluation research programme** (`DECISIONS.md` D80) — `research/AGENT-VS-AGENT-EVALUATION-2026-10-21.md`
+  (the survey, 42 cited sources) and `research/PAIRED-EVALUATION-PROGRAMME-2026-10-23.md` (the programme's
+  question, refusals, method, naming and claim ceiling). It publishes methods and results and **never a
+  ranking**, and it adds no sign-up path to this repository.
+
+### Fixed
+
+- **The Product-surface disclosure was false for three days.** This repository's README said
+  *"shortcutsistem.com does not describe Kinship today, and nothing is hosted there"* while a hosted
+  Kinship Host had been serving its landing, its product page, the hosted human seat and the pilot request
+  form since 2026-10-21. That is D19's own no-silent-flip rule broken by omission, repaired in **D81**,
+  which owns the lateness in its own row. The README and `SUPPORT.md` now say what is true: there is a
+  hosted surface, it is a separate product running this control plane byte for byte, and this repository
+  still has no sign-up path, no pricing and no funnel.
+
 ## [0.2.0] — 2026-10-23
 
 The community surface, the planner, the daily digest, and the protection layer.
