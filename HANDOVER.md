@@ -6,8 +6,8 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 20:31 UTC.
-**Re-verified every 30 minutes since 17:02 UTC — 9 consecutive runs through 20:31, no change in any
+**Measured at:** 2026-10-24 21:03 UTC.
+**Re-verified every 30 minutes since 17:02 UTC — 10 consecutive runs through 21:03, no change in any
 of them** — same session, same load, same `main`, same three PR heads, same ten open issues, same
 three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the same
 conclusion, and pushed nothing.
@@ -48,13 +48,13 @@ was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). 
 live chat** (the new one is more recently updated), but it is where the reasoning that predates the
 pack still lives.
 
-**It has not moved since 16:24:09 UTC** — **247 minutes of silence, no retry** (measured 20:31 UTC).
+**It has not moved since 16:24:09 UTC** — **280 minutes of silence, no retry** (measured 21:03 UTC).
 
 **THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 12 most recently
-updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 20:31
+updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 21:03
 this guard, 18:55, 18:04, 17:19, 16:47, 16:44, 16:39 — none carrying an error). **The last quota
 or rate error of any kind was at 16:24:09 UTC.** So `42212` is gone, the PR watch ran at 17:17, and
-this guard has run seven times since, the last at 20:31. **Nothing about the context is blocking a new
+this guard has run eight times since, the last at 21:03. **Nothing about the context is blocking a new
 chat** — the only thing that stopped the last one was the plan, and the plan is serving again.
 
 **The D113 work is recovered and waiting** (see §3). A new chat does not have to re-derive it —
@@ -88,8 +88,8 @@ changed while the live chat was dying.
 | PR | head branch | head sha | base | `mergeable_state` | CI for that head |
 |---|---|---|---|---|---|
 | **#38** | `feat/capability-manifest-and-product-surface` | `89376bf084af2aac9ad219c887eba973cdba796d` | `main` | **`blocked`** | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
-| **#39** | `feat/runtime-digest-and-oss-parity` | `2bbcb30d49fac37017cce128196192ab05ed97f5` | #38's branch | `clean` | **10 checks, all `success`** — the same ten job names, green at `2bbcb30` |
-| **#40** | `feat/publishable-package` | `a603183b877cc3a407731be9cb1bcabaf22b0e27` | #39's branch | `clean` | **10 checks, all `success`** — the same ten job names, green at `a603183` |
+| **#39** | `feat/runtime-digest-and-oss-parity` | `2bbcb30d49fac37017cce128196192ab05ed97f5` | #38's branch | `clean` | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
+| **#40** | `feat/publishable-package` | `a603183b877cc3a407731be9cb1bcabaf22b0e27` | #39's branch | `clean` | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
 
 **#38 is `blocked`, not `dirty`.** Every CI job on its head is green; what blocks it is the **merge
 rule** (see §4 — D98), which GitHub cannot explain from here because this token cannot read branch
