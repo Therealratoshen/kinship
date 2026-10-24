@@ -26,6 +26,15 @@ The next increment. See `DECISIONS.md` for what is decided and what is not.
   application is a form-filling away.
 - **The build's own third-party code is pinned to a commit** (`DECISIONS.md` D76) — the token may read
   the checkout and nothing else, because a tag is a name somebody else can move.
+- **Redaction fails closed** (`DECISIONS.md` D90) — the scan is over values, not over key names, and it
+  asks the runtime's own rule instead of inventing a weaker one. An identifier under a key the tool
+  had never heard of used to survive a redaction byte for byte.
+- **`verify` compares the log with its own cover** (`DECISIONS.md` D91) — five corrupted manifest fields
+  used to produce "log verified", because the fold never looked at the cover. Each field is compared
+  now, a mismatch names itself, and a missing cover is a refusal.
+- **The vendoring claim is either backed or gone** (`DECISIONS.md` D92) — the README called the vendoring
+  check a CI gate and there was none. `scripts/vendoring.test.mjs` now copies `runtime/` and `scripts/`
+  out of the repository and runs the tour on the copy, and the phrase no check here could back is gone.
 - **The DCO sign-off check has a test** (`DECISIONS.md` D88) — `scripts/dco-check.test.mjs` builds real
   git repositories in temp directories, makes real commits, and runs the real check: an unsigned
   outside contribution is refused, the same commit signed off passes, and the maintainer's own commit

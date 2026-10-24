@@ -108,8 +108,10 @@ The checks above print results. The reference host runs the fleet and writes a f
 cd adapters/reference && npm install --no-audit --no-fund && cd ../..
 ```
 
-That is the only `npm install` in the repository. The host's one dependency is a path to
-`runtime/`, so npm creates a symlink and downloads nothing. `--offline` works too.
+That is the only `npm install` a **user** needs. The typecheck above installs its compiler with
+`--no-save` so it never enters a manifest, and the MCP adapter's one has a `preinstall` hook that links
+the same local path. The host's own dependency is a path to `runtime/`, so npm creates a symlink and
+downloads nothing. `--offline` works too.
 
 **Two files, both gitignored, because both hold your community's own data.** The first is who you are;
 the second is what you are doing next. You do not have to copy them by hand:
@@ -295,8 +297,12 @@ with one line each, for an assistant that reads the repository instead of a pers
 
 This repository is the control plane: an open-source, self-hostable layer under Apache-2.0. **No capability
 of it is held back** — the governance layer, the runtime, the pack, the spec and the tests are all here, and
-the hosted surface that runs them runs this code **byte for byte** (the vendoring check is a CI gate, not a
-promise).
+the hosted surface that runs them runs **a vendored copy of this control plane**: `runtime/` and `scripts/`,
+as they are here. **That copy path is proved, not promised** — `scripts/vendoring.test.mjs` copies those two
+folders out of this repository, with nothing else, and the tour still passes on the copy. *(This sentence
+used to say "byte for byte" and call the vendoring check a CI gate. There was no vendoring check, and
+nothing in this repository can read the hosted repository's copy — so the phrase is gone, and
+`DECISIONS.md` D92 says why.)*
 
 **As of 2026-10-24 there IS a hosted surface**, and this section used to be wrong about it. **ShortcutSistem**
 at [shortcutsistem.com](https://shortcutsistem.com), Kinship's parent product, now hosts **Kinship Host**:

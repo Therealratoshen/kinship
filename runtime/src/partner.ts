@@ -46,10 +46,16 @@ export interface MemberLeak {
  * The tokens that identify a registered member: the ref as stored, plus its bare identifier when the
  * bare form is long enough to be worth matching (see the header). `wa:62811` and `62811` are two
  * spellings of one person, so the scan reports them as one leak, not two.
+ *
+ * The rule is a **pure function of a set of refs**, not of a live fleet, and it is exported that way
+ * on purpose: the reference host's redaction tool redacts a *file*, and a file has no fleet to ask.
+ * It used to build its own, weaker rule — a list of four key names — and a member identifier under
+ * any other key walked straight out of a shared log. **Two rules for one privacy property is one
+ * rule too many**, so the tool now asks this one (D90).
  */
-export function memberIdentifierTokens(state: FleetState): Array<{ ref: string; tokens: string[] }> {
+export function memberTokensFor(refs: Iterable<string>): Array<{ ref: string; tokens: string[] }> {
   const out: Array<{ ref: string; tokens: string[] }> = [];
-  for (const ref of state.members.keys()) {
+  for (const ref of refs) {
     const tokens = [ref];
     const sep = ref.indexOf(':');
     if (sep >= 0) {
@@ -59,6 +65,11 @@ export function memberIdentifierTokens(state: FleetState): Array<{ ref: string; 
     out.push({ ref, tokens });
   }
   return out;
+}
+
+/** The same rule, asked of a live fleet's registry. */
+export function memberIdentifierTokens(state: FleetState): Array<{ ref: string; tokens: string[] }> {
+  return memberTokensFor(state.members.keys());
 }
 
 /**

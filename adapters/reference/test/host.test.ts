@@ -81,6 +81,46 @@ test('the host boots, persists, and verifies — and a fresh fleet has logged no
   }
 });
 
+test('the manifest is compared to the rows — a tampered cover does not verify', () => {
+  // The cover is the log's own statement about itself: how many rows it has, which pack it came
+  // from, which answers it was written against. `verify` read the rows and folded them, and the
+  // comment above it claimed the answers digest was checked at the same time — **it was not, the
+  // manifest was never opened**. Five fields could be corrupted and the host still said "verified".
+  //
+  // A verification that ignores the thing being verified is not a verification; it is a fold.
+  const { opts, dir } = aHost();
+  try {
+    const host = bootHost(opts);
+    persist(host, opts);
+    const manifestPath = host.manifestPath;
+    const original = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, unknown>;
+
+    for (const [field, value] of [
+      ['answersDigest', 'deadbeef'],
+      ['packDigest', 'cafebabe'],
+      ['rowCount', 999],
+      ['firstSeq', 5],
+      ['lastSeq', 99],
+    ] as const) {
+      writeFileSync(manifestPath, JSON.stringify({ ...original, [field]: value }, null, 2) + '\n');
+      const v = verifyHost(host);
+      assert.equal(v.ok, false, `a tampered \`${field}\` must not verify`);
+      assert.ok(
+        v.problems.some((p) => p.includes(field)),
+        `the refusal must name the field it found: ${v.problems.join('; ')}`,
+      );
+    }
+
+    // A missing manifest is a refusal, not a pass: this is not a log this host wrote.
+    rmSync(manifestPath);
+    const v = verifyHost(host);
+    assert.equal(v.ok, false, 'a log with no manifest is not a log this host wrote');
+    assert.ok(v.problems.length > 0, 'and the refusal says why');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('a drafted lane becomes a card on disk, and the file still verifies', () => {
   const { opts, dir } = aHost();
   try {
