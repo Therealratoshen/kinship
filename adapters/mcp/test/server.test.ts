@@ -40,22 +40,36 @@ const ANSWERS = [
 ].join('\n');
 
 /** A temp community: the shipped pack, its answers, its plan, and a log folder. */
-function aCommunity(): { dir: string; config: string; plan: string; log: string } {
+function aCommunity(opts: { seat?: string } = {}): { dir: string; config: string; plan: string; log: string; pack: string } {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-mcp-'));
   cpSync(join(REPO, 'orgs'), join(dir, 'orgs'), { recursive: true });
   cpSync(join(REPO, 'packs', 'kopdar-ops'), join(dir, 'kopdar-ops'), { recursive: true });
+  // The seat is the community's own declaration, so a community whose human is called something else
+  // gets that name in the log. The org manifest says it in words: "the seat is a role, not a password."
+  if (opts.seat !== undefined) {
+    const orgFile = join(dir, 'orgs', 'kinshipai.yaml');
+    const org = readFileSync(orgFile, 'utf8').replace(/^human_seats:\n  - \S+$/m, `human_seats:\n  - ${opts.seat}`);
+    writeFileSync(orgFile, org);
+    // The pack follows the org: its sanction ladder names the seat that sanctions (PKG-62), so a
+    // community that renames its seat renames it in both tiers or the pack is refused at boot.
+    // That refusal is the tier stack working, not a nuisance — and it is why the rename here has
+    // to be a rename in two files.
+    const packFile = join(dir, 'kopdar-ops', '.kinship.yaml');
+    const pack = readFileSync(packFile, 'utf8').replace(/^(\s*by: )organiser$/gm, `$1${opts.seat}`);
+    writeFileSync(packFile, pack);
+  }
   const config = join(dir, 'kopdar-ops', 'pack.local.yaml');
   const plan = join(dir, 'kopdar-ops', 'pack.local.plan.yaml');
   writeFileSync(config, ANSWERS + '\n');
   cpSync(join(REPO, 'packs', 'kopdar-ops', 'pack.local.plan.example.yaml'), plan);
-  return { dir, config, plan, log: join(dir, 'logs') };
+  return { dir, config, plan, log: join(dir, 'logs'), pack: join(dir, 'kopdar-ops') };
 }
 
 /** Send the given JSON-RPC messages to a real server process and collect its answers. */
-function talk(messages: unknown[], opts: { config: string; plan: string; log: string }): Promise<unknown[]> {
+function talk(messages: unknown[], opts: { config: string; plan: string; log: string; pack?: string }): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [join(ADAPTER, 'src', 'server.ts'),
-      '--pack', join(ADAPTER, '..', '..', 'packs', 'kopdar-ops'),
+      '--pack', opts.pack ?? join(ADAPTER, '..', '..', 'packs', 'kopdar-ops'),
       '--config', opts.config, '--plan', opts.plan, '--log', opts.log], { stdio: ['pipe', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
@@ -143,6 +157,76 @@ test('kinship_approve without a reason is REFUSED — a verdict without a why is
     const text = (res as { result: { content: { text: string }[] } }).result.content[0]!.text;
     assert.match(text, /REFUSED/);
     assert.match(text, /verdict_without_why/);
+  } finally { rmSync(c.dir, { recursive: true, force: true }); }
+});
+
+test('the deciding actor is the community\'s declared seat, and the caller cannot name one', async () => {
+  const c = aCommunity();
+  try {
+    // A real card first: the card lookup runs before the reason check, so a made-up card id would
+    // be refused for the wrong reason and the test would pass for the wrong reason.
+    const [, proposed] = await talk([INIT, {
+      jsonrpc: '2.0', id: 3, method: 'tools/call',
+      params: { name: 'kinship_propose', arguments: {
+        actionClass: 'draft.reminder', agent: 'event-ops', eventId: 'ev-1', text: { id: 'halo', en: 'hello' },
+      } },
+    }], c);
+    const proposedText = (proposed as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    const cardId = /card (\S+)/.exec(proposedText)?.[1];
+    assert.ok(cardId, `the proposal must name the card: ${proposedText}`);
+
+    // The caller claims a seat this community does not declare. It is refused — loudly, and the
+    // refusal names the seat that does hold. A caller that could name the actor would make the
+    // runtime's seat check unable to fail.
+    const [, refused] = await talk([INIT, {
+      jsonrpc: '2.0', id: 4, method: 'tools/call',
+      params: { name: 'kinship_approve', arguments: { cardId, verdict: 'approve', why: 'waktu dan tempat benar', by: 'ketua' } },
+    }], c);
+    const refusedText = (refused as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    assert.match(refusedText, /REFUSED/);
+    assert.match(refusedText, /organiser/, 'the refusal names the seat this community does declare');
+
+    // And the card is still waiting — a refused verdict is not a half-decided card.
+    const [, drafts] = await talk([INIT, {
+      jsonrpc: '2.0', id: 5, method: 'tools/call',
+      params: { name: 'kinship_drafts', arguments: {} },
+    }], c);
+    const draftsText = (drafts as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    assert.match(draftsText, new RegExp(cardId), 'the card is still waiting on a human');
+
+    // Without a claim, the verdict is recorded under the community's own seat.
+    const [, decided] = await talk([INIT, {
+      jsonrpc: '2.0', id: 6, method: 'tools/call',
+      params: { name: 'kinship_approve', arguments: { cardId, verdict: 'approve', why: 'waktu dan tempat benar' } },
+    }], c);
+    const decidedText = (decided as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    assert.match(decidedText, /decided by organiser/);
+  } finally { rmSync(c.dir, { recursive: true, force: true }); }
+});
+
+test('a community whose seat is named differently is decided under ITS seat — the positive control', async () => {
+  // This is the case a hardcoded 'organiser' cannot decide at all: the runtime refuses an actor
+  // that is not a declared seat, so a host that hardcoded the default would be REFUSED here. If
+  // this test passes, the seat is resolved; if it is reverted to a literal, this test fails.
+  const c = aCommunity({ seat: 'ketua' });
+  try {
+    const [, proposed] = await talk([INIT, {
+      jsonrpc: '2.0', id: 3, method: 'tools/call',
+      params: { name: 'kinship_propose', arguments: {
+        actionClass: 'draft.reminder', agent: 'event-ops', eventId: 'ev-1', text: { id: 'halo', en: 'hello' },
+      } },
+    }], c);
+    const proposedText = (proposed as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    const cardId = /card (\S+)/.exec(proposedText)?.[1];
+    assert.ok(cardId, `the proposal must name the card: ${proposedText}`);
+
+    const [, decided] = await talk([INIT, {
+      jsonrpc: '2.0', id: 4, method: 'tools/call',
+      params: { name: 'kinship_approve', arguments: { cardId, verdict: 'approve', why: 'waktu dan tempat benar' } },
+    }], c);
+    const decidedText = (decided as { result: { content: { text: string }[] } }).result.content[0]!.text;
+    assert.match(decidedText, /decided by ketua/, 'the seat in the log is the one the community declared');
+    assert.doesNotMatch(decidedText, /REFUSED/, 'and the default seat name does not decide here');
   } finally { rmSync(c.dir, { recursive: true, force: true }); }
 });
 

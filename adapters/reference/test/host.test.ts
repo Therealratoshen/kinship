@@ -23,13 +23,21 @@ const ANSWERS = [
 ].join('\n');
 
 /** A temp copy of the pack, the org manifest beside it, a config that answers it, and a temp log root. */
-function aHost(): { opts: HostOptions; dir: string; configFile: string; planFile: string } {
+function aHost(opts: { seat?: string } = {}): { opts: HostOptions; dir: string; configFile: string; planFile: string } {
   const dir = mkdtempSync(join(tmpdir(), 'kinship-host-'));
   // The org manifest has to sit beside the pack: the loader walks up for it, and booting floorless
   // is refused on purpose (PKG-58) — so a temp tree without one is not a pack that boots.
   cpSync(join(REPO, 'orgs'), join(dir, 'orgs'), { recursive: true });
   const packDir = join(dir, 'kopdar-ops');
   cpSync(PACK, packDir, { recursive: true });
+  if (opts.seat !== undefined) {
+    // The seat is the community's declaration, in both tiers: the org names it, and the pack's
+    // sanction ladder names whoever sanctions (PKG-62). Rename one and the boot is refused.
+    const orgFile = join(dir, 'orgs', 'kinshipai.yaml');
+    writeFileSync(orgFile, readFileSync(orgFile, 'utf8').replace(/^human_seats:\n  - \S+$/m, `human_seats:\n  - ${opts.seat}`));
+    const packFile = join(dir, 'kopdar-ops', '.kinship.yaml');
+    writeFileSync(packFile, readFileSync(packFile, 'utf8').replace(/^(\s*by: )organiser$/gm, `$1${opts.seat}`));
+  }
   const configFile = join(dir, 'pack.local.yaml');
   writeFileSync(configFile, ANSWERS + '\n');
   // The community's own working file: their copy, their next event, their members. The shipped
@@ -261,6 +269,18 @@ test('the human can say no, and the reason is the record', () => {
   runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
   const out = runCommand({ ...opts, command: 'approve', cardId: 'card-1', why: 'terlalu awal', verdict: 'reject' });
   assert.ok(out.some((l) => l.includes('is now rejected')), out.join('\n'));
+});
+
+test('the verdict is recorded under the community\'s own seat, not a hardcoded name — the positive control', () => {
+  // A community whose human is called something else. The org manifest says it in words: "the seat
+  // is a role, not a password." A host that hardcoded 'organiser' would be REFUSED here, because
+  // the runtime refuses an actor that is not a declared seat — so this test FAILS if the seat is
+  // ever written as a literal again.
+  const { opts } = aHost({ seat: 'ketua' });
+  runCommand({ ...opts, command: 'run', now: Date.parse(EVENT_MOMENT) });
+  const out = runCommand({ ...opts, command: 'approve', cardId: 'card-1', why: 'terlalu awal', verdict: 'reject' });
+  assert.ok(out.some((l) => l.includes('decided by ketua')), out.join('\n'));
+  assert.ok(!out.some((l) => l.includes('decided by organiser')), 'and not under the default name');
 });
 
 test('publishing an approved card is refused by the transport gate — phase 1 ships no transport (D21)', () => {
