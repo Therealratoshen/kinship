@@ -12,6 +12,14 @@ All notable changes to this project are recorded here. The format follows
 The next increment. See `DECISIONS.md` for what is decided and what is not.
 
 ### Added
+- **The hosted product's copy of this runtime becomes checkable** (`DECISIONS.md` D112) —
+  `scripts/runtime-digest.mjs` prints one deterministic, **path-independent** `sha256` over the
+  shippable runtime, so a host that vendors this runtime by copy can *prove* which copy it runs:
+  two digests are either the same string or they are not. The hazard it closes is written up in
+  `community/OSS-PARITY-2026-10-23.md`: the open-source project **cannot vouch for what the hosted
+  product runs**, because the comparison needs both trees and only one is visible from here. A
+  digest proves equality, never provenance — and the comparison stays one-sided until the hosted
+  product records its own digest, which is the owner's call.
 - **The community can now say what the fleet may do** (`DECISIONS.md` D104) — an operator's manifest gains
   a `capabilities:` block: each capability says **why** it is on, and the human check's **existence** is a
   floor with no off switch — writing one is refused with that reason. The seat that answers is **resolved**
