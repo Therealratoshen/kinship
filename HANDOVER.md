@@ -6,7 +6,10 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 17:02 UTC.
+**Measured at:** 2026-10-24 17:30 UTC.
+**Re-verified at 17:30 against 17:02: no change** — same session, same load, same `main`, same three
+PR heads, same ten open issues, same three branches with no PR. The **kinship PR watch** also ran at
+17:17 UTC, reached the same conclusion, and pushed nothing.
 
 ---
 
@@ -44,6 +47,12 @@ was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). 
 live chat** (the new one is more recently updated), but it is where the reasoning that predates the
 pack still lives.
 
+**It has not moved since 16:24:09 UTC** — 66 minutes of silence, no retry. **But the provider has
+been serving this lane normally since**: the **PR watch ran at 17:17 UTC** and **this guard ran at
+17:30**, both on the same model. So the token-plan wall has either cleared or never applied to the
+cron lane. **Whether an interactive chat of yours is still refused is not something I can measure
+from here** — the only way to know is to open one and see.
+
 ---
 
 ## 1. THE MEASURED STATE
@@ -58,6 +67,11 @@ pack still lives.
 | highest `D###` row in `DECISIONS.md` | **D100** |
 | ratification cell claims | **D10–D100** (`scripts/promises.test.mjs` reads the *last* `the range now reads D10–Dn` in the file and fails the build if it is not the log's highest row) |
 | CI on that head | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `Dependabot` |
+
+**Two red runs on `main` are historical, not current.** `gates (23)` and `gates (24)` failed at the
+governance-gates step on `8b2d0ae0e` and `f82b4566e` (01:32 and 01:34 UTC, before the D98/D100 fixes
+landed). **Both shas are now ancestors of `main` and were superseded** — the current head is fully
+green. **A red run on an ancestor is not a red branch.**
 
 **`main` has not moved since 2026-10-24 10:15:53 UTC**, and no PR has merged. Nothing in this repo
 changed while the live chat was dying.
@@ -74,7 +88,17 @@ changed while the live chat was dying.
 rule** (see §4 — D98), which GitHub cannot explain from here because this token cannot read branch
 protection (`GET /branches/main/protection` → 403). Do not report that as a CI failure.
 
-**All three have ZERO reviews.** A review is his, and a review by the author does not count.
+**All three have ZERO reviews** (and zero requested reviewers). A review is his, and a review by the
+author does not count.
+
+**Why #38 reads `blocked` and #39/#40 read `clean`** (measured by the PR watch at 17:17 UTC):
+**branch protection applies to `main` only**, and #39/#40 target *branches*. So when #38 lands,
+**#39 and #40 must be retargeted to `main`** — and they will hit the same `blocked` state. The
+protection rule is the one thing this token **cannot read**
+(`GET /branches/main/protection` → 403), so only he can see or change it.
+
+**No rebase is needed by any of the three** (measured 17:17 UTC): the current `main` (`c02bacb`) is
+an **ancestor** of all three heads (`git merge-base --is-ancestor` → true for each).
 
 **Decision-log state per head:** #38's head ends at **D111** (claims `D10–D111`); #39's and #40's
 heads end at **D112** (claims `D10–D112`). `main` is at **D100** / `D10–D100`. So **D101–D112 exist
@@ -107,7 +131,7 @@ surface**, which is how the duplicate D-number below survived two days:
 
 | branch | its PR | what it is |
 |---|---|---|
-| `feat/kinship-product-surface` | **none — it never had one** | The orphan. Its `DECISIONS.md` claims **D54** for *"the hosted surface stopped being a plan"*. `main` had already used **D54** for *"the community's coverage window"* (2026-10-22). **Landing it would land a DUPLICATE D-number.** The disclosure that actually landed is **D81** (*"A hosted surface now exists — and this row is the disclosure D19 asked for"*). |
+| `feat/kinship-product-surface` | **none — it never had one** | The orphan. Its `DECISIONS.md` claims **D54** for *"the hosted surface stopped being a plan"*. `main` had already used **D54** for *"the community's coverage window"* (2026-10-22). **Landing it would land a DUPLICATE D-number.** The disclosure that actually landed is **D81** (*"A hosted surface now exists — and this row is the disclosure D19 asked for"*). **A second reason not to merge it: its range cell reads D10–D44 while its highest row is D54 — the range gate is red on it too.** |
 | `feature/timer-backed-running-phase` | **#24 — CLOSED, NOT MERGED** | Its decision row was **D99**; **D99 was withdrawn by D101** (the `phase` field leaves the runtime). The branch ends at D99. Do not treat it as landed. |
 | `handover/kinship-state` | none | **This pack's own branch.** Agent-owned; it holds `HANDOVER.md` and `recovered/`. |
 
@@ -197,6 +221,12 @@ its own transcript.
 early and push after every concern** — the workspace is not a backup and neither is the transcript.
 The pack's `recovered/` folder is a rescue, not a habit.
 
+### Each session gets its own clone — do not assume a path
+
+This guard's clone is at `/workspace/kinship`; the **kinship PR watch**'s is at `/workspace/kinship-repo`.
+**The workspace is wiped between sessions, and a clone inside it is not a cache.** Make your own
+clone; do not go looking for someone else's.
+
 ### `runtime/src/capabilities.ts` does **NOT** exist on `main`
 
 It exists only on **PR #38's branch** (`feat/capability-manifest-and-product-surface`, head
@@ -266,8 +296,9 @@ is `fatal: path … does not exist`.
    pack may **narrow only**; **`pull` is the narrow end**; a widening is **refused, never clamped**;
    the org and pack tiers share **one reader and one vocabulary**. It had **not settled** whether an
    *equal* declaration is refused or ignored, nor whether `reason:` is required always. **It is a
-   proposal, not a decision row — and the row number (D113) is a guess until `origin/main` is checked
-   for a new D-row first.**
+   proposal, not a decision row — and **D113 is FREE**: verified 17:17 UTC, zero `D113` rows on
+   `main` and zero on #40's head. **Still check `origin/main` for a new D-row before claiming it** —
+   the number was free at 17:17, not forever.**
 
 ### The ship order that follows from the above
 
