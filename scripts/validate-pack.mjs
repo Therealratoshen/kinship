@@ -69,6 +69,20 @@ const BOUNDED_GUARDRAILS = {
   report_aggregation_floor: { min: 5, max: 1000 },
   member_message_cap_per_24h: { min: 1, max: 5 },
 };
+// The capability manifest's vocabulary (DECISIONS.md D103, D113). The org tier ENABLES a shape and
+// the pack tier may only NARROW it, so the gate needs the same three words the runtime has — a
+// validator that names a capability the runtime does not have sends an editor somewhere useless.
+const CAPABILITY_NAMES = new Set(['human_check']);
+const REVIEW_SHAPES = new Set(['push', 'pull']);
+const DEFAULT_REVIEW_SHAPE = 'pull';
+// The words a manifest might use to switch the check off. The check's EXISTENCE is a floor, so
+// every one of them is refused BY NAME — "we meant something else" is not the answer.
+const DISABLING_WORDS = new Set(['off', 'none', 'disabled', 'false', 'no', 'never']);
+// Which shape is narrower. `pull` is the narrow end: under it the runtime writes no
+// `ReviewRequested` row and interrupts nobody, so narrowing means THE RUNTIME DOES LESS. The check
+// itself survives every shape — its existence is the floor, and no shape removes it.
+const SHAPE_WIDTH = { pull: 0, push: 1 };
+
 const REQUIRED_NEEDS = [
   'community_name', 'schedule', 'venue_source', 'sponsor_list',
   'escalation_contact', 'member_notice_text', 'rsvp_source_of_truth',
@@ -115,6 +129,42 @@ const CREDENTIAL_SHAPES = [
 ];
 
 const stripComment = (line) => line.replace(/\s+#.*$/, '');
+/**
+ * Read a `capabilities:` block out of a manifest — the same two-level shape the runtime reads
+ * (DECISIONS.md D113): a capability, then its fields.
+ *
+ * **This is a reader, not a parser.** It takes what it can read so the gate can refuse the things
+ * the gate is for; a block whose SHAPE is malformed (a field before a capability, a capability
+ * carrying a value, an indentation three deep) is refused by `runtime/src/pack.ts`, which parses
+ * rather than reads. Same rule, two doors — and the door that matters for a fork is this one.
+ */
+function capabilityBlock(text) {
+  const out = new Map();
+  const lines = text.split('\n');
+  const idx = lines.findIndex((l) => /^capabilities:/.test(l));
+  if (idx === -1) return out;
+  let current = null;
+  for (let i = idx + 1; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.trim() === '' || l.trimStart().startsWith('#')) continue;
+    const indent = l.length - l.trimStart().length;
+    if (indent === 0) break; // the block ended
+    const content = stripComment(l).trim();
+    if (indent === 2) {
+      const name = content.replace(/:.*$/, '').trim();
+      current = name;
+      if (!out.has(name)) out.set(name, {});
+      continue;
+    }
+    if (indent === 4 && current !== null) {
+      const kv = /^([^:]+):[ \t]*(.*)$/.exec(content);
+      if (kv) out.get(current)[kv[1].trim()] = kv[2].trim().replace(/^["']|["']$/g, '');
+      continue;
+    }
+  }
+  return out;
+}
+
 const frontmatter = (text) => {
   const m = /^---\n([\s\S]*?)\n---/.exec(text);
   return m ? m[1] : '';
@@ -620,6 +670,61 @@ export function validatePack(dir, opts = {}) {
     }
   }
 
+  // --- 9b. the pack's own capability narrowing (DECISIONS.md D113) -----------------------------------
+  //
+  // The org tier is where a capability is ENABLED; a community's own pack may NARROW it and nothing
+  // else. Two rules, two ids — and the same rule is in `runtime/src/settings.ts`, because this gate
+  // is what a fork's CI runs before anything boots, and the runtime is what refuses a pack someone
+  // booted without CI. Same rule, two doors, both tested.
+  //
+  //   PKG-66  the pack's `capabilities:` block is well-formed: a capability this runtime has, a shape
+  //           it has, a `reason:`, and no field the runtime does not read. The human check's
+  //           EXISTENCE is a floor, so there is no off value and every word that means one is
+  //           refused by name.
+  //   PKG-67  the pack's shape is NARROWER than the org's. A pack that widens, or that restates what
+  //           the org already declared, is refused: a pack may narrow, never widen.
+  const packCaps = capabilityBlock(machText);
+  for (const [name, fields] of packCaps) {
+    if (!CAPABILITY_NAMES.has(name)) {
+      add('PKG-66', `the pack declares a capability \`${name}\`, which this runtime does not have (${[...CAPABILITY_NAMES].join(', ')}) — an unknown capability is refused rather than ignored, because a name this runtime cannot act on is a setting that lies about what the fleet may do`);
+      continue;
+    }
+    if (fields.shape === undefined) {
+      add('PKG-66', `capability \`${name}\` has no \`shape:\` — a capability that does not say how it behaves is a setting with no behaviour`);
+    } else if (DISABLING_WORDS.has(fields.shape.toLowerCase())) {
+      add('PKG-66', `capability \`${name}\` is \`${fields.shape}\` — the human check's EXISTENCE is a floor, not a setting: there is no off state, because a community that can switch the check off has not configured a check. Its shape (push, pull) is configurable; its existence is not`);
+    } else if (!REVIEW_SHAPES.has(fields.shape)) {
+      add('PKG-66', `capability \`${name}\` is \`${fields.shape}\`, which is not a shape this runtime has (${[...REVIEW_SHAPES].join(' | ')})`);
+    }
+    if (!fields.reason) {
+      add('PKG-66', `capability \`${name}\` has no \`reason:\` — "we turned this on" is not a decision, and a decision nobody can read later is not a decision`);
+    }
+    for (const k of Object.keys(fields)) {
+      if (k !== 'shape' && k !== 'reason') {
+        add('PKG-66', `capability \`${name}\` carries \`${k}:\`, which this runtime does not read — a field nothing reads is a setting that lies, and the seat that answers is resolved from the community's declared seat set rather than written here`);
+      }
+    }
+  }
+
+  // The direction, against the org the pack names. A pack with no org above it is its own top tier,
+  // so there is nothing to narrow past and its shape is the enabling one.
+  const packShape = packCaps.get('human_check')?.shape;
+  // What the gate RESOLVED, so a pack author can read it back. The gate can only refuse, so for a
+  // LEGAL narrowing this report is the only observable difference between a gate that read the
+  // block and a gate that ignored it — which is why the shape is reported rather than left silent.
+  const orgShape = orgText !== null
+    ? (capabilityBlock(orgText).get('human_check')?.shape ?? DEFAULT_REVIEW_SHAPE)
+    : DEFAULT_REVIEW_SHAPE;
+  const effectiveCapability = REVIEW_SHAPES.has(packShape ?? '') ? packShape : orgShape;
+  if (packShape !== undefined && REVIEW_SHAPES.has(packShape) && orgText !== null) {
+    const orgShape = capabilityBlock(orgText).get('human_check')?.shape ?? DEFAULT_REVIEW_SHAPE;
+    if (SHAPE_WIDTH[packShape] === SHAPE_WIDTH[orgShape]) {
+      add('PKG-67', `the pack declares the human check as \`${packShape}\`, which is what org \`${orgRef}\` already declares — this narrows nothing, and an override that does not narrow is a second copy of a decision (D100), and a second copy goes stale. Remove the block, or narrow it`);
+    } else if (SHAPE_WIDTH[packShape] > SHAPE_WIDTH[orgShape]) {
+      add('PKG-67', `the pack declares the human check as \`${packShape}\`, which is WIDER than the \`${orgShape}\` org \`${orgRef}\` enables — a pack may narrow a capability, never widen one. The org enables the shape; the community may only make it narrower`);
+    }
+  }
+
   // --- 10. the sanction ladder (DECISIONS.md D37) ---------------------------------------------------
   // A community may write down the rungs a member climbs before they are gone. The block is optional —
   // a community that does not moderate has no rungs to name, and nothing here may hand it a ladder it
@@ -742,7 +847,7 @@ export function validatePack(dir, opts = {}) {
     }
   }
 
-  return { ok: errors.length === 0, errors, notices, checked: { agents: machRoles.length, skills: skillKeys.length, org: orgRef } };
+  return { ok: errors.length === 0, errors, notices, checked: { agents: machRoles.length, skills: skillKeys.length, org: orgRef, capability: effectiveCapability } };
 }
 
 const invokedDirectly = process.argv[1] && basename(fileURLToPath(import.meta.url)) === basename(process.argv[1]);

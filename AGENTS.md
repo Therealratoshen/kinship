@@ -12,7 +12,7 @@ logged and replayable.
 
 Kinship's home is the spec and the pack format; the executable code is the pack validator + its
 contract test, and `runtime/` — the governance core built 2026-10-17 per `DECISIONS.md` D21
-(412 tests across 35 files as of 2026-10-24 — recount with `node runtime/tour.ts --json`; zero
+(420 tests across 35 files as of 2026-10-25 — recount with `node runtime/tour.ts --json`; zero
 dependencies, **no channel transport**: every member-facing commit refuses `no_transport`). Phase 1 (shadow mode) still starts when the owner writes a dated event as `D9`
 in `DECISIONS.md`; the runtime does not change that — it sends nothing by construction.
 
@@ -52,6 +52,7 @@ calls to bound a tick; `report.capScope` says `this_call` or `shared_run` either
 | `spec/GOVERNANCE-SPEC-OUTLINE.md` | The semantics an implementer builds to |
 | `spec/HOST-CONTRACT.md` | The four seams — credential, clock, store, transport: what the host owns, what Kinship checks afterwards, and why an adapter is a sibling package and never code inside `runtime/` |
 | `orgs/kinshipai.yaml` + `runtime/src/settings.ts` | The tier above the pack (spec section 1.10 / PRD FR-1.18): org **floors** and an **autonomy ceiling**, resolved org → pack with **refuse, never clamp** — so an org can only reject a pack or fill a blank it left, never rewrite a number a community declared. Read before touching a guardrail value |
+| `orgs/kinshipai.yaml` + a pack's `capabilities:` block | The **capability manifest** (spec section 1.12 / PRD FR-1.20): the org tier **enables** what the fleet may do, and a community's own pack may **narrow** it and never widen it (D113). A narrowing is `pull` where the org holds `push` — the runtime does less, and the check's *existence* is a floor no shape removes. Read before touching a capability |
 | `packs/kopdar-ops/README.md` | The fork on-ramp: what a fork may not change, and the eight `needs` boot refuses without |
 | `ROADMAP.md` | What is **not** complete, and for each gap whether a contributor may close it or it is the owner's call. Read it before proposing a capability — several refusals are enforced by the validator, so the wrong PR fails a gate, not a review. |
 | `DECISIONS.md` | Who decided what, when, and how reversible it is. Append-only. |

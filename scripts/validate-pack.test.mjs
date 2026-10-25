@@ -664,3 +664,102 @@ test('POSITIVE CONTROL: a pack with no coverage block at all passes — an unsta
     const r = validatePack(dir);
     assert.equal(r.ok, true, `absence is legal: ${r.errors.join('\n  ')}`);
   }));
+
+// --- the pack's own capability narrowing (DECISIONS.md D113) -------------------------------------
+//
+// The org tier ENABLES a capability; a community's own pack may NARROW it and nothing else. The
+// gate is the first door and the runtime is the second — a fork's CI runs this, and a pack booted
+// without CI still meets `runtime/src/settings.ts`. Same rule, two doors, both tested.
+
+/** A `capabilities:` block, in the shape a manifest writes it. */
+const capabilityBlock = (shape, extra = '') =>
+  `\ncapabilities:\n  human_check:\n    shape: ${shape}\n    reason: "our human reads the board every morning"\n${extra}`;
+
+/** Append a capability block to a pack's machine file. */
+const withCapability = (dir, block) => {
+  const f = machine(dir);
+  writeFileSync(f, readFileSync(f, 'utf8') + block);
+};
+
+/** A pack AND a copy of the orgs, so a test can move the org's shape without editing the repo. */
+const withOrgAndPack = (fn) => {
+  const dir = mkdtempSync(join(tmpdir(), 'kinship-cap-'));
+  const target = join(dir, 'kopdar-ops');
+  const orgs = join(dir, 'orgs');
+  cpSync(PACK, target, { recursive: true });
+  cpSync(ORGS(), orgs, { recursive: true });
+  try { return fn(target, orgs); } finally { rmSync(dir, { recursive: true, force: true }); }
+};
+
+test('a pack that NARROWS the org\'s capability passes the gate (PKG-66, PKG-67)', () =>
+  inCopy((dir) => {
+    // The shipped org holds `push`; the pack asks for `pull`, which is narrower — the runtime does
+    // less, writes no ReviewRequested row, and interrupts nobody.
+    withCapability(dir, capabilityBlock('pull'));
+    const r = validatePack(dir);
+    assert.equal(r.ok, true, `expected PASS, got:\n  ${r.errors.join('\n  ')}`);
+    // And the gate says what it RESOLVED. A gate that only refuses cannot tell a pack author that
+    // its narrowing was read — and a test that cannot tell a gate that READ the block from one that
+    // ignored it is not a test of the feature.
+    assert.equal(r.checked.capability, 'pull', 'the gate read the narrowing and reports it');
+  }));
+
+test('a pack that WIDENS the org\'s capability fails by rule (PKG-67)', () =>
+  withOrgAndPack((dir, orgs) => {
+    // The org holds `pull`; the pack asks for `push`. A pack may narrow, never widen — this is the
+    // rule that stops a community handing itself a power its operator never enabled.
+    const orgFile = join(orgs, 'kinshipai.yaml');
+    writeFileSync(orgFile, readFileSync(orgFile, 'utf8').replace('    shape: push', '    shape: pull'));
+    withCapability(dir, capabilityBlock('push'));
+    const r = validatePack(dir, { orgsRoot: orgs });
+    const hit = r.errors.filter((e) => e.startsWith('PKG-67'));
+    assert.equal(hit.length, 1, `expected one direction violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /never widen/);
+  }));
+
+test('a pack that restates the org\'s capability fails — it narrows nothing (PKG-67)', () =>
+  inCopy((dir) => {
+    withCapability(dir, capabilityBlock('push'));
+    const r = validatePack(dir);
+    const hit = r.errors.filter((e) => e.startsWith('PKG-67'));
+    assert.equal(hit.length, 1, `expected one direction violation, got: ${r.errors.join(' | ')}`);
+    assert.match(hit[0], /narrows nothing/);
+  }));
+
+test('a pack that tries to switch the check off is refused BY NAME (PKG-66)', () => {
+  // The check's EXISTENCE is a floor, so there is no off state and every word that means one is
+  // refused naming the floor — not "unknown value". The check has to be the floor's refusal and not
+  // some other one that happens to fire.
+  for (const word of ['off', 'none', 'disabled', 'false', 'no', 'never']) {
+    inCopy((dir) => {
+      withCapability(dir, capabilityBlock(word));
+      const r = validatePack(dir);
+      const hit = r.errors.filter((e) => e.startsWith('PKG-66'));
+      assert.ok(hit.length >= 1, `shape: ${word} was accepted by the gate`);
+      assert.ok(
+        hit.some((h) => /existence is a floor/i.test(h)),
+        `shape: ${word} must be refused as an attempt to switch the check off, got: ${hit.join(' | ')}`,
+      );
+    });
+  }
+});
+
+test('a pack capability with no reason, an unknown name, or an unread field is refused (PKG-66)', () => {
+  inCopy((dir) => {
+    writeFileSync(machine(dir), readFileSync(machine(dir), 'utf8') + '\ncapabilities:\n  human_check:\n    shape: pull\n');
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-66') && /reason/.test(e)), `no reason was not refused: ${r.errors.join(' | ')}`);
+  });
+  inCopy((dir) => {
+    writeFileSync(machine(dir), readFileSync(machine(dir), 'utf8') + '\ncapabilities:\n  telepathy:\n    shape: pull\n    reason: "x"\n');
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-66') && /telepathy/.test(e)), `an unknown capability was not refused: ${r.errors.join(' | ')}`);
+  });
+  inCopy((dir) => {
+    // A `seat:` is the exact field the runtime refuses, because the seat that answers is RESOLVED
+    // from the community's declared seat set rather than written in a second place (D100).
+    withCapability(dir, capabilityBlock('pull', '    seat: organiser\n'));
+    const r = validatePack(dir);
+    assert.ok(r.errors.some((e) => e.startsWith('PKG-66') && /seat/.test(e)), `an unread field was not refused: ${r.errors.join(' | ')}`);
+  });
+});

@@ -20,6 +20,7 @@ import { validatePack } from '../../scripts/validate-pack.mjs';
 import { refuse } from './errors.ts';
 import { DEFAULT_LOCALE_PAIR, SUPPORTED_LOCALE_PAIRS, localeIsSupported } from './disclosure.ts';
 import { parseOrg } from './org.ts';
+import { parseCapabilityBlock } from './capabilities.ts';
 import type { Autonomy, CommunityCoverage, CommunityPosture, CoverageWindow, Packed, PackedAgent, PackedOrg, SanctionRung } from './types.ts';
 
 const LADDER: ReadonlySet<string> = new Set(['draft', 'opt-in-auto', 'never']);
@@ -561,6 +562,12 @@ export function loadPack(dir: string): Packed {
   // gate that matters is the one a fork cannot skip by not running CI.
   const sanctionLadder = parseSanctionLadder(yaml, key);
 
+  // --- the community's own capability narrowing (D113) ----------------------------------------------
+  // The pack tier of the capability manifest: an OPTIONAL block that may only narrow what the org
+  // enables. Read here because this file is the only reader of a pack folder, and the same reader
+  // the org tier uses — one vocabulary, two tiers.
+  const capabilities = parseCapabilityBlock(yaml, { tier: 'pack', key });
+
   return {
     schema: 'kinship/v1',
     key,
@@ -593,6 +600,10 @@ export function loadPack(dir: string): Packed {
     // A pack that declared no ladder reads back as `undefined`, not as `[]` and not as a default ladder:
     // the runtime has no business supplying norms a community never wrote down (D37).
     ...(sanctionLadder.length > 0 ? { sanctionLadder } : {}),
+    // A pack that declared no capability override reads back as `undefined`, not as an empty
+    // override: an absent block is not a decision, so the org's declaration stands untouched
+    // (D113).
+    ...(capabilities !== undefined ? { capabilities } : {}),
     declared: FLOOR_NAMES.filter((name) => guard.has(name)),
   };
 }

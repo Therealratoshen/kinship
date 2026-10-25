@@ -80,6 +80,11 @@ export function computeCounts() {
     runtimeTests,
     runtimeFiles,
     scriptsCases,
+    // The validator's own contract test — the "tamper-resistant contract test" the README and
+    // CONTRIBUTING both quote. It was a number two documents carried and NOTHING recomputed, so a
+    // validator rule added anywhere in this repository meant hand-editing prose in two files — the
+    // exact defect class this repository keeps recording. It is generated now.
+    contractCases: casesIn(join(ROOT, 'scripts', 'validate-pack.test.mjs')),
     pkgRules,
     hostCases: casesIn(join(ROOT, 'adapters', 'reference', 'test', 'host.test.ts')),
     mcpCases: casesIn(join(ROOT, 'adapters', 'mcp', 'test', 'server.test.ts')),
@@ -102,9 +107,21 @@ const CLAIMS = [
   },
   {
     file: 'README.md',
+    apply: (s, c) => s
+      .replace(
+        /\(\d+ distinct `PKG-\*` rules/,
+        `(${c.pkgRules} distinct ` + '`PKG-*` rules',
+      )
+      .replace(
+        /its \d+-case tamper-resistant contract test/,
+        `its ${c.contractCases}-case tamper-resistant contract test`,
+      ),
+  },
+  {
+    file: 'CONTRIBUTING.md',
     apply: (s, c) => s.replace(
-      /\(\d+ distinct `PKG-\*` rules/,
-      `(${c.pkgRules} distinct ` + '`PKG-*` rules',
+      /tampered pack \(\d+ cases,/,
+      `tampered pack (${c.contractCases} cases,`,
     ),
   },
   {
