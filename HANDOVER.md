@@ -36,7 +36,7 @@ measure, draft and open a PR; **the merge is his**.
 
 ## 1. THE MEASURED STATE
 
-**Measured at:** 2026-10-25 06:03 UTC.
+**Measured at:** 2026-10-25 06:31 UTC.
 
 **`main`** — `c02bacb648c37fc940e229cf9fcd99a9af608ed7` (D100; the ratification cell claims **D10–D100**).
 
