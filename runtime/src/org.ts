@@ -29,7 +29,7 @@
  * parser that guesses is a trust boundary with holes.
  */
 import { refuse } from './errors.ts';
-import { parseCapabilities } from './capabilities.ts';
+import { parseCapabilityBlock } from './capabilities.ts';
 import type { Autonomy, CommunityCapabilities, CommunityPosture, PackedGuardrails, PackedOrg } from './types.ts';
 
 /** The keys a `posture:` block may carry — the same vocabulary a pack uses. */
@@ -189,63 +189,11 @@ function parseOrgCapabilityBlock(
   yaml: string,
   orgKey: string,
 ): CommunityCapabilities | undefined {
-  const lines = yaml.split('\n');
-  const idx = lines.findIndex((l) => /^capabilities:/.test(l));
-  if (idx === -1) return undefined;
-
-  const raw: Record<string, { shape?: string; reason?: string }> = {};
-  let current: string | null = null;
-
-  for (let i = idx + 1; i < lines.length; i++) {
-    const l = lines[i]!;
-    if (l.trim() === '' || l.trimStart().startsWith('#')) continue;
-    const indent = l.length - l.trimStart().length;
-    if (indent === 0) break; // the block ended
-
-    const content = stripComment(l).trim();
-
-    if (indent === 2) {
-      const name = content.replace(/:.*$/, '').trim();
-      if (!/^[a-z][a-z0-9_]*$/.test(name)) {
-        refuse('org_invalid', 'org shape gate',
-          `org \`${orgKey}\`: capabilities line ${i + 1} names \`${name}\`, which is not a capability name this runtime can read (\`lowercase_snake_case\`)`);
-      }
-      if (content !== `${name}:`) {
-        refuse('org_invalid', 'org shape gate',
-          `org \`${orgKey}\`: capabilities line ${i + 1} is \`${content}\` — a capability opens a block of its own fields, it does not carry a value`);
-      }
-      current = name;
-      raw[current] = {};
-      continue;
-    }
-
-    if (indent === 4) {
-      if (current === null) {
-        refuse('org_invalid', 'org shape gate',
-          `org \`${orgKey}\`: capabilities line ${i + 1} sets a field before any capability is named`);
-      }
-      const kv = /^([^:]+):[ \t]*(.*)$/.exec(content);
-      if (!kv) {
-        refuse('org_invalid', 'org shape gate',
-          `org \`${orgKey}\`: capabilities line ${i + 1} is not \`key: value\` — this parser does not guess at a field it cannot read`);
-      }
-      const k = kv[1]!.trim();
-      const v = unquote(kv[2]!.trim());
-      const fields = raw[current]!;
-      if (k in fields) {
-        refuse('org_invalid', 'org shape gate',
-          `org \`${orgKey}\`: capability \`${current}\` sets \`${k}\` twice — a duplicate field is a second intent, and this parser keeps the first, which would hide it`);
-      }
-      (fields as Record<string, string>)[k] = v;
-      continue;
-    }
-
-    refuse('org_invalid', 'org shape gate',
-      `org \`${orgKey}\`: capabilities line ${i + 1} is indented ${indent} — this block is two levels deep (a capability, then its fields) and nothing deeper`);
-  }
-
-  if (Object.keys(raw).length === 0) return undefined;
-  return parseCapabilities(raw, { orgKey });
+  // The reader is shared with the pack tier (DECISIONS.md D113): the two manifests declare
+  // capabilities in the same shape, and two readers would be two rules in two places. Only the
+  // refusal code and the wording differ, because an org's shape error and a pack's shape error
+  // are the same error at two altitudes.
+  return parseCapabilityBlock(yaml, { tier: 'org', key: orgKey });
 }
 
 /**

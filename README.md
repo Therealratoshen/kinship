@@ -123,8 +123,8 @@ repository can print its own and compare, and the hazard is written up in
 - **An MCP adapter** — [`adapters/mcp/`](adapters/mcp/README.md): any assistant can *ask* Kinship for
   permission, and the runtime decides
 - **The shape gate** — [`scripts/validate-pack.mjs`](scripts/validate-pack.mjs) and
-  [`scripts/gates.mjs`](scripts/gates.mjs), with its 67-case tamper-resistant contract test
-  (62 distinct `PKG-*` rules; recount:
+  [`scripts/gates.mjs`](scripts/gates.mjs), with its 72-case tamper-resistant contract test
+  (64 distinct `PKG-*` rules; recount:
   `grep -o "'PKG-[0-9N]*'" scripts/validate-pack.mjs | sort -u | wc -l`)
 - **A persisted log that verifies** — the rows must be dense in `seq`, they must fold, and the state
   they fold to must be the state the fleet holds

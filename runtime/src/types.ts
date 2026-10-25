@@ -395,6 +395,18 @@ export interface Packed {
    * deliberately not a default ladder the runtime supplied on its behalf.
    */
   sanctionLadder?: SanctionRung[];
+  /**
+   * The capabilities this community NARROWS, when the pack wrote them down.
+   *
+   * `undefined` means the pack declared no override at all, and the org's declaration stands
+   * untouched. It is deliberately not an empty override: an absent block is not a decision, so it
+   * inherits rather than overriding.
+   *
+   * **A pack may only narrow.** The org tier enables a capability; this block may make it
+   * narrower and nothing else (DECISIONS.md D113, spec section 1.12). A pack with no
+   * `organisation:` line is its own top tier, and there its declaration is the enabling one.
+   */
+  capabilities?: CommunityCapabilities;
 }
 
 /** Answers to the `needs:` gate — supplied by the organiser at boot, never invented (section 2.7). */

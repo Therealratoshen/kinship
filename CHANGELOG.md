@@ -12,6 +12,18 @@ All notable changes to this project are recorded here. The format follows
 The next increment. See `DECISIONS.md` for what is decided and what is not.
 
 ### Added
+- **A community's own pack may narrow a capability its org enables, and never widen one**
+  (`DECISIONS.md` D113) — the slice D104 recorded as *not shipped with this row*. The org tier is
+  where a capability is **enabled**; a pack's `capabilities:` block is an **override**, and the only
+  legal override is a narrowing one: narrower is in force and the provenance says `pack`, **equal
+  is refused** (it narrows nothing, and an override that does not narrow is a second copy of a
+  decision), and wider is refused. Narrowing means **the runtime does less** — under `pull` it
+  writes no `ReviewRequested` row and interrupts nobody — and the check's *existence* is a floor no
+  shape removes, so a community that narrows accepts only that its cards wait for a human to come
+  and look. A pack with no `organisation:` line is its own top tier, and there its own declaration
+  is the enabling one. The rule is enforced at **two doors**: the validator (`PKG-66` the shape,
+  `PKG-67` the direction), which is the gate a fork's CI runs, and the runtime, which refuses a
+  pack someone booted without CI.
 - **The hosted product's copy of this runtime becomes checkable** (`DECISIONS.md` D112) —
   `scripts/runtime-digest.mjs` prints one deterministic, **path-independent** `sha256` over the
   shippable runtime, so a host that vendors this runtime by copy can *prove* which copy it runs:

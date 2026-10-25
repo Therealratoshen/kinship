@@ -30,7 +30,7 @@ import { asks, CAPABILITY_NAMES } from '../src/capabilities.ts';
 import { createCard } from '../src/cards.ts';
 import { KinshipError } from '../src/errors.ts';
 import { makeCtx, makePack } from './helpers.ts';
-import type { FleetEvent, LoggedEvent, PackedOrg } from '../src/types.ts';
+import type { CommunityCapabilities, FleetEvent, LoggedEvent, Packed, PackedOrg } from '../src/types.ts';
 
 const codeOf = (fn: () => unknown): string => {
   try { fn(); } catch (e) {
@@ -192,4 +192,125 @@ test('under pull, the card waits and the runtime interrupts nobody', () => {
   const events = cardEvents(orgWith('capabilities:\n  human_check:\n    shape: pull\n    reason: "x"\n'));
   assert.equal(events.some((e) => e.type === 'ReviewRequested'), false);
   assert.equal(events.some((e) => e.type === 'CardCreated'), true, 'the card itself is still there — the check is a floor');
+});
+
+// --- the pack tier: a community may NARROW, never widen (DECISIONS.md D113) --------------------
+//
+// The org tier is where a capability is enabled; a community's own pack may narrow it and nothing
+// else. The three cases below are the whole rule: narrower is in force, equal narrows nothing and
+// is refused, wider is refused. The last two are the ones that keep the pack tier from becoming a
+// way to hand a community a power its operator never enabled.
+
+/** A pack that declares its own capability block, under the given org (or with none at all). */
+const packNarrowing = (org: PackedOrg | undefined, capabilities?: CommunityCapabilities): Packed => ({
+  ...makePack({ 'event-ops': { 'commit.channel-post': 'draft' } }),
+  ...(org !== undefined ? { org } : {}),
+  ...(capabilities !== undefined ? { capabilities } : {}),
+});
+
+test('a pack that NARROWS the org\'s shape is in force, and the provenance says the pack decided', () => {
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "nobody answers a silent card"\n');
+  const pack = packNarrowing(org, { human_check: { shape: 'pull', reason: 'our human reads the inbox every morning' } });
+  const settings = resolveSettings({ pack });
+  assert.equal(settings.capabilities.humanCheck.shape, 'pull');
+  assert.equal(settings.capabilities.humanCheck.source, 'pack');
+  assert.equal(settings.capabilities.humanCheck.reason, 'our human reads the inbox every morning');
+  assert.equal(settings.capabilities.humanCheck.seat, 'organiser');
+  assert.equal(asks(settings.capabilities), false);
+});
+
+test('a pack that WIDENS the org\'s shape is refused — narrow, never widen', () => {
+  const org = orgWith('capabilities:\n  human_check:\n    shape: pull\n    reason: "x"\n');
+  const pack = packNarrowing(org, { human_check: { shape: 'push', reason: 'we want it' } });
+  assert.equal(codeOf(() => resolveSettings({ pack })), 'pack_invalid');
+  assert.throws(
+    () => resolveSettings({ pack }),
+    /never widen/,
+    'the refusal has to say which way the rule runs',
+  );
+});
+
+test('a pack that declares the shape its org already declares is refused — it narrows nothing', () => {
+  // The org already decided this, so the block is a second copy of a decision — and a second copy
+  // goes stale (D100, the `seat:` lesson). "Narrows nothing" is the honest refusal, and it leaves
+  // the block with exactly one meaning: I am narrowing this.
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "x"\n');
+  const pack = packNarrowing(org, { human_check: { shape: 'push', reason: 'same as the org' } });
+  assert.equal(codeOf(() => resolveSettings({ pack })), 'pack_invalid');
+  assert.throws(() => resolveSettings({ pack }), /narrows nothing/);
+});
+
+test('a pack with no org above it is its own top tier, and its declaration is the enabling one', () => {
+  // The same way a pack with no `organisation:` line is already its own top tier for the floors:
+  // there is nothing above it to narrow past, so its own declaration stands.
+  const pack = packNarrowing(undefined, { human_check: { shape: 'push', reason: 'we run it ourselves' } });
+  const settings = resolveSettings({ pack });
+  assert.equal(settings.capabilities.humanCheck.shape, 'push');
+  assert.equal(settings.capabilities.humanCheck.source, 'pack');
+  assert.equal(asks(settings.capabilities), true);
+});
+
+test('the provenance row names the pack that narrowed the capability', () => {
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "x"\n');
+  const pack = packNarrowing(org, { human_check: { shape: 'pull', reason: 'we read the inbox' } });
+  const row = resolveSettings({ pack }).provenance.find((p) => p.key === 'capability:human_check');
+  assert.ok(row, 'the capability has no provenance row');
+  assert.equal(row!.source, 'pack');
+  assert.equal(row!.effective, 'pull');
+  assert.match(row!.note, /narrow/i);
+});
+
+test('a pack that narrows the shape changes what the runtime DOES — the check is still there', () => {
+  // The point of the whole tier: a narrowing changes the log, not just a setting. Under the org's
+  // `push` the card writes a ReviewRequested row; under the pack's `pull` it does not — and the
+  // card itself is still written, because the check's EXISTENCE is a floor no shape removes.
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "x"\n');
+  const narrowed = packNarrowing(org, { human_check: { shape: 'pull', reason: 'we read the inbox' } });
+  const events = cardEvents(org);
+  assert.equal(events.some((e) => e.type === 'ReviewRequested'), true, 'the org\'s push asks');
+
+  const ctx = makeCtx(narrowed);
+  createCard(ctx, {
+    actionClass: 'commit.channel-post',
+    agent: 'event-ops',
+    origin: { kind: 'event', id: 'event-1' },
+    phase: null,
+    text: { id: 'Halo', en: 'Hello' },
+  });
+  const narrowedEvents = [...ctx.state.events];
+  assert.equal(narrowedEvents.some((e) => e.type === 'ReviewRequested'), false, 'the pack\'s pull does not ask');
+  assert.equal(narrowedEvents.some((e) => e.type === 'CardCreated'), true, 'the card is still there — the check is a floor');
+});
+
+// --- the floor holds at the pack tier too -------------------------------------------------------
+
+test('the pack tier may not switch the check off either — the floor is the absence of a switch', () => {
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "x"\n');
+  for (const word of ['off', 'none', 'disabled', 'false', 'no', 'never']) {
+    const pack = packNarrowing(org, { human_check: { shape: word as never, reason: 'x' } });
+    assert.equal(
+      codeOf(() => resolveSettings({ pack })),
+      'pack_invalid',
+      `shape: ${word} was accepted at the pack tier — the human check's existence is a floor`,
+    );
+    // The refusal has to be the FLOOR's refusal and not some other one that happens to fire — a
+    // check that passes for the wrong reason is not a check.
+    assert.throws(
+      () => resolveSettings({ pack }),
+      /existence is a floor/i,
+      `shape: ${word} must be refused as an attempt to switch the check off`,
+    );
+  }
+});
+
+test('a pack capability with no reason is refused, and so is one the runtime does not have', () => {
+  const org = orgWith('capabilities:\n  human_check:\n    shape: push\n    reason: "x"\n');
+  assert.equal(
+    codeOf(() => resolveSettings({ pack: packNarrowing(org, { human_check: { shape: 'pull', reason: '' } }) })),
+    'pack_invalid',
+  );
+  assert.equal(
+    codeOf(() => resolveSettings({ pack: packNarrowing(org, { telepathy: { shape: 'push', reason: 'x' } }) })),
+    'pack_invalid',
+  );
 });

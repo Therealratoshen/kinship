@@ -88,7 +88,7 @@ const LIMITS: readonly string[] = [
   'Autonomy ceilings match exact class names. There is no wildcard, because the ladder has none and a glob would widen reach without anyone writing the class down (section 1.1).',
   '`agent_roles` is reporting, not a whitelist: an org lists the roles it recognises so a snapshot can name them, and a community may add an agent without an org\'s permission. The one hard rule is that a role name may not be a human seat.',
   'Budgets are not floors. `llm_per_event_idr`, `queue_max` and `max_actions_per_run` stay the pack\'s: spend and queue depth are the organiser\'s own cost, not a promise to a member, and an org that can force a volunteer to spend is a different product.',
-  'Capabilities are declared at the org tier only, in v0. The org manifest is the tier that already exists for "one operator, several communities", so a capability lands there first; a community\'s own pack-level override is a later slice, because the pack format is policed by 62 validator rules and a capability that arrives half-wired through a validator that does not know it is worse than one that arrives late.',
+  'Capabilities are declared at two tiers, and the pack tier may only NARROW (DECISIONS.md D113). The org manifest is the tier that ENABLES — it says what the fleet may do under this operator — and a community\'s own pack may make that narrower and nothing else. A pack with no `organisation:` line is its own top tier, and there its declaration is the enabling one. A pack that declares the shape its org already declares is refused: it narrows nothing, and an override that does not narrow is a second copy of a decision (D100).',
   'The capability vocabulary grows only with enforcement. `human_check` is in it because its shape changes what the runtime DOES — `push` writes a `ReviewRequested` row and `pull` does not. A capability the runtime could only read back would be a setting that lies.',
 ];
 
@@ -150,16 +150,19 @@ export function resolveSettings(args: ResolveSettingsArgs): ResolvedSettings {
       `pack \`${pack.key}\` declares agent(s) ${squatters.map((r) => `\`${r}\``).join(', ')} whose name is a human seat held by ${org ? `org \`${org.key}\`` : 'the runtime'} — decideCard, issueGrant, revokeGrant and releaseShatter accept a seat, so an agent with that name would hold the veto over its own output`);
   }
 
-  // The capabilities in force (DECISIONS.md D103). The human check's SHAPE is configurable; its
+  // The capabilities in force (DECISIONS.md D103, D113). The human check's SHAPE is configurable; its
   // EXISTENCE is a floor, so there is no value here that turns it off — the floor is the absence of
-  // a switch, not a default that a careful operator could override.
-  const capabilities = resolveCapabilities({ org, humanSeats });
+  // a switch, not a default that a careful operator could override. The org tier ENABLES a shape and
+  // the pack tier may only NARROW it, so the resolution order is the same org -> pack as the floors.
+  const capabilities = resolveCapabilities({ org, packCapabilities: pack.capabilities, packKey: pack.key, humanSeats });
   provenance.push({
     key: 'capability:human_check', tier: 'capability', effective: capabilities.humanCheck.shape,
     source: capabilities.humanCheck.source,
-    note: capabilities.humanCheck.source === 'org'
-      ? `org \`${org?.key ?? '?'}\` declares the human check as \`${capabilities.humanCheck.shape}\`, answered by seat \`${capabilities.humanCheck.seat}\` — "${capabilities.humanCheck.reason}". Its shape is configurable; its existence is a floor`
-      : capabilities.humanCheck.reason,
+    note: capabilities.humanCheck.source === 'pack'
+      ? `pack \`${pack.key}\` narrows the human check to \`${capabilities.humanCheck.shape}\`, answered by seat \`${capabilities.humanCheck.seat}\` — "${capabilities.humanCheck.reason}". A pack may narrow a capability the org enables, never widen one`
+      : capabilities.humanCheck.source === 'org'
+        ? `org \`${org?.key ?? '?'}\` declares the human check as \`${capabilities.humanCheck.shape}\`, answered by seat \`${capabilities.humanCheck.seat}\` — "${capabilities.humanCheck.reason}". Its shape is configurable; its existence is a floor`
+        : capabilities.humanCheck.reason,
   });
 
   // The sanction ladder (D37) — a community's own rungs, read once here. Two properties of it are not
