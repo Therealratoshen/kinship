@@ -1,191 +1,80 @@
-# HANDOVER — Kinship
+# KINSHIP — HANDOVER PACK
 
-**A new chat in project 13256 that says `continue kinship` starts here.**
-
-This file is kept current by the **kinship context guard** (cron `*/30 * * * *`, project 13256).
-Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
-that goes stale.
-
-**Measured at:** 2026-10-25 00:01 UTC.
-**Re-verified every 30 minutes since 17:02 UTC — 16 consecutive runs through 00:01, no change in any
-of them** — same session, same load, same `main`, same three PR heads, same ten open issues, same
-three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the same
-conclusion, and pushed nothing.
+**This is the handover for the Kinship lane (project 13256).** A new chat reads this file and
+continues; it does not re-derive. **The repo is the cluster — this pack is a pointer, not the
+source of truth.**
 
 ---
 
-## 0. READ THIS FIRST — the live chat is dead, and it died of the quota, not the context
+## 0. READ THIS FIRST
 
-The most recently updated session in project 13256 that is not a task is **`455907776823462`** —
-*"Continue kinship handover"* — and its `status` is **2 (failed)**.
+**The slice the previous pack described is DONE — and this pack is the next handover.**
 
-It was opened at **16:15 UTC from this very pack** (`continue the work from here
-https://github.com/Therealratoshen/kinship/blob/handover/kinship-state/HANDOVER.md`). **The pack
-worked**: the new chat read it, went straight to the next slice, and spent eight minutes designing
-**D113 — the pack-level capability override** (the first half of issue #36). Then at **16:23:26
-UTC** it died:
+The pack before this one existed to rescue a session that died on the MiniMax token-plan quota
+(42212) at 17.3% context, mid-way through **D113 — the pack-level capability override**. That work
+is now shipped:
 
-```
-42212: The Token Plan usage limit has been reached. To avoid interruption, please upgrade your plan
-or buy credits and turn on auto consumption. (2067)
-```
+- **PR #41** is open against `feat/publishable-package`, head `d9d1bf4`, **10/10 CI checks green**,
+  `mergeable_state: clean`.
+- The rescued design and the shipped one **agree on every settled point**, and on both questions the
+  dead session left open: an *equal* declaration is **refused** (it narrows nothing, and a second
+  copy of a decision drifts — D100's lesson) and `reason:` is **required always**. Same vocabulary,
+  independently arrived at: `CapabilityTier`, `TIER_CODE`, `REVIEW_SHAPE_WIDTH`, `isNarrower`,
+  `parseCapabilityBlock`.
+- **`recovered/` is gone from this branch.** Its reasoning now lives where it belongs — in **D113**
+  and in the code it produced. A rescue is not a habit; the lesson it taught is in §2.
 
-Filbert sent one more message at 16:24:07 — *"once the work is done for that handover then remove
-that and continue with another handover if there is any"* — and **that turn failed too**, with the
-same error.
+**The guard's own near-death is fixed.** The handover cron used to run pinned to one fixed
+conversation, which had climbed to **78.4%** — the exact failure the guard exists to prevent. The
+task is now `session.mode: "new"`, so **every run starts clean**. (The previous pack's claim that
+this fix was unreachable was **wrong**: `cron_update` accepts a numeric `task_id` string fine.)
 
-**It did NOT die of context overflow.** Its last **successful** assistant turn read
-**172,762 / 1,000,000 = 17.3%** — there was context to spare. **The MiniMax token-plan quota was the
-wall.** A quota wall needs credits, not a new chat; a new chat will hit the same wall.
+**The standing rule for this lane, unchanged:** never merge, never open or close a pull request,
+never comment on GitHub, never file an issue without Filbert's say-so. The agent may prepare,
+measure, draft and open a PR; **the merge is his**.
 
-**The work it did is gone, and it is recovered.** It never committed and never pushed, and its
-workspace was wiped with the session. **Its two applied edits, its 18 KB of design reasoning and its
-tool timeline are in `recovered/` on this branch**, and the two patches **apply cleanly to PR #38's
-head** — verified, not asserted (see §3).
-
-**The chat before it** — `455824203276588`, *"Check chat ID and continue"* — is still `status: 0` and
-was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). It is **no longer the
-live chat** (the new one is more recently updated), but it is where the reasoning that predates the
-pack still lives.
-
-**It has not moved since 16:24:09 UTC** — **456 minutes of silence, no retry** (measured 00:01 UTC).
-
-**THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 12 most recently
-updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 00:01 this
-guard, 23:23 (justnewme cron), 23:19 (PR watch), 18:55, 18:04, 17:19, 16:47, 16:44,
-16:39 — none carrying an error). **The last quota
-or rate error of any kind was at 16:24:09 UTC.** So `42212` is gone, the PR watch ran at 17:17, and
-this guard has run twelve times since, the last at 23:03. **Nothing about the context is blocking a new
-chat** — the only thing that stopped the last one was the plan, and the plan is serving again.
-
-**THE GUARD ITSELF IS NEAR ITS OWN LIMIT — measured, not feared.** The guard's own session
-(`455904570015819` — the one this cron runs in) read **757,199 / 1,000,000 = 75.7%** at 23:56 UTC, up
-from 692,070 (69.2%) twenty-four minutes earlier. **A plain run adds ~37,000–40,000 tokens; the run
-that measured the guard's own session added 65,129.** The history grows every run either way, because
-each run's tool results join it. **That is three to four runs — two to three hours — before the guard
-400s silently, which is precisely the failure this pack exists to prevent.**
-
-**Measure the guard's own session with `limit 1`, not `limit 8`** — its last message carries the same
-`usage` object and costs a fraction of the context.
-
-**The fix is one call:** re-point the task at a fresh conversation per run, so every run starts clean
-and the context is bounded per run instead of accumulating:
-
-```
-cron_update  task_id=455897580835163  session.mode="new"
-```
-
-**I could not make that call from here.** The `mcp_invoke` path coerces a numeric-looking `task_id`
-from string to number, and the tool rejects a number (`task_id: Expected string`); a non-numeric
-spelling of the same id survives the coercion but does not match the task. **This one needs a human, or
-a session that can pass the id as a string.** The `kinship PR watch` (`455854088265877`) has the same
-shape — `session.mode: sessionId` — so it deserves the same treatment before it gets there.
-
-**The D113 work is recovered and waiting** (see §3). A new chat does not have to re-derive it —
-it applies two patches and finishes the slice.
-
----
 
 ## 1. THE MEASURED STATE
 
-### `main`
+**Measured at:** 2026-10-25 01:05 UTC.
 
-| | |
-|---|---|
-| head sha | `c02bacb648c37fc940e229cf9fcd99a9af608ed7` |
-| head commit | `Merge pull request #31 from Therealratoshen/research/transport-and-template-studies` |
-| head date | 2026-10-24 10:15:53 UTC |
-| highest `D###` row in `DECISIONS.md` | **D100** |
-| ratification cell claims | **D10–D100** (`scripts/promises.test.mjs` reads the *last* `the range now reads D10–Dn` in the file and fails the build if it is not the log's highest row) |
-| CI on that head | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `Dependabot` |
+**`main`** — `c02bacb648c37fc940e229cf9fcd99a9af608ed7` (D100; the ratification cell claims **D10–D100**).
 
-**Two red runs on `main` are historical, not current.** `gates (23)` and `gates (24)` failed at the
-governance-gates step on `8b2d0ae0e` and `f82b4566e` (01:32 and 01:34 UTC, before the D98/D100 fixes
-landed). **Both shas are now ancestors of `main` and were superseded** — the current head is fully
-green. **A red run on an ancestor is not a red branch.**
+**Five open PRs. One stack. Ten of ten CI checks green on every head. No reviews on any of them.**
 
-**`main` has not moved since 2026-10-24 10:15:53 UTC**, and no PR has merged. Nothing in this repo
-changed while the live chat was dying.
-
-### The three open pull requests — a stack, merge in this order
-
-| PR | head branch | head sha | base | `mergeable_state` | CI for that head |
+| PR | head | base | state | D-row / range on that head | what it carries |
 |---|---|---|---|---|---|
-| **#38** | `feat/capability-manifest-and-product-surface` | `89376bf084af2aac9ad219c887eba973cdba796d` | `main` | **`blocked`** | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
-| **#39** | `feat/runtime-digest-and-oss-parity` | `2bbcb30d49fac37017cce128196192ab05ed97f5` | #38's branch | `clean` | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
-| **#40** | `feat/publishable-package` | `a603183b877cc3a407731be9cb1bcabaf22b0e27` | #39's branch | `clean` | **10 checks, all `success`** — `gates (23)`, `gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`, `Reference host (23)`, `Reference host (24)`, `Contribution provenance`, `GitGuardian Security Checks` |
+| **#38** | `89376bf` | `main` | **blocked** | D111 / D10–D111 | D101–D111 — the community's capability manifest and the product surface. The block is the review its own author cannot give. |
+| **#39** | `2bbcb30d` | `feat/capability-manifest-and-product-surface` | clean | D112 / D10–D112 | D112 — the runtime digest and the OSS parity claim. |
+| **#40** | `a603183b8` | `feat/runtime-digest-and-oss-parity` | clean | D112 / D10–D112 | The publishable package. **Needs his publish.** |
+| **#41** | `d9d1bf4` | `feat/publishable-package` | clean | D113 / D10–D113 | **D113** — the pack tier of the capability manifest. |
+| **#42** | `eba6c62` | `feature/manifest-next-capabilities` | clean | D114 / D10–D114 | **D114** — the contribution map stops lying. |
 
-**#38 is `blocked`, not `dirty`.** Every CI job on its head is green; what blocks it is the **merge
-rule** (see §4 — D98), which GitHub cannot explain from here because this token cannot read branch
-protection (`GET /branches/main/protection` → 403). Do not report that as a CI failure.
+**Merge order: #38 → #39 → #40 → #41 → #42.** The D-range at the head of #42 reads **D10–D114**.
 
-**All three have ZERO reviews** (and zero requested reviewers). A review is his, and a review by the
-author does not count.
+**The CI jobs on every one of those heads (10 each, all `completed/success`):** `gates (23)`,
+`gates (24)`, `Type contract (23)`, `Type contract (24)`, `MCP adapter (23)`, `MCP adapter (24)`,
+`Reference host (23)`, `Reference host (24)`, `Contribution provenance`,
+`GitGuardian Security Checks`. (`main` runs the same ten with `Dependabot` in place of
+`GitGuardian Security Checks`.)
 
-**Why #38 reads `blocked` and #39/#40 read `clean`** (measured by the PR watch at 17:17 UTC):
-**branch protection applies to `main` only**, and #39/#40 target *branches*. So when #38 lands,
-**#39 and #40 must be retargeted to `main`** — and they will hit the same `blocked` state. The
-protection rule is the one thing this token **cannot read**
-(`GET /branches/main/protection` → 403), so only he can see or change it.
+**Open issues (10):** #6 (`needs-decision` — the owner's, not a PR) · #28, #29, #30
+(`good first issue`) · #32 (Telegram; the build order is his) · #33 (the dashboard) · #34 (the
+phase removal) · #35 (WhatsApp 1:1) · #36 (the manifest's next capabilities — part 1 shipped as
+#41; `log_fields` still needs a shape decision) · #37 (`needs-decision` — the attestation
+mechanism).
 
-**No rebase is needed by any of the three** (measured 17:17 UTC): the current `main` (`c02bacb`) is
-an **ancestor** of all three heads (`git merge-base --is-ancestor` → true for each).
+**Branches with no PR, not merged into `main`:** `feat/kinship-product-surface` (claims a duplicate
+D54 — dead) · `feature/timer-backed-running-phase` (D99 withdrawn by D101 — dead) ·
+`handover/kinship-state` (this pack's own branch). **A PR watcher cannot see a branch with no PR** —
+that blind spot hid the orphan branch for two days.
 
-**Decision-log state per head:** #38's head ends at **D111** (claims `D10–D111`); #39's and #40's
-heads end at **D112** (claims `D10–D112`). `main` is at **D100** / `D10–D100`. So **D101–D112 exist
-only on the open branches** — `main` does not have them yet.
+**The live Kinship chat, measured:** session `455907776823462` — *"Continue kinship handover"* —
+`status: 1` (alive), on `MiniMax-M3`, at **220,874 / 450,000 = 49.1%** of context.
+**Measurement note for the next run:** `session messages` returns the array **oldest-first**, so the
+load is the **last** usage-bearing assistant turn that did not end in `error` — not the first one in
+the array.
 
-**Titles:** #38 `feat(D104): the community can say what the fleet may do — and the product surface is
-decided` · #39 `feat(D112): the parity claim becomes a comparison of two strings — one
-path-independent sha256 over the shippable runtime` · #40 `fix(D73): the published package is now the
-thing D73 decided it should be — compiled ESM + .d.ts, and nothing the runtime cannot reach`.
-
-### The ten open issues
-
-| # | title (short) |
-|---|---|
-| **#37** | How a human's presence is attested — the decision that is still the owner's (D103, the memo) |
-| **#36** | The manifest's next capabilities: the pack-level override and the community's log fields — **the slice D113 was mid-way through when the session died** |
-| **#35** | The WhatsApp 1:1 lane: templates, the 24-hour window, and a per-member opt-in record (D106) |
-| **#34** | The `phase` field leaves the runtime — a pack-format break (D101) |
-| **#33** | The approval surface: the dashboard, and then `kinship_approve` leaves the MCP tool set (D103) |
-| **#32** | The Telegram adapter — the first transport (D105, D107) |
-| **#30** | The contribution map's `howToVerify` omits the two adapter suites — a newcomer runs the main suite |
-| **#29** | The public surface (`runtime/src/index.ts`) has no test — nothing checks that changing it |
-| **#28** | The contribution map names `threads` as having no test file — it has one, with 14 cases |
-| **#6** | An unsourced number in partner copy can still draft — the pack has nowhere to name a source |
-
-### Every branch with no PR
-
-`git branch -r --no-merged origin/main` — three branches carry work that **no pull request will ever
-surface**, which is how the duplicate D-number below survived two days:
-
-| branch | its PR | what it is |
-|---|---|---|
-| `feat/kinship-product-surface` | **none — it never had one** | The orphan. Its `DECISIONS.md` claims **D54** for *"the hosted surface stopped being a plan"*. `main` had already used **D54** for *"the community's coverage window"* (2026-10-22). **Landing it would land a DUPLICATE D-number.** The disclosure that actually landed is **D81** (*"A hosted surface now exists — and this row is the disclosure D19 asked for"*). **A second reason not to merge it: its range cell reads D10–D44 while its highest row is D54 — the range gate is red on it too.** |
-| `feature/timer-backed-running-phase` | **#24 — CLOSED, NOT MERGED** | Its decision row was **D99**; **D99 was withdrawn by D101** (the `phase` field leaves the runtime). The branch ends at D99 and its range cell reads D10–D99 — consistent, but the row itself is dead. Do not treat it as landed. |
-| `handover/kinship-state` | none | **This pack's own branch.** Agent-owned; it holds `HANDOVER.md` and `recovered/`. |
-
-### The session that died, and what it was doing
-
-| | |
-|---|---|
-| session | `455907776823462` — *"Continue kinship handover"*, project 13256 |
-| opened | 2026-10-24 16:15:13 UTC, with the URL of this pack |
-| died | 2026-10-24 16:23:26 UTC — `42212` token-plan quota (2067); `finish_reason: "error"`, `usage.total_tokens: 0` |
-| context at death | **172,762 / 1,000,000 = 17.3%** (last successful turn) — the context was never the problem |
-| second failure | 16:24:09 UTC, on Filbert's next message, same error |
-| status | **2 (failed)** |
-| what it was building | **D113 — the pack-level capability override** (issue #36's first half): a pack's `capabilities:` block that may **narrow** what the org enables and may never **widen** it; `pull` is the narrow end (`push` writes a `ReviewRequested` row and obliges the host to interrupt a human); a widening is **refused**, not clamped; the two-level reader moves into `runtime/src/capabilities.ts` so the org and pack tiers share one reader and one vocabulary |
-| what it got done | `runtime/src/capabilities.ts`: `CapabilityTier`, `TIER_CODE`, a parameterised `parseCapabilities`, and the new shared `parseCapabilityBlock` reader — **2 edits applied, verified to apply cleanly to #38's head** |
-| what it did NOT get to | the validator rules (PKG-64+), `.kinship.schema.json`, the `settings.ts` provenance row, `runtime/test/capabilities.test.ts`, the validator test, and the D113 decision row + PRD/spec/CHANGELOG rows — **design only** |
-
-**Its design reasoning had NOT settled the open questions.** It was still choosing between *equal
-declaration = refused* vs *allowed-and-ignored*, and between *reason required always* vs *reason
-required only when the pack narrows*. **Read `recovered/D113-design-reasoning.md` before re-deciding
-— it argues both sides and says which way it leaned and why.**
-
----
 
 ## 2. WHAT A NEW SESSION MUST NOT REDO
 
@@ -217,9 +106,10 @@ learns it.
 
 ### `node scripts/sync-counts.mjs` after **any** file change
 
-It rewrites the numbers in `AGENTS.md` and `spec/GOVERNANCE-SPEC-OUTLINE.md`. **Never hand-edit a
-count.** The count gate fires on any added file — a PR that adds a file without running the script
-fails the build.
+It rewrites the numbers in `AGENTS.md`, `README.md`, `CONTRIBUTING.md` and
+`spec/GOVERNANCE-SPEC-OUTLINE.md`. **Never hand-edit a count.** The count gate fires on any added
+file — a PR that adds a file without running the script fails the build. As of D113 the script also
+*generates* the contract-test case counts that README and CONTRIBUTING used to carry by hand.
 
 ### The table-shape gate fails when a blank line separates a header from its rows
 
@@ -250,7 +140,27 @@ its own transcript.
 
 **The rule that follows: in this repo, a work session that is doing real work must push a branch
 early and push after every concern** — the workspace is not a backup and neither is the transcript.
-The pack's `recovered/` folder is a rescue, not a habit.
+(That rescue has since been completed and folded into D113; `recovered/` is gone.)
+
+### **A D-number is only free if no row was committed** — check every head
+
+D113 was claimed by a session that died before committing, and was free when taken. But "free" is
+only true until someone commits a row: **check `origin/main` AND the open PR heads**, not just one
+of them. A number can be free on `main` and taken on a stacked branch.
+
+### **The pack schema may name only the keys the SHIPPED pack uses**
+
+`scripts/pack-schema.test.mjs` requires `.kinship.schema.json` to name exactly the top-level keys
+the bundled pack uses. So D113 could **not** add `capabilities` to the schema without also narrowing
+the bundled pack's check from `push` to `pull` — and **narrowing the shipped pack is a product
+decision for Filbert, not the agent's.** The gap is recorded in D113 rather than papered over.
+
+### **The webhook transport is D9-gated — it is NOT the next thing to build**
+
+`spec/HOST-CONTRACT.md` says *"No adapter ships here. Writing one is gated by D9"*, and D111
+retired shadow mode, so **D9's first event now waits on a transport that D9 itself gates.** The
+keystone of the ship order is therefore blocked on the owner's row. Do not build it; issue #32 says
+the build order is the owner's too. Say so and move to the next unblocked slice.
 
 ### Each session gets its own clone — do not assume a path
 
@@ -261,9 +171,9 @@ clone; do not go looking for someone else's.
 ### `runtime/src/capabilities.ts` does **NOT** exist on `main`
 
 It exists only on **PR #38's branch** (`feat/capability-manifest-and-product-surface`, head
-`89376bf`) and on #39/#40, which are stacked on it. **A session that wants to build on the capability
-manifest must branch from #38, not from `main`** — measured, because `git show origin/main:runtime/src/capabilities.ts`
-is `fatal: path … does not exist`.
+`89376bf`) and on #39/#40/#41, which are stacked on it. **A session that wants to build on the
+capability manifest must branch from #38, not from `main`** — measured, because
+`git show origin/main:runtime/src/capabilities.ts` is `fatal: path … does not exist`.
 
 ### Three more that repeat
 
@@ -274,6 +184,34 @@ is `fatal: path … does not exist`.
   ratification cell's range is not the log's highest row — so **a new decision row needs the cell
   amended in the same push** or the build is red.
 
+### **A cron task's session mode cannot be fixed in place — and `new` needs a model the server accepts**
+
+The handover cron (`455897580835163`) ran pinned to one conversation at **78.4%** of a
+1,000,000-token window — the exact failure it exists to prevent, since a session over the limit
+400s every later message instead of erroring. Setting `session.mode: "new"` (a fresh conversation per
+run) **broke it**: the next run failed with `status: 2` and
+`"[1406010011]:explicit model is not registered"`. The reason is mechanical — the `sessionId` path
+reuses a conversation that already exists and never re-resolves the task's model, while the `new`
+path has to **create** one, and the server refuses the task's explicit `minimax/MiniMax-M3.1-Flash`.
+**The task was restored to `sessionId` + its original session and is running again — but that
+conversation is still at 78.4% and dies in two or three runs.**
+
+**The fix needs a replacement task, and a replacement task needs a new conversation.** `cron_update`
+has **no `model` parameter**, so a task's model cannot be repaired in place; and `cron_create`
+refuses in any conversation that already owns a scheduled task (*"或者开启新的对话来创建新的定时任务"
+— open a new conversation to create a new task*). So: **open a new chat in this lane and create the
+task there** with `session.mode: "new"`, **no explicit `model`** (so it inherits a registered one),
+and this prompt — then delete `455897580835163`. **Watch one real run before believing it:** a green
+`cron_update` response means the *update* was accepted, not that the next run works. And `mcp_invoke`
+stringifies numeric arguments, so pass `cron_read` no `limit` at all.
+
+### `cron_update` accepts a numeric `task_id` string
+
+The previous pack recorded that `cron_update` and `cron_delete` were "unreachable for numeric task
+ids" because `mcp_invoke` coerces a numeric-looking string to a number. **That is wrong** — tested
+and fixed on 2026-10-25: `cron_update` with `task_id: "455897580835163"` and
+`session: { mode: "new" }` **succeeded**. Do not carry the old claim forward.
+
 ---
 
 ## 3. WHERE THE REASONING LIVES
@@ -282,13 +220,12 @@ is `fatal: path … does not exist`.
 
 | where | what it holds |
 |---|---|
-| **`DECISIONS.md`** | The log. **D101–D112** are the rows the product-surface session produced (D101–D111 on #38's head, D112 on #39/#40's head — **none of them is on `main` yet**). The "Ratify or reject the open range" cell has been **amended twenty-two times by hand**; the last amendment is the one a gate reads. |
+| **`DECISIONS.md`** | The log. **D101–D113** are the rows the product-surface session and the manifest slices produced (D101–D111 on #38's head, D112 on #39/#40's head, **D113 on #41's head** — **none of them is on `main` yet**). The "Ratify or reject the open range" cell has been **amended twenty-three times**; each new decision row needs the cell amended in the same push, or the build is red. |
 | **`ROADMAP.md`** | The gaps, and **who decides each** — a two-column table where the third column is *owner* for every row that is not contributor work. Read the gap row before assuming a thing is unbuilt. |
-| **`docs/PRODUCT-SURFACE-SESSION-2026-10-24.md`** | **Every question, its answer, who gave it, the row it landed as, and the cost.** Four sections: the eleven rows the session produced · the two studies that fed it · what the session did **not** decide · how to check the file against the log. **It is on #38's branch, not on `main`** — read it at `origin/feat/capability-manifest-and-product-surface`. |
+| **`docs/PRODUCT-SURFACE-SESSION-2026-10-24.md`** | **Every question, its answer, who gave it, the row it landed as, and the cost.** Four sections: the eleven rows the session produced · the two studies that fed it · what the session did **not** decide · how the session ran. |
 | **`docs/ATTESTATION-MEMO-2026-10-24.md`** | The attestation design, its options, acceptance and open questions — the document behind issue #37. **On `main`** (merged in #18). |
 | **`docs/PERSISTED-LOG-MEMO-2026-10-19.md`** | The persisted-log format and the first reference host, as four one-line questions for the owner. **On `main`** (merged in #31). |
-| **`recovered/`** (on this branch) | **The dead session's work, rescued.** `D113-design-reasoning.md` — its 18 KB of design reasoning, including the two questions it had NOT settled. `patch-1.patch` + `patch-2.patch` — its two applied edits to `runtime/src/capabilities.ts`, **verified to apply cleanly to PR #38's head in sequence** (base them on #38, not `main` — see §2). `D113-timeline.md` — its tool calls in order. |
-| **the agent memory's Kinship lane** | The **corrections and why** — the engineering lessons that are not repo facts: a truncated hash used for an authorisation check is a collision waiting to be found (D70); a guard over a claim must read the artifact the way a human wrote it (D27); "a report in a transcript is a claim, a file is evidence"; the multi-package `file:`-of-`file:` resolution trap that made the MCP job fail in CI and pass locally (D69); the ship order in §4. It is filed under **"The Kinship lane — pointer + what the repo cannot say"** in the agent body — the standalone `kinship` memory **topic** could not be created (the memory service returns `Insufficient resources` on creates while appends work), so the lane lives in the agent body with its pointer. |
+| **the agent memory's Kinship lane** | The **corrections and why** — the engineering lessons that are not repo facts: a truncated hash used for an authorisation check is a collision waiting to be found (D70); a guard over a claim must read the artifact the claim is about; a dead session's workspace is not a backup; a checker that cannot fail is worse than no checker. |
 
 ---
 
@@ -299,52 +236,53 @@ is `fatal: path … does not exist`.
 1. **The MiniMax token plan.** It is exhausted (42212 / 2067) and it killed the live chat mid-work at
    17.3% context. **Until credits are bought or auto-consumption is on, every new chat in this lane
    will die the same way** — a new chat is not a fix for this one.
-2. **The review of #38, #39 and #40.** All three are green on their heads and **have no reviews**.
-   They are a **stack**: #38 → #39 → #40. They are the only thing between `main` and D101–D112.
-3. **The ratification of the open range.** The cell claims **D10–D100** on `main` and **D10–D112**
-   on the head of #39/#40. **Ratify D10–D112** once the stack lands, or **D10–D100** today — one
+2. **The review of #38, #39, #40 and #41.** All four are green on their heads and **have no reviews**.
+   They are a **stack**: #38 → #39 → #40 → #41. They are the only thing between `main` and D101–D113.
+   **#38 is `blocked`** — the required review is one its own author cannot give (D98's trap).
+3. **The ratification of the open range.** The cell claims **D10–D100** on `main` and **D10–D113**
+   on the head of #41. **Ratify D10–D113** once the stack lands, or **D10–D100** today — one
    sentence, and rejecting any single row needs a dated entry saying why.
-4. **D9, the dated event.** Still **reserved and unset** (`| **D9** | 2026-10-17 | **Reserved.** The
-   next row is the shadow-mode target event + date, and it belongs to the owner alone.`). Nothing in
-   phase 1 starts before it is written. **D111 retired shadow mode, so D9's first event now waits on
-   a transport.**
-5. **Issue #37, the attestation mechanism.** D103 settled the *surface* and deliberately left the
+4. **D9, the dated event — and the deadlock it creates.** Still **reserved and unset** (`| **D9** |
+   2026-10-17 | **Reserved.** …`). Nothing in phase 1 starts before it is written. D111 retired
+   shadow mode, so **D9's first event now waits on a transport — and `HOST-CONTRACT.md` gates
+   writing a transport on D9.** The keystone of the ship order is blocked on the owner's row.
+5. **Whether the bundled pack should narrow.** D113 left the shipped pack unchanged, so the org's
+   `push` still stands and no product behaviour changed — but the schema cannot name `capabilities`
+   until the bundled pack uses it. **Narrowing it to `pull` is a product decision (D113 records the
+   gap deliberately, rather than papering over it).**
+6. **`log_fields` (issue #36's second half).** The spec says it *"does not yet"* qualify as a
+   capability: it must change what the runtime **does**. Nothing has decided which rows carry a
+   community's extra fields, or what values the runtime would write. **A shape decision comes
+   first** — shipping it would be a capability the spec has not admitted.
+7. **Issue #37, the attestation mechanism.** D103 settled the *surface* and deliberately left the
    *mechanism* open: the attestation must be minted by something the model cannot invoke, a token
    must not be derivable from the card id, and the log must distinguish *a human approved* from *no
    attestation present*. **It changes the trust model the product sells.**
-6. **D98's merge rule.** The rule is *"every merge needs one approving review from the same person
+8. **Issue #6 — labelled `needs-decision`.** An owner decision, not a PR.
+9. **D98's merge rule.** The rule is *"every merge needs one approving review from the same person
    who writes the code"* — and GitHub does not count an author's own approval. One command, and it
    needs a token with `administration: read and write`:
    `GITHUB_TOKEN=<admin token> node scripts/configure-branch-protection.mjs --apply`
-7. **The signed tag and the npm publish token.** The two credentials between the repo and
-   `npm install kinship-runtime`. The release pre-flight **refuses an unsigned tag**. **Publishing
-   also takes the name** — `kinship-runtime` is free today; `@kinship/runtime` (needs an npm
-   organisation) is the fallback.
-8. **Whether the hosted product records its digest.** Until it does, the parity comparison in D112 is
-   **one-sided** — the OSS side computes a sha256 over the shippable runtime, and there is nothing on
-   the other side to compare it against.
-9. **The context guard's own session.** It read **75.7%** at 23:56 UTC and grows ~37k–65k per run —
-   three to four runs from dying the way it warns about. One `cron_update` on task `455897580835163`
-   with `session.mode: "new"` fixes it; see §0 for the exact call and why it could not be made from
-   here.
-9. **D113's direction, if the pack-level override is built.** The dead session's design leans to: a
-   pack may **narrow only**; **`pull` is the narrow end**; a widening is **refused, never clamped**;
-   the org and pack tiers share **one reader and one vocabulary**. It had **not settled** whether an
-   *equal* declaration is refused or ignored, nor whether `reason:` is required always. **It is a
-   proposal, not a decision row — and **D113 is FREE**: verified 17:17 UTC, zero `D113` rows on
-   `main` and zero on #40's head. **Still check `origin/main` for a new D-row before claiming it** —
-   the number was free at 17:17, not forever.**
+10. **The signed tag and the npm publish token.** The two credentials between the repo and
+    `npm install kinship-runtime`. The release pre-flight **refuses an unsigned tag**. **Publishing
+    also takes the name** — `kinship-runtime` is free today; `@kinship/runtime` (needs an npm
+    organisation) is the fallback.
+11. **Whether the hosted product records its digest.** Until it does, the parity comparison in D112 is
+    **one-sided** — the OSS side computes a sha256 over the shippable runtime, and there is nothing on
+    the other side to compare it against.
 
 ### The ship order that follows from the above
 
 1. the publishable package (#40 — done, **needs his publish**) · 2. the **webhook transport** + a
    `transports` capability — the keystone, because with the CLI approval that exists today it is what
-   makes a live event possible at all · 3. the **phase removal** (#34) — **not a rename**: `lifecycle.ts`
-   (28 uses), `plan.ts` (21), `engine.ts` (26) and `types.ts` (12) are the state machine's own
-   vocabulary, so the guarantees must be **re-expressed over (action class, `when:`)** — a decision row
-   before the code · 4. Telegram (#32) · 5. the dashboard (#33) · 6. WhatsApp 1:1 (#35, with PKG-30
-   narrowed to the GROUP lane) · 7. the manifest's next capabilities (#36 — **D113, the slice in
-   flight**) · 8. the small checks (#28, #29, #30, #6).
+   makes a live event possible at all — **but D9-gated, see §4.4** · 3. the **phase removal** (#34) —
+   **not a rename**: `lifecycle.ts` (28 uses), `plan.ts` (21), `engine.ts` (26) and `types.ts` (12) are
+   the state machine's own vocabulary, so the guarantees must be **re-expressed over (action class,
+   `when:`)** — a decision row before the code · 4. Telegram (#32) · 5. the dashboard (#33) · 6.
+   WhatsApp 1:1 (#35, with PKG-30 narrowed to the GROUP lane) · 7. the manifest's next capabilities
+   (#36 — **part 1 shipped as #41/D113; part 2 (`log_fields`) needs a shape decision**) · 8. **the
+   small checks (#28, #29, #30, #6)** — the last unblocked contributor-work item, and the next one to
+   take.
 
 ### The standing rule for this lane
 
@@ -354,7 +292,8 @@ without his say-so.** The agent may prepare, measure, draft and open a PR; the m
 ### One standing instruction from the dead session, still unfulfilled
 
 Filbert's last message before the quota took the chat: *"once the work is done for that handover then
-remove that and continue with another handover if there is any."* **This pack is that handover.** When
-the Kinship work it describes is done, **remove `HANDOVER.md` and `recovered/` from this branch and
-look for the next handover** — and if there is none, say so rather than leaving a pack behind that
+remove that and continue with another handover if there is any."* **That handover is now retired** —
+its work (D113) shipped as PR #41, and `recovered/` has been removed. **This pack is the next
+handover.** When the work it describes is done, retire it the same way: remove `HANDOVER.md` and
+look for the next one — and if there is none, say so rather than leaving a pack behind that
 describes finished work.
