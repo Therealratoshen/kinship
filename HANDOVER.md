@@ -36,7 +36,7 @@ measure, draft and open a PR; **the merge is his**.
 
 ## 1. THE MEASURED STATE
 
-**Measured at:** 2026-10-25 01:05 UTC.
+**Measured at:** 2026-10-25 01:34 UTC.
 
 **`main`** — `c02bacb648c37fc940e229cf9fcd99a9af608ed7` (D100; the ratification cell claims **D10–D100**).
 
@@ -70,7 +70,8 @@ D54 — dead) · `feature/timer-backed-running-phase` (D99 withdrawn by D101 —
 that blind spot hid the orphan branch for two days.
 
 **The live Kinship chat, measured:** session `455907776823462` — *"Continue kinship handover"* —
-`status: 1` (alive), on `MiniMax-M3`, at **220,874 / 450,000 = 49.1%** of context.
+`status: 0` (alive, idle — its last turn finished at 01:06:55 UTC and nothing has been added since),
+on `MiniMax-M3`, at **229,618 / 450,000 = 51.0%** of context.
 **Measurement note for the next run:** `session messages` returns the array **oldest-first**, so the
 load is the **last** usage-bearing assistant turn that did not end in `error` — not the first one in
 the array.
