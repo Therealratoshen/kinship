@@ -6,8 +6,8 @@ This file is kept current by the **kinship context guard** (cron `*/30 * * * *`,
 Sections 2, 3 and 4 are written once. **Section 1 is regenerated on every run** — it is the only part
 that goes stale.
 
-**Measured at:** 2026-10-24 23:33 UTC.
-**Re-verified every 30 minutes since 17:02 UTC — 15 consecutive runs through 23:33, no change in any
+**Measured at:** 2026-10-25 00:01 UTC.
+**Re-verified every 30 minutes since 17:02 UTC — 16 consecutive runs through 00:01, no change in any
 of them** — same session, same load, same `main`, same three PR heads, same ten open issues, same
 three branches with no PR. The **kinship PR watch** also ran at 17:17 UTC, reached the same
 conclusion, and pushed nothing.
@@ -48,21 +48,25 @@ was at **729,949 / 1,000,000 = 72.99%** when it was last active (15:57:36 UTC). 
 live chat** (the new one is more recently updated), but it is where the reasoning that predates the
 pack still lives.
 
-**It has not moved since 16:24:09 UTC** — **429 minutes of silence, no retry** (measured 23:33 UTC).
+**It has not moved since 16:24:09 UTC** — **456 minutes of silence, no retry** (measured 00:01 UTC).
 
 **THE QUOTA HAS CLEARED — a new Kinship chat should work now.** Checked across the 12 most recently
-updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 23:33 this
-guard, 23:23 (justnewme cron), 23:19 (PR watch), 18:55, 18:04, 17:19, 16:47,
-16:44, 16:39 — none carrying an error). **The last quota
+updated sessions: **every session updated at or after 16:39 UTC is error-free** (the latest are 00:01 this
+guard, 23:23 (justnewme cron), 23:19 (PR watch), 18:55, 18:04, 17:19, 16:47, 16:44,
+16:39 — none carrying an error). **The last quota
 or rate error of any kind was at 16:24:09 UTC.** So `42212` is gone, the PR watch ran at 17:17, and
 this guard has run twelve times since, the last at 23:03. **Nothing about the context is blocking a new
 chat** — the only thing that stopped the last one was the plan, and the plan is serving again.
 
 **THE GUARD ITSELF IS NEAR ITS OWN LIMIT — measured, not feared.** The guard's own session
-(`455904570015819` — the one this cron runs in) read **692,070 / 1,000,000 = 69.2%** at 23:32 UTC, and
-it grows roughly **37,000 tokens per run**, because every run's tool results join the same history.
-**That is about eight runs — four hours — before the guard 400s silently, which is precisely the
-failure this pack exists to prevent.**
+(`455904570015819` — the one this cron runs in) read **757,199 / 1,000,000 = 75.7%** at 23:56 UTC, up
+from 692,070 (69.2%) twenty-four minutes earlier. **A plain run adds ~37,000–40,000 tokens; the run
+that measured the guard's own session added 65,129.** The history grows every run either way, because
+each run's tool results join it. **That is three to four runs — two to three hours — before the guard
+400s silently, which is precisely the failure this pack exists to prevent.**
+
+**Measure the guard's own session with `limit 1`, not `limit 8`** — its last message carries the same
+`usage` object and costs a fraction of the context.
 
 **The fix is one call:** re-point the task at a fresh conversation per run, so every run starts clean
 and the context is bounded per run instead of accumulating:
@@ -319,9 +323,10 @@ is `fatal: path … does not exist`.
 8. **Whether the hosted product records its digest.** Until it does, the parity comparison in D112 is
    **one-sided** — the OSS side computes a sha256 over the shippable runtime, and there is nothing on
    the other side to compare it against.
-9. **The context guard's own session.** It read 69.2% at 23:32 UTC and grows ~37k per run — roughly
-   eight runs from dying the way it warns about. One `cron_update` on task `455897580835163` with
-   `session.mode: "new"` fixes it; see §0 for the exact call and why it could not be made from here.
+9. **The context guard's own session.** It read **75.7%** at 23:56 UTC and grows ~37k–65k per run —
+   three to four runs from dying the way it warns about. One `cron_update` on task `455897580835163`
+   with `session.mode: "new"` fixes it; see §0 for the exact call and why it could not be made from
+   here.
 9. **D113's direction, if the pack-level override is built.** The dead session's design leans to: a
    pack may **narrow only**; **`pull` is the narrow end**; a widening is **refused, never clamped**;
    the org and pack tiers share **one reader and one vocabulary**. It had **not settled** whether an
