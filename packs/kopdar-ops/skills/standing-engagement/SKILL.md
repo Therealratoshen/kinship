@@ -63,7 +63,7 @@ about itself, and not what anybody thinks communities from here are like.
 
 **The second half is a rule the lane follows, and the runtime's part of it IS checked.** The runtime
 holds the thread, ages it, lists it in the inbox, and refuses an answer with no note — that is code, and
-`runtime/test/thread.test.ts` holds it. What is *not* checked is the lane's judgement that a given
+`runtime/test/threads.test.ts` holds it. What is *not* checked is the lane's judgement that a given
 message is a question, because a judgement the runtime cannot see is a judgement a human has to check.
 The coverage window remains a record rather than a gate (D54, `ROADMAP.md`), so "inside the staffed hours"
 is still the lane's rule to keep, not a refusal the runtime makes.

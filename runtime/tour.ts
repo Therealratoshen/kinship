@@ -32,7 +32,7 @@ import {
   HEALTH_WITHHELD_MEMBER_REF,
   type CommitArgs,
 } from './src/index.ts';
-import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -352,6 +352,23 @@ function contributionMap() {
   return { tests, src, noDedicatedTestFile };
 }
 
+/**
+ * The adapter suites, computed from the adapters on disk.
+ *
+ * **Why computed and not written out.** The set of hosts changes; a hand-written list goes stale
+ * the first time a host is added, and a stale list says "you are done" to a contributor who has
+ * not run the tests that decide *who may act* — those rules live in the adapters, not in the
+ * runtime. D27's lesson applies here exactly as it did to the gates: a contributor-facing list
+ * that drifts is worse than no list at all.
+ */
+function adapterSuites(): string[] {
+  const dir = join(HERE, '..', 'adapters');
+  return readdirSync(dir)
+    .filter((d) => existsSync(join(dir, d, 'package.json')))
+    .sort()
+    .map((d) => `cd adapters/${d} && npm install --no-audit --no-fund && npm test`);
+}
+
 // --- assertion layer: the tour doubles as a smoke test CI can gate ----------------------------------
 
 function guarantees(s: ReturnType<typeof runStory>) {
@@ -657,7 +674,15 @@ function printJson(s: ReturnType<typeof runStory>, g: ReturnType<typeof guarante
         'node --test scripts/*.test.mjs',
         'node --test runtime/test/*.test.ts',
         'node runtime/tour.ts',
+        'node evals/harness.mjs',
+        // The type contract is a CI job of its own, and node does not check it: node strips the
+        // types when it runs them. The compiler is installed inside the command, so the line a
+        // newcomer is handed works on a fresh clone.
+        'npm install --no-save --no-package-lock typescript@5 @types/node@22 && npx tsc -p runtime/tsconfig.json --noEmit',
+        // The adapter suites, computed from the adapters on disk.
+        ...adapterSuites(),
       ],
+      howToVerifyNote: 'The entries after `node runtime/tour.ts` are not in `scripts/gates.mjs` on purpose, and the reason is worth keeping with the list. The gates are node-only, so that they run with no install step; the runtime is TypeScript and node strips the types when it runs them, so nothing checks the types unless something does; and the adapters are separate hosts whose dependencies are all `file:` paths — `npm install` contacts no registry — but their local links still have to be in place before their suites mean anything. The deciding-actor rules live in the adapters, not in the runtime, so a contributor who ran only the gates has not run a single adapter test. CI is the authority on what runs; this list is the local half of it.',
       // Derived from the list `test/errors.test.ts` polices, so this cannot drift from it:
       // these are the spec promises that are still prose. Read `blockedOn` before opening a PR.
       declaredDebt: Object.entries(UNIMPLEMENTED_REFUSAL_CODES).map(([code, why]) => ({

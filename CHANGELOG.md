@@ -11,6 +11,16 @@ All notable changes to this project are recorded here. The format follows
 
 The next increment. See `DECISIONS.md` for what is decided and what is not.
 
+### Fixed
+- **The contribution map no longer reports a tested module as untested, and the list a newcomer is
+  handed names every suite that exists** (`DECISIONS.md` D114) — `runtime/test/thread.test.ts` is
+  renamed to `runtime/test/threads.test.ts`, so the map's exact-name convention finds it, and
+  `howToVerify` now carries the type contract, the eval harness and each adapter suite, the
+  adapter ones **computed from the directories on disk** so a new host cannot be left out. The
+  reason those suites are not in `scripts/gates.mjs` travels with them in `howToVerifyNote`, and
+  `runtime/test/tour.test.ts` holds both seams with expectations derived independently of the map's
+  own computation, so the two have to agree.
+
 ### Added
 - **A community's own pack may narrow a capability its org enables, and never widen one**
   (`DECISIONS.md` D113) — the slice D104 recorded as *not shipped with this row*. The org tier is
