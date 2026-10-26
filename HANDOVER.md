@@ -36,7 +36,9 @@ measure, draft and open a PR; **the merge is his**.
 
 ## 1. THE MEASURED STATE
 
-**Measured at:** 2026-10-26 05:06 UTC.
+**Measured at:** 2026-10-26 05:33 UTC.
+
+**This task's own conversation** is pinned (session mode `sessionId`), and the platform COMPACTS it rather than letting it die — measured twice: 69.2% -> 58.5% -> 40.5% across 27 runs on 2026-10-25/26. So any headroom figure quoted in section 2 is HISTORICAL, not current, and no replacement task is needed for it to survive.
 
 **`main`** — `c02bacb648c37fc940e229cf9fcd99a9af608ed7` (D100; the ratification cell claims **D10–D100**).
 
